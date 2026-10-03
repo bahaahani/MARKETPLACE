@@ -265,10 +265,13 @@ export class SandboxOriginationService {
 
   constructor(private readonly clock: () => Date = () => new Date()) {}
 
-  /** Create a DRAFT application. Idempotent on `idempotencyKey`. Throws QuoteError for invalid terms. */
+  /**
+   * Create a DRAFT application. Idempotent on `idempotencyKey` per customer: two customers using the same key
+   * get separate applications. Throws QuoteError for invalid terms.
+   */
   create(req: ApplicationRequest, applicant: CustomerFinancials, customerId: string): FinanceApplication {
     validateApplicationRequest(req);
-    const existing = this.byKey.get(req.idempotencyKey);
+    const existing = this.byKey.get(scopedKey(customerId, req.idempotencyKey));
     if (existing) return this.byId.get(existing)!;
     const quote = quoteFinance({
       productLine: req.productLine,
@@ -294,7 +297,7 @@ export class SandboxOriginationService {
       updatedAt: now,
     };
     this.byId.set(id, app);
-    this.byKey.set(req.idempotencyKey, id);
+    this.byKey.set(scopedKey(customerId, req.idempotencyKey), id);
     return app;
   }
 
@@ -320,25 +323,29 @@ export class SandboxOriginationService {
 
   /** create + submit + decide. A repeated idempotency key returns the original application unchanged. */
   apply(req: ApplicationRequest, applicant: CustomerFinancials, customerId: string): FinanceApplication {
-    const replay = this.byKey.get(req.idempotencyKey);
+    const replay = this.byKey.get(scopedKey(customerId, req.idempotencyKey));
     if (replay) return this.byId.get(replay)!;
     return this.submitAndDecide(this.create(req, applicant, customerId).id);
   }
 
   /**
    * Accept the offer and e-sign (sandbox), then run fulfilment to the end, recording every step.
-   * Accepting a completed application again returns it unchanged.
+   * Accepting a completed application again returns it unchanged. With `customerId`, another customer's
+   * application is NOT_FOUND (as if it did not exist).
    */
-  accept(id: string): FinanceApplication {
+  accept(id: string, customerId?: string): FinanceApplication {
     let app = this.require(id);
+    if (customerId !== undefined && app.customerId !== customerId) throw new OriginationError('NOT_FOUND', `unknown application ${id}`);
     if (app.status === 'COMPLETED') return app;
     if (app.status !== 'APPROVED') throw new OriginationError('NOT_APPROVED', `application is ${app.status}, only APPROVED offers can be accepted`);
     for (const step of fulfilmentPath(app.productLine, app.structure)) app = this.advance(id, step);
     return app;
   }
 
-  get(id: string): FinanceApplication | undefined {
-    return this.byId.get(id);
+  /** With `customerId`, only that customer's application: another customer's id reads as undefined. */
+  get(id: string, customerId?: string): FinanceApplication | undefined {
+    const app = this.byId.get(id);
+    return app && (customerId === undefined || app.customerId === customerId) ? app : undefined;
   }
 
   /** Newest first */
@@ -351,4 +358,9 @@ export class SandboxOriginationService {
     if (!app) throw new OriginationError('NOT_FOUND', `unknown application ${id}`);
     return app;
   }
+}
+
+/** Idempotency keys are only unique per customer. */
+function scopedKey(customerId: string, idempotencyKey: string): string {
+  return `${customerId}\u0000${idempotencyKey}`;
 }

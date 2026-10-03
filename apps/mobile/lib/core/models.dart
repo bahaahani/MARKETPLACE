@@ -142,6 +142,9 @@ class CardProduct {
     required this.minSalaryFils,
     required this.highlights,
     required this.gradient,
+    this.eligible = false,
+    this.ineligibleReason,
+    this.offeredLimitFils = 0,
   });
 
   final String id;
@@ -152,6 +155,15 @@ class CardProduct {
   final List<Localized> highlights;
   final List<String> gradient;
 
+  /// The API's eligibility decision for the current customer (same rules as card apply).
+  final bool eligible;
+
+  /// BELOW_MIN_SALARY or NO_DBR_HEADROOM when not eligible.
+  final String? ineligibleReason;
+
+  /// Limit the card would be issued with (0 for prepaid or when not eligible).
+  final int offeredLimitFils;
+
   factory CardProduct.fromJson(Json j) => CardProduct(
         id: j['id'] as String,
         name: Localized.fromJson(j['name'] as Json),
@@ -160,6 +172,9 @@ class CardProduct {
         minSalaryFils: j['minSalaryFils'] as int,
         highlights: [for (final h in j['highlights'] as List) Localized.fromJson(h as Json)],
         gradient: [for (final g in j['gradient'] as List) g as String],
+        eligible: j['eligible'] as bool? ?? false,
+        ineligibleReason: j['ineligibleReason'] as String?,
+        offeredLimitFils: j['offeredLimitFils'] as int? ?? 0,
       );
 }
 
@@ -218,6 +233,10 @@ class FinanceLimits {
     required this.maxTenureMonths,
     required this.minDownPaymentFils,
     required this.maxDownPaymentFils,
+    required this.downPaymentStepFils,
+    required this.tenureStepMonths,
+    required this.defaultDownPaymentFils,
+    required this.defaultTenureMonths,
   });
 
   final int minTenureMonths;
@@ -225,11 +244,21 @@ class FinanceLimits {
   final int minDownPaymentFils;
   final int maxDownPaymentFils;
 
+  /// Slider steps and listing defaults, from the API (never hard-coded in the app).
+  final int downPaymentStepFils;
+  final int tenureStepMonths;
+  final int defaultDownPaymentFils;
+  final int defaultTenureMonths;
+
   factory FinanceLimits.fromJson(Json j) => FinanceLimits(
         minTenureMonths: j['minTenureMonths'] as int,
         maxTenureMonths: j['maxTenureMonths'] as int,
         minDownPaymentFils: j['minDownPaymentFils'] as int,
         maxDownPaymentFils: j['maxDownPaymentFils'] as int,
+        downPaymentStepFils: j['downPaymentStepFils'] as int,
+        tenureStepMonths: j['tenureStepMonths'] as int,
+        defaultDownPaymentFils: j['defaultDownPaymentFils'] as int,
+        defaultTenureMonths: j['defaultTenureMonths'] as int,
       );
 }
 
@@ -371,6 +400,7 @@ class CustomerOverview {
     required this.contracts,
     required this.garage,
     required this.rewardsPoints,
+    this.onboarded = false,
   });
 
   final Localized name;
@@ -380,6 +410,9 @@ class CustomerOverview {
   final List<GarageVehicle> garage;
   final int rewardsPoints;
 
+  /// false while the (sandbox) session is still the demo customer.
+  final bool onboarded;
+
   factory CustomerOverview.fromJson(Json j) => CustomerOverview(
         name: Localized.fromJson(j['name'] as Json),
         monthlySalaryFils: j['monthlySalaryFils'] as int,
@@ -387,6 +420,7 @@ class CustomerOverview {
         contracts: [for (final c in j['contracts'] as List) Contract.fromJson(c as Json)],
         garage: [for (final g in j['garage'] as List) GarageVehicle.fromJson(g as Json)],
         rewardsPoints: j['rewardsPoints'] as int,
+        onboarded: j['onboarded'] as bool? ?? false,
       );
 }
 

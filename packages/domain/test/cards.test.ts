@@ -84,10 +84,10 @@ describe('maskPan', () => {
 describe('SandboxCardIssuer', () => {
   it('keeps issued cards and returns the same card on a repeat application', () => {
     const issuer = new SandboxCardIssuer();
-    const a = issuer.apply('imtiaz-world', FATIMA, { now: NOW, last4: '1111' });
-    const b = issuer.apply('imtiaz-world', FATIMA, { now: NOW, last4: '2222' });
+    const a = issuer.apply('cus-a', 'imtiaz-world', FATIMA, { now: NOW, last4: '1111' });
+    const b = issuer.apply('cus-a', 'imtiaz-world', FATIMA, { now: NOW, last4: '2222' });
     expect(a.decision === 'APPROVED' && b.decision === 'APPROVED' && b.virtualCard.id === a.virtualCard.id).toBe(true);
-    issuer.apply('imtiaz-world-elite', FATIMA, { now: NOW });
-    expect(issuer.list().map((c) => c.cardId)).toEqual(['imtiaz-world']);
+    issuer.apply('cus-a', 'imtiaz-world-elite', FATIMA, { now: NOW });
+    expect(issuer.list('cus-a').map((c) => c.cardId)).toEqual(['imtiaz-world']);
   });
 });

@@ -1,12 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { applicationView, demoCustomer } from '@sahel/domain';
+import { applicationView, customerOverview } from '@sahel/domain';
 import { t } from '@sahel/i18n';
 import { ApplicationRow } from '@/components/Application';
+import { MyCards } from '@/components/MyCards';
 import { SharePreApproval } from '@/components/SharePreApproval';
-import { originations } from '@/lib/api';
+import { cardIssuer, originations } from '@/lib/api';
 import { STRUCTURE_LABEL } from '@/lib/labels';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { pageCustomer } from '@/lib/session';
 
 // Personalized (customer data and due dates), so render per request.
 export const dynamic = 'force-dynamic';
@@ -17,8 +19,10 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
 export default async function AccountPage({ params }: { params: Promise<{ locale: string }> }) {
   const tr = translator(resolveLocale((await params).locale));
-  const me = demoCustomer();
+  // Everything here belongs to the session's customer (⚠️ sandbox session until eKey login).
+  const me = customerOverview(await pageCustomer());
   const applications = originations.list(me.customerId).map(applicationView);
+  const cards = cardIssuer.list(me.customerId);
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       {applications.length > 0 && (
@@ -31,6 +35,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
           </div>
         </section>
       )}
+      <MyCards cards={cards} tr={tr} />
       <section aria-labelledby="inst">
         <div className="mb-3 flex items-baseline justify-between">
           <h1 id="inst" className="text-2xl font-bold">{tr.t('myInstallments')}</h1>
@@ -93,6 +98,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
         <div className="mt-6">
           <SharePreApproval locale={tr.locale} />
         </div>
+        <p className="mt-4 text-xs text-text-muted" data-testid="session-note">⚠️ {tr.t('sessionSandboxNote')}</p>
       </section>
     </div>
   );

@@ -12,3 +12,5 @@ export * from './dealer';
 export * from './onboarding';
 export * from './cards';
 export * from './origination';
+export * from './customer';
+export * from './config';

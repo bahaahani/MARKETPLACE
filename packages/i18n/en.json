@@ -266,5 +266,10 @@
   "personalFinanceSubtitle": "For anything you need, Islamic or conventional.",
   "financeAmount": "Amount",
   "myApplications": "My applications",
-  "viewApplication": "View"
+  "viewApplication": "View",
+  "myCards": "My cards",
+  "noCardsYet": "No cards yet. Apply in minutes from Cards.",
+  "cardStatusFrozen": "Frozen",
+  "cardStatusClosed": "Closed",
+  "sessionSandboxNote": "Sandbox: your profile is kept for this session only, until eKey login is live."
 }

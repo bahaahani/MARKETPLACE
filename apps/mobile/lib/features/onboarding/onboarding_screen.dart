@@ -8,13 +8,11 @@ import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/theme/tokens.g.dart';
 
-const _consentScopes = ['CRB', 'OPEN_BANKING'];
-
-/// Same value as CONSENT_VALIDITY_DAYS in @sahel/domain (display only; the API records the real expiry).
-const _consentDays = 90;
-
 /// Onboarding wizard (journey J1), same steps as the web at /{locale}/onboarding.
 /// Every decision is made by the shared API; this screen only collects input and renders results.
+/// The consent scopes and how long consent lasts come from GET /api/v1/config.
+/// On success the API keeps the customer's financials and pre-approval in the (sandbox) session, so the
+/// home, account and cards screens are reloaded to show their own numbers.
 /// ⚠️ SANDBOX: eKey, CRB and Open Banking are simulated by the API.
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -29,7 +27,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _employer = TextEditingController();
   final _salary = TextEditingController();
   final _obligations = TextEditingController(text: '0');
-  final _consents = <String, bool>{for (final s in _consentScopes) s: false};
+  final _consents = <String, bool>{};
   EKeyIdentity? _identity;
   OnboardingResult? _result;
   String? _error;
@@ -109,8 +107,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               monthlySalaryFils: parseBhdInput(_salary.text)!,
               existingObligationsFils: parseBhdInput(_obligations.text)!,
               employer: _employer.text,
-              consentScopes: [for (final s in _consentScopes) if (_consents[s]!) s],
+              consentScopes: [for (final e in _consents.entries) if (e.value) e.key],
             );
+        refreshCustomer(ref);
         setState(() => _result = r);
         _go(3);
       });
@@ -120,7 +119,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         _employer.clear();
         _salary.clear();
         _obligations.text = '0';
-        _consents.updateAll((_, _) => false);
+        _consents.clear();
         _identity = null;
         _result = null;
         _error = null;
@@ -138,6 +137,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             child: Text(_error!, key: const Key('onboarding-error'), style: const TextStyle(color: SahelColors.danger)),
           );
     StepState state(int i) => i < _step ? StepState.complete : StepState.indexed;
+    final config = ref.watch(configProvider).value;
 
     return Scaffold(
       appBar: AppBar(title: Text(l.onboardingTitle)),
@@ -215,17 +215,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             state: state(2),
             content: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Text(l.consentIntro),
-              for (final s in _consentScopes)
+              if (config == null) const Center(child: CircularProgressIndicator()),
+              for (final s in config?.consentScopes ?? const <String>[])
                 CheckboxListTile(
                   key: Key('consent-$s'),
                   contentPadding: EdgeInsets.zero,
                   controlAffinity: ListTileControlAffinity.leading,
-                  value: _consents[s],
+                  value: _consents[s] ?? false,
                   onChanged: (v) => setState(() => _consents[s] = v ?? false),
                   title: Text(s == 'CRB' ? l.consentCrbTitle : l.consentObTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: Text(s == 'CRB' ? l.consentCrbBody : l.consentObBody),
                 ),
-              Text('⏱ ${l.consentExpiry('$_consentDays')}'),
+              if (config != null) Text('⏱ ${l.consentExpiry('${config.consentValidityDays}')}'),
               error(2),
               const SizedBox(height: SahelSpace.sm),
               Row(children: [

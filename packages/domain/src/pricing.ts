@@ -1,5 +1,5 @@
 import type { Fils } from './money';
-import { RATE_CARDS } from './rates';
+import { CALCULATOR_STEPS, LISTING_DEFAULTS, RATE_CARDS } from './rates';
 import type { FinanceStructure, ProductLine } from './types';
 
 export interface FinanceQuoteInput {
@@ -189,14 +189,29 @@ export function compareStructures(input: Omit<FinanceQuoteInput, 'structure' | '
   return RATE_CARDS[input.productLine].structures.map((structure) => quoteFinance({ ...input, structure }));
 }
 
-/** Clamp user input to what the rate card allows; used by sliders on web and mobile. */
+/**
+ * Clamp user input to what the rate card allows; used by sliders on web and mobile.
+ * Also carries the slider steps and the listing defaults (the default down payment is rounded to a step and
+ * never below the minimum), so neither app hard-codes them.
+ */
 export function financeLimits(productLine: ProductLine, assetPriceFils: Fils) {
   const card = RATE_CARDS[productLine];
+  const { downPaymentStepFils, tenureStepMonths } = CALCULATOR_STEPS[productLine];
+  const defaults = LISTING_DEFAULTS[productLine];
+  const minDownPaymentFils = Math.ceil((assetPriceFils * card.minDownPaymentPct) / 100);
+  const defaultDownPaymentFils = Math.max(
+    minDownPaymentFils,
+    Math.round((assetPriceFils * defaults.downPaymentPct) / 100 / downPaymentStepFils) * downPaymentStepFils,
+  );
   return {
     minTenureMonths: card.minTenureMonths,
     maxTenureMonths: card.maxTenureMonths,
-    minDownPaymentFils: Math.ceil((assetPriceFils * card.minDownPaymentPct) / 100),
+    minDownPaymentFils,
     maxDownPaymentFils: Math.floor(assetPriceFils * 0.9),
     structures: card.structures,
+    downPaymentStepFils,
+    tenureStepMonths,
+    defaultDownPaymentFils,
+    defaultTenureMonths: defaults.tenureMonths,
   };
 }

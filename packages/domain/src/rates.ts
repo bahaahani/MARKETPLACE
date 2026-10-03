@@ -58,3 +58,13 @@ export const LISTING_DEFAULTS: Record<ProductLine, { downPaymentPct: number; ten
   personal: { downPaymentPct: 0, tenureMonths: 48 },
   home: { downPaymentPct: 20, tenureMonths: 240 },
 };
+
+/**
+ * Slider steps for the finance calculators on web and mobile (the app reads them from the API, never hard-codes them).
+ * Personal finance moves in 6-month steps because its range (6 to 60 months) is short.
+ */
+export const CALCULATOR_STEPS: Record<ProductLine, { downPaymentStepFils: number; tenureStepMonths: number }> = {
+  vehicle: { downPaymentStepFils: 100_000, tenureStepMonths: 12 },
+  personal: { downPaymentStepFils: 100_000, tenureStepMonths: 6 },
+  home: { downPaymentStepFils: 1_000_000, tenureStepMonths: 12 },
+};

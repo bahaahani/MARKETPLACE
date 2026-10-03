@@ -1,6 +1,6 @@
 import {
   applicationView,
-  demoCustomer,
+  customerFinancials,
   findVehicle,
   ORIGINATION_PRODUCT_LINES,
   ORIGINATION_STRUCTURES,
@@ -8,22 +8,29 @@ import {
   type OriginationProductLine,
   type OriginationStructure,
 } from '@sahel/domain';
-import { handleError, jsonBody, ok, originations, problem } from '@/lib/api';
+import { jsonBody, ok, originations, problem } from '@/lib/api';
+import { withCustomer } from '@/lib/session';
 
-/** GET /api/v1/applications: the demo customer's finance applications, newest first. */
-export function GET() {
-  const items = originations.list(demoCustomer().customerId).map(applicationView);
-  return ok({ items, total: items.length });
+// Per customer session, so never cache.
+export const dynamic = 'force-dynamic';
+
+/** GET /api/v1/applications: this customer's finance applications, newest first. */
+export function GET(req: Request) {
+  return withCustomer(req, (s) => {
+    const items = originations.list(s.customerId).map(applicationView);
+    return ok({ items, total: items.length });
+  });
 }
 
 /**
  * POST /api/v1/applications: apply for finance (sandbox). Creates, submits and decides immediately
- * against the demo customer's financials. Idempotency-Key header (or body field) required.
+ * against the session customer's financials (their own after onboarding, else the demo customer's).
+ * Idempotency-Key header (or body field) required; keys are scoped to the customer.
  * - vehicle:  { productLine, structure, vehicleId, downPaymentFils, tenureMonths } (price comes from the catalog)
  * - personal: { productLine, structure, amountFils, tenureMonths }
  */
-export async function POST(req: Request) {
-  try {
+export function POST(req: Request) {
+  return withCustomer(req, async (s) => {
     const body = await jsonBody<{
       productLine?: OriginationProductLine;
       structure?: OriginationStructure;
@@ -70,14 +77,7 @@ export async function POST(req: Request) {
       };
     }
 
-    const me = demoCustomer();
-    const app = originations.apply(
-      request,
-      { monthlySalaryFils: me.monthlySalaryFils, existingObligationsFils: me.existingObligationsFils },
-      me.customerId,
-    );
+    const app = originations.apply(request, customerFinancials(s.profile), s.customerId);
     return ok(applicationView(app), { status: 201 });
-  } catch (e) {
-    return handleError(e);
-  }
+  });
 }

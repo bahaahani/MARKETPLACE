@@ -1,42 +1,56 @@
 # Test fixtures
 
 Recorded responses from the shared API (`apps/web/app/api/v1`), the same API the Next.js web app uses.
-If the API contract changes, re-record them with the web app running (`npm run dev:web`, port 3000):
+If the API contract changes, re-record them with the web app running (`npm run dev:web`, port 3000).
+
+Customer data is per sandbox session (see `api/openapi.yaml`), so each block below starts its own session with
+`X-Sahel-Session: new`, like the app does, and sends the returned id on every later call. A fresh session is the
+demo customer with no applications or cards, so the recordings do not depend on what else ran on the server.
 
 ```sh
 B=http://localhost:3000/api/v1
-curl -s $B/me > me.json
+J='Content-Type: application/json'
+session() { curl -s -D - -o /dev/null -H 'X-Sahel-Session: new' $B/me | tr -d '\r' | awk -F': ' 'tolower($1)=="x-sahel-session"{print $2}'; }
+
+# Demo customer: catalog, quotes, cards (J3), applications
+S=$(session); H="X-Sahel-Session: $S"
+curl -s -H "$H" $B/me > me.json
+curl -s -H "$H" $B/config > config.json
 curl -s $B/vehicles > vehicles.json
 curl -s $B/vehicles/v-honda-crv-2026 > vehicle_crv.json
 curl -s $B/properties > properties.json
-curl -s $B/cards > cards.json
-curl -s -X POST $B/quotes/finance -H 'Content-Type: application/json' \
+curl -s -H "$H" $B/cards > cards.json
+curl -s -X POST $B/quotes/finance -H "$J" \
   -d '{"productLine":"vehicle","assetPriceFils":14900000,"downPaymentFils":3000000,"tenureMonths":60}' > quotes_crv.json
-curl -s -X POST $B/me/preapproval-token > preapproval_token.json
-curl -s -X POST $B/insurance/motor-quotes -H 'Content-Type: application/json' \
-  -d '{"vehicleValueFils":14900000,"cover":"comprehensive"}' > motor_quotes.json
-# Onboarding (J1) and instant card (J3), sandbox. Record card_apply.json on a fresh server so me_cards.json matches.
-curl -s -X POST $B/onboarding/ekey -H 'Content-Type: application/json' -d '{"cpr":"880412345"}' > ekey.json
-curl -s -X POST $B/onboarding/pre-approval -H 'Content-Type: application/json' \
-  -d '{"monthlySalaryFils":1400000,"existingObligationsFils":300000,"employer":"Bahrain Co.","consentScopes":["CRB","OPEN_BANKING"]}' > onboarding_preapproval.json
-curl -s -X POST $B/cards/imtiaz-world/apply > card_apply.json
-curl -s -X POST $B/cards/imtiaz-world-elite/apply > card_apply_declined.json
-curl -s $B/me/cards > me_cards.json
-curl -s -X POST $B/quotes/finance -H 'Content-Type: application/json' \
+curl -s -X POST $B/quotes/finance -H "$J" \
   -d '{"productLine":"personal","assetPriceFils":5000000,"downPaymentFils":0,"tenureMonths":48}' > quotes_personal.json
+curl -s -X POST -H "$H" $B/me/preapproval-token > preapproval_token.json
+curl -s -X POST $B/insurance/motor-quotes -H "$J" \
+  -d '{"vehicleValueFils":14900000,"cover":"comprehensive"}' > motor_quotes.json
+curl -s -X POST -H "$H" $B/cards/imtiaz-world/apply > card_apply.json
+curl -s -X POST -H "$H" $B/cards/imtiaz-world-elite/apply > card_apply_declined.json
+curl -s -H "$H" $B/me/cards > me_cards.json
 
-# Finance applications (sandbox store is in memory: record these against a freshly started server, in this order)
-J='Content-Type: application/json'
-ID=$(curl -s -X POST $B/applications -H "$J" -H 'Idempotency-Key: fixture-crv-0001' \
+# Finance applications (in this order, in the same session)
+ID=$(curl -s -X POST $B/applications -H "$J" -H "$H" -H 'Idempotency-Key: fixture-crv-0001' \
   -d '{"productLine":"vehicle","structure":"murabaha","vehicleId":"v-honda-crv-2026","downPaymentFils":3000000,"tenureMonths":60}' \
   | node -pe 'JSON.parse(require("fs").readFileSync(0)).data.id')
-curl -s $B/applications/$ID > application_crv.json
-curl -s -X POST $B/applications/$ID/accept > application_crv_accepted.json
-curl -s -X POST $B/applications -H "$J" -H 'Idempotency-Key: fixture-escalade-01' \
+curl -s -H "$H" $B/applications/$ID > application_crv.json
+curl -s -X POST -H "$H" $B/applications/$ID/accept > application_crv_accepted.json
+curl -s -X POST $B/applications -H "$J" -H "$H" -H 'Idempotency-Key: fixture-escalade-01' \
   -d '{"productLine":"vehicle","structure":"conventional","vehicleId":"v-cadillac-escalade-2026","downPaymentFils":9300000,"tenureMonths":60}' > application_declined.json
-curl -s -X POST $B/applications -H "$J" -H 'Idempotency-Key: fixture-personal-01' \
+curl -s -X POST $B/applications -H "$J" -H "$H" -H 'Idempotency-Key: fixture-personal-01' \
   -d '{"productLine":"personal","structure":"conventional","amountFils":5000000,"tenureMonths":48}' > application_personal.json
-curl -s $B/applications > applications.json
+curl -s -H "$H" $B/applications > applications.json
+
+# Onboarding (J1) in its own session: completing it switches that session to the new customer's numbers.
+S=$(session); H="X-Sahel-Session: $S"
+curl -s -X POST $B/onboarding/ekey -H "$J" -H "$H" -d '{"cpr":"880412345"}' > ekey.json
+curl -s -X POST $B/onboarding/pre-approval -H "$J" -H "$H" \
+  -d '{"monthlySalaryFils":1400000,"existingObligationsFils":300000,"employer":"Bahrain Co.","consentScopes":["CRB","OPEN_BANKING"]}' > onboarding_preapproval.json
+curl -s -H "$H" $B/me > me_onboarded.json
+curl -s -H "$H" $B/cards > cards_onboarded.json
+curl -s -H "$H" $B/config > config_onboarded.json
 ```
 
 `money.json` is generated by `node --experimental-strip-types tools/money-fixture.mts` (repo root) and

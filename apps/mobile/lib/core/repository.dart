@@ -1,5 +1,6 @@
 import 'api/api_client.dart';
 import 'models.dart';
+import 'models/config.dart';
 
 /// Everything the app needs from the backend. The API implementation calls the same
 /// endpoints as the Next.js web app, so both channels show identical data and pricing.
@@ -9,11 +10,12 @@ abstract interface class SahelRepository {
   Future<List<Property>> properties({String? purpose});
   Future<Property> property(String id);
   Future<List<CardProduct>> cards();
+  /// Without downPaymentFils / tenureMonths the API quotes its listing defaults (see FinanceLimits).
   Future<FinanceComparison> financeQuotes({
     required String productLine,
     required int assetPriceFils,
-    required int downPaymentFils,
-    required int tenureMonths,
+    int? downPaymentFils,
+    int? tenureMonths,
   });
   Future<List<MotorQuote>> motorQuotes({required int vehicleValueFils, required bool comprehensive, required bool takafulOnly});
   Future<CustomerOverview> me();
@@ -59,6 +61,9 @@ abstract interface class SahelRepository {
 
   /// Accept the offer and e-sign (sandbox).
   Future<FinanceApplication> acceptApplication(String id);
+
+  /// Product rules (consent period, calculator ranges and steps, personal finance range) from GET /config.
+  Future<ClientConfig> config();
 }
 
 class ApiSahelRepository implements SahelRepository {
@@ -92,14 +97,14 @@ class ApiSahelRepository implements SahelRepository {
   Future<FinanceComparison> financeQuotes({
     required String productLine,
     required int assetPriceFils,
-    required int downPaymentFils,
-    required int tenureMonths,
+    int? downPaymentFils,
+    int? tenureMonths,
   }) async =>
       FinanceComparison.fromJson(await _api.post('/quotes/finance', {
         'productLine': productLine,
         'assetPriceFils': assetPriceFils,
-        'downPaymentFils': downPaymentFils,
-        'tenureMonths': tenureMonths,
+        'downPaymentFils': ?downPaymentFils,
+        'tenureMonths': ?tenureMonths,
       }) as Json);
 
   @override
@@ -195,4 +200,7 @@ class ApiSahelRepository implements SahelRepository {
   @override
   Future<FinanceApplication> acceptApplication(String id) async =>
       FinanceApplication.fromJson(await _api.post('/applications/$id/accept', const {}) as Json);
+
+  @override
+  Future<ClientConfig> config() async => ClientConfig.fromJson(await _api.get('/config') as Json);
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { bhd, findVehicle, VEHICLES } from '@sahel/domain';
+import { findVehicle, RESERVATION_DEPOSIT_FILS, VEHICLES } from '@sahel/domain';
 import { LOCALES } from '@sahel/i18n';
 import { CarApplyButton, FinanceSelectionProvider } from '@/components/ApplyFinance';
 import { AssetArt } from '@/components/AssetArt';
@@ -9,7 +9,7 @@ import { FinanceCalculator } from '@/components/FinanceCalculator';
 import { InsuranceQuotes } from '@/components/InsuranceQuotes';
 import { resolveLocale, translator } from '@/lib/i18n';
 
-const DEPOSIT_FILS = bhd(100);
+const DEPOSIT_FILS = RESERVATION_DEPOSIT_FILS;
 
 export function generateStaticParams() {
   return LOCALES.flatMap((locale) => VEHICLES.map((v) => ({ locale, id: v.id })));

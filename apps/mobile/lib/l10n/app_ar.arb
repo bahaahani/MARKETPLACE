@@ -268,5 +268,10 @@
   "personalFinanceSubtitle": "لكل ما تحتاجه، إسلامي أو تقليدي.",
   "financeAmount": "المبلغ",
   "myApplications": "طلباتي",
-  "viewApplication": "عرض"
+  "viewApplication": "عرض",
+  "myCards": "بطاقاتي",
+  "noCardsYet": "لا توجد بطاقات بعد. قدّم خلال دقائق من صفحة البطاقات.",
+  "cardStatusFrozen": "مجمّدة",
+  "cardStatusClosed": "مغلقة",
+  "sessionSandboxNote": "بيئة تجريبية: يُحفظ ملفك لهذه الجلسة فقط إلى أن يتوفر الدخول بالمفتاح الإلكتروني."
 }

@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -27,34 +25,28 @@ class FinanceCalculator extends ConsumerStatefulWidget {
 }
 
 class _FinanceCalculatorState extends ConsumerState<FinanceCalculator> {
-  // Listing defaults (same as LISTING_DEFAULTS in @sahel/domain).
-  late final int _step = widget.productLine == 'home' ? 1000000 : 100000;
-  late final int _defaultDown = (widget.assetPriceFils * 20 + 99) ~/ 100;
-  // Rounding the default down could go below the minimum down payment (e.g. home, where the minimum is
-  // also 20%), which the API rejects. Start from a value that is always valid, then settle on the web's
-  // default once the API has returned the limits.
-  late int _down = max(_roundToStep(_defaultDown), _defaultDown);
-  bool _downSettled = false;
-  late int _tenure = widget.productLine == 'home' ? 240 : 60;
-  late FinanceQuery _query = _currentQuery();
+  // The first request leaves down payment and tenure out, so the API quotes its listing defaults
+  // (same as the web calculator); the sliders then start from the values it returns.
+  late FinanceQuery _query =
+      (productLine: widget.productLine, assetPriceFils: widget.assetPriceFils, downPaymentFils: null, tenureMonths: null);
+  int? _down;
+  int? _tenure;
   FinanceStructure? _selected;
   FinanceComparison? _last;
   bool _published = false;
 
-  int _roundToStep(int v) => (v / _step).round() * _step;
-
-  FinanceQuery _currentQuery() =>
-      (productLine: widget.productLine, assetPriceFils: widget.assetPriceFils, downPaymentFils: _down, tenureMonths: _tenure);
-
   void _commit() {
-    setState(() => _query = _currentQuery());
+    setState(() => _query =
+        (productLine: widget.productLine, assetPriceFils: widget.assetPriceFils, downPaymentFils: _down, tenureMonths: _tenure));
     _publish();
   }
 
   void _publish() {
     final structure = _selected ?? _last?.quotes.last.structure;
-    if (structure == null) return;
-    widget.onChanged?.call((structure: structure, downPaymentFils: _down, tenureMonths: _tenure));
+    final down = _down;
+    final tenure = _tenure;
+    if (structure == null || down == null || tenure == null) return;
+    widget.onChanged?.call((structure: structure, downPaymentFils: down, tenureMonths: tenure));
   }
 
   @override
@@ -63,17 +55,9 @@ class _FinanceCalculatorState extends ConsumerState<FinanceCalculator> {
     final result = ref.watch(financeQuotesProvider(_query));
     final data = result.value ?? _last;
     if (result.hasValue) _last = result.value;
-    if (data != null && !_downSettled) {
-      _downSettled = true;
-      // Same default as the web calculator: the rounded listing default, never below the minimum.
-      final settled = max(data.limits.minDownPaymentFils, _roundToStep(_defaultDown));
-      if (settled != _down) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          _down = settled;
-          _commit();
-        });
-      }
+    if (data != null) {
+      _down ??= data.limits.defaultDownPaymentFils;
+      _tenure ??= data.limits.defaultTenureMonths;
     }
     if (data != null && !_published) {
       _published = true;
@@ -123,28 +107,32 @@ class _FinanceCalculatorState extends ConsumerState<FinanceCalculator> {
 
   Widget _sliders(BuildContext context, FinanceLimits limits) {
     final l = context.l10n;
-    final minDown = (limits.minDownPaymentFils / _step).ceil() * _step;
-    final maxDown = limits.maxDownPaymentFils ~/ _step * _step;
-    final down = _down.clamp(minDown, maxDown);
+    // Steps come from the API with the limits.
+    final step = limits.downPaymentStepFils;
+    final tenureStep = limits.tenureStepMonths;
+    final minDown = (limits.minDownPaymentFils / step).ceil() * step;
+    final maxDown = limits.maxDownPaymentFils ~/ step * step;
+    final down = _down!.clamp(minDown, maxDown);
+    final tenure = _tenure!;
     return Column(children: [
       // The label shows what is quoted; the slider thumb can only sit on a step.
-      _labeled(l.downPayment, context.money(_down, decimals: 0)),
+      _labeled(l.downPayment, context.money(_down!, decimals: 0)),
       Slider(
         key: const Key('down-payment'),
         min: minDown.toDouble(),
         max: maxDown.toDouble(),
-        divisions: ((maxDown - minDown) ~/ _step).clamp(1, 1000),
+        divisions: ((maxDown - minDown) ~/ step).clamp(1, 1000),
         value: down.toDouble(),
         onChanged: (v) => setState(() => _down = v.round()),
         onChangeEnd: (_) => _commit(),
       ),
-      _labeled(l.tenure, l.months('$_tenure')),
+      _labeled(l.tenure, l.months('$tenure')),
       Slider(
         key: const Key('tenure'),
         min: limits.minTenureMonths.toDouble(),
         max: limits.maxTenureMonths.toDouble(),
-        divisions: ((limits.maxTenureMonths - limits.minTenureMonths) ~/ 12).clamp(1, 100),
-        value: _tenure.clamp(limits.minTenureMonths, limits.maxTenureMonths).toDouble(),
+        divisions: ((limits.maxTenureMonths - limits.minTenureMonths) ~/ tenureStep).clamp(1, 100),
+        value: tenure.clamp(limits.minTenureMonths, limits.maxTenureMonths).toDouble(),
         onChanged: (v) => setState(() => _tenure = v.round()),
         onChangeEnd: (_) => _commit(),
       ),

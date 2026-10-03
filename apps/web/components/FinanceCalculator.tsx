@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { compareStructures, financeLimits, formatBhd, LISTING_DEFAULTS, type FinanceQuote, type FinanceStructure, type ProductLine } from '@sahel/domain';
+import { compareStructures, financeLimits, formatBhd, type FinanceQuote, type FinanceStructure, type ProductLine } from '@sahel/domain';
 import { t, type AppLocale, type MessageKey } from '@sahel/i18n';
 import { STRUCTURE_LABEL } from '@/lib/labels';
 import { useSetFinanceSelection } from './ApplyFinance';
@@ -12,12 +12,10 @@ import { useSetFinanceSelection } from './ApplyFinance';
  */
 export function FinanceCalculator({ locale, productLine, assetPriceFils }: { locale: AppLocale; productLine: ProductLine; assetPriceFils: number }) {
   const limits = financeLimits(productLine, assetPriceFils);
-  const defaults = LISTING_DEFAULTS[productLine];
-  const step = productLine === 'home' ? 1_000_000 : 100_000;
-  const roundStep = (n: number) => Math.round(n / step) * step;
-
-  const [down, setDown] = useState(() => Math.max(limits.minDownPaymentFils, roundStep((assetPriceFils * defaults.downPaymentPct) / 100)));
-  const [tenure, setTenure] = useState(defaults.tenureMonths);
+  // Steps and defaults come with the limits (same values the API sends the Flutter app).
+  const step = limits.downPaymentStepFils;
+  const [down, setDown] = useState(limits.defaultDownPaymentFils);
+  const [tenure, setTenure] = useState(limits.defaultTenureMonths);
   const [selected, setSelected] = useState<FinanceStructure>(limits.structures[1] ?? limits.structures[0]!);
 
   const quotes = useMemo(
@@ -64,7 +62,7 @@ export function FinanceCalculator({ locale, productLine, assetPriceFils }: { loc
           className="w-full"
           min={limits.minTenureMonths}
           max={limits.maxTenureMonths}
-          step={12}
+          step={limits.tenureStepMonths}
           value={tenure}
           onChange={(e) => setTenure(Number(e.target.value))}
           aria-label={tr('tenure')}
