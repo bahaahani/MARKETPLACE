@@ -1,11 +1,31 @@
 # Sahel 2.0 (BCFC Marketplace)
 
-> **Status:** Prototype. Planning docs plus a working first slice in code: cars, property, cards, insurance, finance and payments (sandbox)
+> **Status:** Working **prototype**. Planning docs plus a sandbox slice in code: onboarding and pre-approval, cars, property, cards, finance applications, insurance, life-event bundles, early settlement, payments, and a dealer portal. **Not production**: see [Sandbox, not production](#️-sandbox-not-production) and [13-prototype-status.md](docs/13-prototype-status.md)
 > **Owner:** Bahrain Commercial Facilities Company (BCFC)
 > **Platforms:** Flutter mobile (iOS, Android, Huawei) and Next.js web, at **full parity**
-> **Payments:** Tap Payments (cards, Click to Pay, Apple Pay, Google Pay, Samsung Pay, BenefitPay) + BENEFIT rails (sandbox for now)
+> **Payments:** Tap Payments (cards, Click to Pay, Apple Pay, Google Pay, Samsung Pay, BenefitPay) + BENEFIT rails (simulated by a sandbox gateway today)
 
 One app that turns big life purchases into a single flow: **find it, finance it, insure it, pay for it, and manage it**, in Arabic and English, with Islamic and conventional options shown side by side.
+
+## What's built
+
+Every customer feature works on **web and mobile**, in **English and Arabic (RTL)**, against the same API v1. Everything runs in a **sandbox**: no real login, no partner calls, data in memory. Full matrix: [docs/13-prototype-status.md](docs/13-prototype-status.md).
+
+| Feature | Web | Mobile | Sandbox caveats |
+|---|---|---|---|
+| **Marketplace: cars and property** | ✅ Search, filters, detail pages with "from BHD X / month", Islamic vs conventional comparison | ✅ | Demo catalog. Home finance is a calculator only (no home application yet) |
+| **Finance calculator** (conventional, Murabaha, Ijara) | ✅ | ✅ | Illustrative rates. Slider ranges, steps and defaults come from `GET /api/v1/config` |
+| **Onboarding + pre-approval** (J1) | ✅ eKey step, consent, salary and obligations, pre-approval | ✅ | eKey simulated (any valid 9-digit CPR gives a fictional identity). Obligations are self-declared, no CRB / Open Banking call |
+| **Instant IMTIAZ card** (J3) | ✅ Eligibility, decision, masked virtual card, **My cards** on the account page | ✅ | No issuer or processor. Card number is always masked. "Add to wallet" is simulated |
+| **Apply for finance** (vehicle and personal; conventional and Murabaha) | ✅ Apply, decision (approve / refer / decline with reasons), accept, timeline | ✅ | Placeholder credit rules. Accepting e-signs and runs fulfilment to the end in one step. The Murabaha sequence (BCFC buys → owns → sells) is recorded in order |
+| **Life-event bundles** (married, new baby, new job, ...) | ✅ Islamic / conventional bundle with budget check | ✅ | Placeholder amounts and premiums; some items are "coming soon" |
+| **Early settlement + autopay** ("My installments") | ✅ Settlement quote (fee or Ibra'), pay through checkout, autopay toggle | ✅ | Placeholder fee (1%) and Ibra' rule. Paying does not close the demo contract. Autopay is a stored flag only |
+| **Insurance: motor, travel, home** + **My policies** | ✅ Compare (cheapest first, Takaful filter), hold a quote, pay, policy issued | ✅ | Fictional insurers, illustrative pricing. A policy is issued only for a captured payment that matches the held quote |
+| **Checkout** (reservation deposit, valuation fee, premiums, settlement) | ✅ All Tap methods, sandbox confirm | ✅ | Sandbox gateway; no money moves |
+| **Dealer & broker portal** (J7) | ✅ Inventory with monthly prices, leads board, showroom: redeem a customer's pre-approval code and build an offer | Customer side only (share pre-approval code from the account screen) | No staff login (anyone can act as any dealer). Offers are not pushed to the customer's app. Web-first by design (desktop in showrooms) |
+| **Sandbox customer session** | ✅ HttpOnly cookie | ✅ `X-Sahel-Session` header | Stands in for eKey / OIDC login. Each session starts as the demo customer until onboarding |
+
+Not built yet (planned in the docs): real login, back-office console, credit officer review of referred applications, home finance applications (Ijara), claims, rewards redemption, Suhail / Suhaila 2.0, push notifications, Huawei-specific services.
 
 ## Run it
 
@@ -22,29 +42,73 @@ flutter run          # talks to the API above (Android emulator uses 10.0.2.2:30
 # flutter run --dart-define=API_BASE_URL=https://<host>   to point at another API
 ```
 
+The API keeps everything in memory: restarting the web server forgets sessions, applications, cards, payments, and policies.
+
 ## Test it
 
 ```sh
-npm test -w @sahel/domain                    # pricing engine and rules (Vitest)
-npm run build:web && npm run test:e2e -w @sahel/web   # Playwright, desktop + mobile web, EN + AR
+npm test -w @sahel/domain                  # Vitest: pricing, rules, stores, session isolation
+npm run typecheck                          # TypeScript, all workspaces
+npm run build:web && npm run test:e2e -w @sahel/web   # Playwright, desktop + mobile web (Pixel 7), EN + AR
 cd apps/mobile && flutter analyze && flutter test    # widget + API-contract tests
 ```
+
+- Playwright starts `next start` on port **3100** (override with `PORT`) and reuses a server already running there, so build first. Set `PW_CHROMIUM_PATH` to use a preinstalled Chromium.
+- CI (`.github/workflows/ci.yml`) runs all of the above, and fails if `npm run gen` output is not committed.
+
+| Where | What is covered |
+|---|---|
+| `packages/domain/test/*.test.ts` | Pricing and APR, catalog and search, onboarding, cards, origination (decision rules, Murabaha order, idempotency), dealer tokens, bundles, settlement, insurance and policy binding, the session store and per-customer isolation, API error mapping |
+| `apps/web/e2e/*.spec.ts` | One spec per feature (marketplace, onboarding, cards, applications, dealer, life events, settlement, insurance, session) plus API validation: UI figures must equal API figures, Arabic pages must be RTL, bad requests must be 4xx, data must be private to its session |
+| `apps/mobile/test/*_test.dart` | Widget tests per feature, driven by recorded API responses in `test/fixtures/` (contract tests), plus a money-formatting fixture generated from the TypeScript formatter |
 
 ## How the code is organized
 
 | Path | What it is |
 |---|---|
-| `packages/domain` | **The brain** (TypeScript): conventional / Murabaha / Ijara pricing, APR, affordability (DBR) and pre-approval, catalog and search, insurance comparison, payment state machine. Money is always integer **fils** |
+| `packages/domain` | **The brain** (TypeScript). Money is always integer **fils**. Modules below |
 | `api/openapi.yaml` | **API v1 contract**, used by both apps |
 | `apps/web` | **Next.js** web app. Its `app/api/v1` route handlers *are* the API for now (the Flutter app calls them too) |
-| `apps/mobile` | **Flutter** app (Riverpod, go_router). Renders what the API returns, with no business logic in Dart |
+| `apps/web/lib/session.ts`, `session-store.ts` | ⚠️ Sandbox customer session: cookie (web) or `X-Sahel-Session` header (mobile), in memory |
+| `apps/web/lib/api.ts` | Response helpers and the in-memory sandbox stores (payments, applications, cards, leads, share tokens, contract settings) |
+| `apps/web/lib/policy-store.ts` | In-memory insurance quotes and policies per session customer |
+| `apps/web/components` | Client components (calculator, onboarding wizard, checkout, dealer showroom, ...) |
+| `apps/mobile` | **Flutter** app (Riverpod, go_router). `lib/features/<feature>` per screen group; `lib/core` has the API client, session header, models and repository. No business logic in Dart |
 | `packages/i18n` | Arabic + English strings for **both** apps (generated into Flutter ARB files) |
 | `packages/design-tokens` | Colors, radius, and spacing for **both** apps (generated into CSS and Dart) |
 | `tools/gen.mjs` | The generator that keeps the two apps in sync |
 
-**Parity is tested:** Playwright checks that the web calculator equals the API, and the Flutter tests use recorded API responses plus a money-formatting fixture generated from the TypeScript formatter. See [ADR-0004](docs/adr/0004-web-parity.md).
+**`packages/domain/src` modules**
 
-⚠️ All rates, prices, insurers, and customer data are **illustrative demo data**. Insurer names are fictional. Real values come from BCFC Risk/Treasury, the Shari'a board, and partner integrations.
+| Module | What it does |
+|---|---|
+| `pricing.ts`, `rates.ts`, `money.ts` | Conventional / Murabaha / Ijara quotes, APR, calculator limits; ⚠️ illustrative rate cards and the DBR cap |
+| `affordability.ts` | DBR headroom and indicative pre-approval (per product line, plus card limit) |
+| `onboarding.ts`, `customer.ts`, `account.ts` | Sandbox eKey, consent, pre-approval; customer profile and "My account" overview |
+| `config.ts` | Product rules for the apps (`GET /api/v1/config`) |
+| `catalog.ts`, `search.ts` | Demo cars and properties, search and filters |
+| `cards.ts` | Card eligibility, instant decision, sandbox issuer |
+| `origination.ts` | Finance applications: decision rules, status machine, Murabaha sequence, idempotency |
+| `bundles.ts` | Life-event bundles |
+| `settlement.ts` | Early-settlement quotes (conventional fee, Murabaha Ibra', Ijara) and autopay settings |
+| `insurance*.ts`, `policies.ts` | Motor, travel and home quotes; held policy quotes bound to captured payments |
+| `payments.ts` | Payment state machine and the sandbox gateway |
+| `dealer.ts` | Dealer inventory, leads pipeline, pre-approval share tokens, offers |
+
+**Parity is tested:** Playwright checks that web figures equal the API, and the Flutter tests use recorded API responses plus a money-formatting fixture generated from the TypeScript formatter. Product rules the app needs (slider ranges, steps, defaults, consent period, insurance form limits, reservation deposit) come from `GET /api/v1/config`, not from Dart. See [ADR-0004](docs/adr/0004-web-parity.md).
+
+## ⚠️ Sandbox, not production
+
+Do not put this in front of real customers. In particular:
+
+- **In-memory stores.** Sessions, applications, cards, payments, policies, leads, and autopay settings live in the web server's memory and are lost on restart. There is no database.
+- **No real login.** The session is a sandbox stand-in for eKey / OIDC. Each session starts as a fictional demo customer. The dealer portal has **no staff login** at all.
+- **No real integrations.** No eKey 2.0 (iGA), no Credit Reference Bureau, no Open Banking (AISP), no Tap Payments, no card issuer or wallet provisioning, no insurer APIs, no core lending system, no e-signature provider.
+- **No money moves.** The payment gateway is simulated; "confirm" stands in for Tap's verified webhook. There are no refunds or reconciliation.
+- **Illustrative numbers.** Rates, the DBR cap, credit rules, card limits, settlement fee and Ibra', insurance pricing, fees, and deposits are **placeholders** pending BCFC Risk, Treasury, Product, the Shari'a board, and CBB rules. See the list in [13-prototype-status.md](docs/13-prototype-status.md#3-placeholders-that-need-business-sign-off).
+- **Fictional data.** Insurers, customers, dealers, listings, and contracts are demo data.
+- **No production hardening.** No audit logging, rate limiting, WAF, or monitoring.
+- **App identity.** The Flutter app's bundle ID is `bh.bcfc.sahel`; it must become `com.cbt.bcfc` (Android) and App Store id `6443493467` to ship as a Sahel update.
 
 ## Planning documents (read in order)
 
@@ -56,13 +120,14 @@ cd apps/mobile && flutter analyze && flutter test    # widget + API-contract tes
 | 03 | [Crazy Ideas Backlog](docs/03-crazy-ideas.md) | Big ideas, scored and ranked |
 | 04 | [Integrations Map](docs/04-integrations.md) | Every external party we connect to, and how |
 | 05 | [Payments](docs/05-payments.md) | Tap, BENEFIT, recurring installments, refunds, reconciliation |
-| 06 | [Architecture](docs/06-architecture.md) | Apps, backend, data, and APIs |
+| 06 | [Architecture](docs/06-architecture.md) | Apps, backend, data, and APIs (target and what runs today) |
 | 07 | [Security & Compliance](docs/07-security-compliance.md) | CBB rules, PDPL, PCI DSS, Shari'a governance |
 | 08 | [User Journeys](docs/08-user-journeys.md) | End-to-end flows for the main journeys |
-| 09 | [Roadmap](docs/09-roadmap.md) | Phases, MVP scope, and milestones |
+| 09 | [Roadmap](docs/09-roadmap.md) | Phases, MVP scope, and milestones (with what the prototype already shows) |
 | 10 | [Team, Repo & DevOps](docs/10-team-repo-devops.md) | Repository layout, CI, environments, team |
-| 11 | [Open Questions & Decisions](docs/11-open-questions.md) | What is still undecided |
+| 11 | [Open Questions & Decisions](docs/11-open-questions.md) | What is still undecided, including questions raised by the prototype |
 | 12 | [Web Platform](docs/12-web-platform.md) | Web parity in practice |
+| 13 | [Prototype Status](docs/13-prototype-status.md) | What is built, what is a placeholder, and the gap to production |
 
 **Decided so far** ([ADRs](docs/adr/README.md)): Sahel 2.0, GitHub for now, AWS hosting, web parity (Next.js web + Flutter mobile + shared API).
 

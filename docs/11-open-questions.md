@@ -63,7 +63,25 @@ Because Sahel 2.0 is decided and Sahel was built in-house, these are now the mos
 | N4 | How many active Sahel users are there, and what are the top features by usage? (These must not break during migration) | Product | Open |
 | N6 | Does Sahel have a web channel today? If so, what does it do and what is it built with? | IT | Open |
 | N7 | Does iGA support eKey 2.0 login on the web for private companies (redirect or QR code)? | IT | Open |
-| N5 | Can the Sahel 2.0 release keep the same store listings and bundle IDs (`com.cbt.bcfc`, iOS `id6443493467`) so users just get an update? | IT | Open |
+| N5 | Can the Sahel 2.0 release keep the same store listings and bundle IDs (`com.cbt.bcfc`, iOS `id6443493467`) so users just get an update? | IT | Open. See P10 below: the prototype still uses `bh.bcfc.sahel` |
+
+## Questions raised by the prototype
+
+Building the sandbox prototype ([13-prototype-status.md](13-prototype-status.md)) surfaced these business and product decisions. The code currently makes a placeholder choice for each one (stated in the last column); none of them should go to production without an owner's answer.
+
+| # | Question | Owner | What the prototype does today |
+|---|---|---|---|
+| P1 | **Payment amount binding:** for each payment purpose, which server-side record fixes the amount the customer may pay? Should the API refuse any amount that does not match it? | Payments / Product | Only insurance premiums are bound: a policy is issued only if the captured payment equals the held quote. Reservation deposits, valuation fees and early settlements accept the amount the client sends |
+| P2 | **Idempotency-key reuse with a different body:** if a client repeats an `Idempotency-Key` with a different amount or purpose, should we return the original result or reject it (e.g., 422)? | Payments / IT | Returns the original payment or application unchanged, without comparing the bodies. Keys are scoped per customer |
+| P3 | **Dealer visibility of headroom:** may a dealer see the customer's maximum monthly installment (`maxMonthly`), or only the vehicle finance limit? | Compliance (PDPL) / Product | The dealer sees first name, vehicle limit, **maximum monthly installment**, and validity |
+| P4 | **Card limit rule:** how is an instant card limit set? | Cards / Risk | 2× monthly salary, capped at BHD 15,000, and nothing without DBR headroom; a per-card minimum salary |
+| P5 | **Islamic pre-approval:** the indicative pre-approval prices every line at the **conventional** rate. Should Islamic customers see a limit derived from Murabaha / Ijara pricing instead? | Risk / Shari'a | One limit per product line, derived from the conventional APR at the longest tenure |
+| P6 | **Down-payment cap:** the calculator stops at a 90% down payment, but the pricing engine accepts any down payment below the price. Which is the rule, and should it be the same for every line and structure? | Product / Risk | 90% cap in the calculator limits only; the API quote accepts more |
+| P7 | **Ibra' rule:** what rebate on unearned profit does BCFC grant on Murabaha early settlement, and how is unearned profit computed? (Ibra' is discretionary and cannot be a contract condition) | Shari'a board | 100% of unearned profit on a straight-line basis, as of the last paid installment |
+| P8 | **Early-settlement fee:** what fee (if any) applies to conventional early settlement under current CBB rules? | Risk / Compliance | 1% of the remaining principal |
+| P9 | **Refunds for captured but unbound policy payments:** if a premium is captured but the policy cannot be issued (quote expired, amount mismatch, insurer refusal), who refunds it, how fast, and how is it reconciled? | Payments / Insurance / Finance | No refund flow. The payment stays captured and the API returns an error (e.g., 410 quote expired, 422 mismatch) |
+| P10 | **Bundle IDs for the update:** the Flutter app must ship as `com.cbt.bcfc` on Android and as App Store id `6443493467` on iOS so Sahel users get Sahel 2.0 as an update. Who holds the signing keys and store accounts? | IT | Bundle ID is `bh.bcfc.sahel` (Android and iOS) |
+| P11 | Other placeholders needing sign-off: DBR cap (50%), rate cards, the HIGH_DBR_UTILISATION referral rule (80% of headroom), insurance pricing, valuation fee (BHD 150), reservation deposit (BHD 100) | Risk / Treasury / Product / Insurance | Full list with code locations: [13-prototype-status.md § 3](13-prototype-status.md#3-placeholders-that-need-business-sign-off) |
 
 ## Next steps (this week)
 

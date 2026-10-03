@@ -1,6 +1,7 @@
 # 06 — Technical Architecture
 
 > These are **proposals**. Each one becomes an ADR in `docs/adr/` once the team agrees on it.
+> Section 1.1 describes what the **prototype actually runs today**; everything else is the target architecture.
 
 ## 1. High-level view
 
@@ -33,6 +34,38 @@
                                           └──────────────────────────────┘
 ```
 
+## 1.1 What runs today (prototype)
+
+The target picture above is not built yet. The sandbox prototype ([13-prototype-status.md](13-prototype-status.md)) is deliberately small:
+
+```
+ Flutter app (iOS / Android)                      Browser
+   │  X-Sahel-Session header                         │  sahel_session cookie (HttpOnly, SameSite=Lax)
+   │  GET /api/v1/config  → product rules            │
+   └──────────────┬──────────────────────────────────┘
+                  ▼
+   apps/web (Next.js) ── app/[locale]/*  pages (server-rendered, import packages/domain directly)
+                     └── app/api/v1/*    API v1 route handlers (contract: api/openapi.yaml)
+                              │
+                              ▼
+                      packages/domain  (pricing, rules, decisions, state machines; integer fils)
+                              │
+                              ▼
+                      In-memory sandbox stores (lost on restart): sessions, payments, applications,
+                      cards, share tokens, leads, contract settings, policies
+```
+
+| Concern | Today | Target |
+|---|---|---|
+| API | **API v1 as Next.js route handlers** in `apps/web/app/api/v1`, called by the web's client components and by the Flutter app. Responses are `{ data }` or `{ error: { code, message } }` | Same contract, moved to a dedicated service when needed |
+| Business rules | `packages/domain` (TypeScript), imported by the web and by the route handlers. Flutter has none: it renders API responses and reads product rules (calculator ranges, steps, defaults, personal finance range, consent period, insurance form limits, reservation deposit) from **`GET /api/v1/config`** | Same |
+| Customer identity | ⚠️ **Sandbox session**: an opaque random id. Web: HttpOnly cookie `sahel_session`. Mobile: `X-Sahel-Session` header (`new` until the API returns an id). Unknown or expired ids get a new session. Every session starts as the demo customer; onboarding switches it to the customer's own numbers. Data is private per session (another session gets 404) | OIDC provider federated with eKey 2.0; web BFF with HttpOnly cookies; tokens in secure storage on mobile |
+| Partner identity | ⚠️ None: the dealer portal URL picks the dealership. `DealerAuthProvider` is the plug-in point for partner SSO | Partner SSO with roles |
+| Data | ⚠️ In-memory stores in the Next.js process (`apps/web/lib/api.ts`, `lib/policy-store.ts`, `lib/session-store.ts`) | Aurora PostgreSQL, one schema per module |
+| Integrations | ⚠️ All simulated in `packages/domain`: eKey, CRB, Open Banking, Tap (sandbox gateway), card issuer, insurers, core lending | Adapters in the integration layer |
+| Idempotency | `Idempotency-Key` required on `POST /payments` and `POST /applications`, scoped per customer | Same, persisted, with a policy for reuse with a different body (see [11](11-open-questions.md), P2) |
+| Tests | Vitest (`packages/domain/test`), Playwright (`apps/web/e2e`), Flutter widget tests on recorded API fixtures (`apps/mobile/test`); all in GitHub Actions CI | Plus integration, load, and security tests |
+
 ## 2. Mobile: Flutter
 
 | Concern | Choice | Why |
@@ -41,7 +74,7 @@
 | Structure | One Flutter package with `lib/features/<vertical>` folders today; split into feature packages (Melos / pub workspaces) when teams grow | Teams own verticals; super-app modularity |
 | State | **Riverpod** (or Bloc; pick one) | Testable, scales well |
 | Navigation | `go_router` with deep links / universal links | Marketing links, push notifications, dealer QR codes |
-| Networking | `dio` + generated OpenAPI client | Typed contracts with the backend |
+| Networking | `dio` + generated OpenAPI client | Typed contracts with the backend. Today: `package:http` with a hand-written client (`lib/core/api/api_client.dart`) and hand-written models, checked against recorded API fixtures |
 | Models | `freezed` + `json_serializable` | Immutable data |
 | Localization | `flutter_localizations` + ARB files, **full right-to-left support** | Arabic first-class |
 | Design system | Tokens from `packages/design-tokens` (generated into Dart and CSS) + shared widgets; Widgetbook later | Same look on web and mobile |
@@ -54,7 +87,7 @@
 | ID / NFC | CPR chip reading via an NFC plugin / e-KYC vendor SDK | |
 | AR / 3D | `model_viewer_plus` / ARKit / ARCore (later phase) | |
 | Analytics | Firebase / Amplitude behind an interface | Swappable for PDPL reasons |
-| Testing | Unit, widget, golden, and `integration_test` + Patrol (mobile); **Playwright** (web); Vitest (`packages/domain`) | Parity is tested, not assumed |
+| Testing | Unit, widget, golden, and `integration_test` + Patrol (mobile); **Playwright** (web); Vitest (`packages/domain`) | Parity is tested, not assumed. Today: Flutter widget tests on recorded API fixtures, Playwright, Vitest (no golden or Patrol tests yet) |
 
 ### The super-app pattern
 - Each vertical is a **feature package** with its own routes, state, and API client.

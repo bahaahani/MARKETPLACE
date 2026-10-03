@@ -23,11 +23,24 @@
 
 How parity is guaranteed: see [ADR-0004](adr/0004-web-parity.md).
 
+### What runs today (prototype)
+
+| Piece | Today | ⚠️ Sandbox gap |
+|---|---|---|
+| Pages | `apps/web/app/[locale]/*`: server-rendered pages that import `packages/domain` directly, plus client components (`apps/web/components`) that call API v1 for anything interactive (quotes, applications, payments, policies) | – |
+| **API v1** | Next.js route handlers in `apps/web/app/api/v1/*`, contract in `api/openapi.yaml`. The **Flutter app calls the same handlers** (`API_BASE_URL`, default `localhost:3000`, `10.0.2.2:3000` on the Android emulator) | CORS is open (`*`) for the app and dev builds |
+| Customer session | **Web:** opaque random id in the `sahel_session` cookie (HttpOnly, SameSite=Lax, Secure on HTTPS); page scripts never see it. **Mobile:** `X-Sahel-Session` header; the app sends `new` until the API returns an id, then sends that id. Code: `apps/web/lib/session.ts` | Stand-in for eKey / OIDC login; sessions are in memory |
+| Product rules for Flutter | **`GET /api/v1/config`** returns calculator ranges, steps and defaults, the customer's personal finance range, consent scopes and validity, insurance form limits, and the reservation deposit. The web imports the same values from `packages/domain` | The property valuation fee is still hard-coded in both apps |
+| Dealer portal | `/[locale]/dealer/*` pages and `/api/v1/dealer/*` | No staff login: the URL picks the dealership |
+| Security headers | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy` (`next.config.ts`) | No CSP, HSTS, CSRF tokens, rate limiting, or bot defense yet (see section 4) |
+| SEO | Per-page metadata; schema.org JSON-LD on car detail pages | No sitemap, no `RealEstateListing` / `Offer` markup yet |
+| Tests | Playwright in `apps/web/e2e`, desktop Chrome and Pixel 7 viewports, EN and AR | – |
+
 ### Next.js specifics
 - **Locale in the URL** (`/en/...`, `/ar/...`), with `<html dir="rtl">` for Arabic and logical CSS properties (`ms-`, `me-`, `text-start`) so layouts mirror automatically.
 - Listings and product pages are **server-rendered / statically generated**, carry schema.org JSON-LD, and work without JavaScript (filters are plain GET forms).
 - Personalized pages (home, account) render per request.
-- **Same URLs as the mobile deep links** (e.g., `/cars/{id}`, `/checkout?purpose=&amount=&reference=`), so a shared link opens the right screen on either channel.
+- **Same paths as the mobile routes** (e.g., `/cars/{id}`, `/checkout?purpose=&amount=&reference=`), so a shared link can open the right screen on either channel (deep-link / universal-link setup on mobile is still to do).
 - Supported browsers: latest 2 versions of Chrome, Safari (macOS and iOS), Edge, Firefox, and Samsung Internet.
 
 ## 3. Mobile-only capabilities and their web equivalents
@@ -42,7 +55,7 @@ Some phone features don't exist in browsers. Each one needs a web equivalent, so
 | CPR NFC chip reading | Upload a photo of the CPR card + **web liveness check** (e-KYC vendor web SDK) |
 | Camera (documents, damage photos) | Browser camera (`getUserMedia`) or file upload |
 | Push notifications | **Web Push** (with permission) + email / WhatsApp / SMS |
-| Secure token storage (Keychain/Keystore) | **No tokens in localStorage.** Use the **backend-for-frontend (BFF) pattern with HttpOnly, Secure, SameSite cookies** |
+| Secure token storage (Keychain/Keystore) | **No tokens in localStorage.** Use the **backend-for-frontend (BFF) pattern with HttpOnly, Secure, SameSite cookies**. The sandbox session already follows this (HttpOnly cookie); the mobile app keeps its session id in memory until real login brings secure storage |
 | Apple Pay / Google Pay | Apple Pay on Safari, Google Pay on Chrome (Tap Web SDK) |
 | BenefitPay | **Tap BenefitPay Web SDK** (QR code to scan with the BenefitPay app) |
 | Add card to Apple/Google Wallet (push provisioning) | Not possible on the web. Show "**Add to wallet on your phone**" with a QR code or push to the app; the card details view is secured with step-up auth |
@@ -66,6 +79,8 @@ Some phone features don't exist in browsers. Each one needs a web equivalent, so
 Route 53 ─► CloudFront (+ WAF) ─┬─► Next.js (SSR + static assets)
                                 └─► /api/* ─► Web BFF (session cookies) ─► platform services
 ```
+
+Today `/api/v1/*` is served by the same Next.js app (route handlers) for both the web and the Flutter app; it splits into a BFF and platform services when the backend grows.
 
 - Domains (until decided): `sahel.bcfc.bh` (app), `www` / `marketplace.bcfc.bh` (SEO pages), `dealers.bcfc.bh`, `api.sahel.bcfc.bh`
 - Blue/green deploys with instant rollback (switch the CloudFront origin)

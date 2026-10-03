@@ -1,0 +1,105 @@
+# 13 — Prototype Status
+
+> **What this is:** an honest inventory of the Sahel 2.0 prototype in this repository: what works, what is a placeholder, and what stands between it and production.
+> **What it is not:** a production system. Everything below runs in a **sandbox**: in-memory data, simulated partners, illustrative numbers.
+> Source of truth is the code. Placeholders were collected by searching for ⚠️ in `packages/` and `apps/`. Keep this page updated when a feature merges.
+
+## 1. Feature matrix
+
+**Legend:** ✅ built (sandbox) · 🟡 partial · ➖ not applicable by design · ❌ not built
+
+| Feature | Journey | Web | Mobile | API v1 | Tests | Notes |
+|---|---|---|---|---|---|---|
+| Car and property listings, search, filters, detail pages | J2, J4 | ✅ | ✅ | ✅ `/vehicles`, `/properties` | Domain, Playwright, Flutter | Demo catalog (NMC, TAC, a partner dealer, a broker) |
+| Finance calculator: conventional, Murabaha, Ijara side by side | J2, J4 | ✅ | ✅ | ✅ `/quotes/finance` | Domain, Playwright (UI = API), Flutter | Illustrative rate cards |
+| Product rules for the apps | all | ✅ (imports `packages/domain`) | ✅ (reads `/config`) | ✅ `GET /config` | Playwright, Flutter fixtures | Calculator ranges, steps and defaults, personal finance range, consent period, insurance form limits, reservation deposit |
+| Reserve a car (deposit) | J2 | ✅ | ✅ | ✅ `/payments` | Playwright | Deposit amount is a placeholder |
+| Request a property valuation (fee) | J4 | ✅ | ✅ | ✅ `/payments` | – | Fee hard-coded in both apps (not yet in `/config`) |
+| Checkout (Tap methods: card, Apple / Google / Samsung Pay, BenefitPay) | J5 | ✅ | ✅ | ✅ `/payments`, `/payments/{id}/confirm` | Domain, Playwright | Sandbox gateway; confirm stands in for Tap's webhook |
+| Onboarding: eKey step, consent, salary and obligations, pre-approval | J1 | ✅ | ✅ | ✅ `/onboarding/ekey`, `/onboarding/pre-approval` | Domain, Playwright, Flutter | eKey, CRB and Open Banking simulated |
+| Sandbox customer session | all | ✅ HttpOnly cookie | ✅ `X-Sahel-Session` header | ✅ | Domain (store, isolation), Playwright | Stand-in for login; data is private per session |
+| Card catalog and instant IMTIAZ card | J3 | ✅ | ✅ | ✅ `/cards`, `/cards/{id}/apply` | Domain, Playwright, Flutter | Masked virtual card; wallet provisioning simulated |
+| My cards | J3 | ✅ | ✅ | ✅ `/me/cards`, `/me/cards/{id}` | Playwright, Flutter | |
+| Apply for vehicle finance (conventional / Murabaha) | J2 | ✅ | ✅ | ✅ `/applications` | Domain, Playwright, Flutter | Decision, accept, timeline; Murabaha steps recorded in Shari'a order |
+| Apply for personal finance (conventional / commodity Murabaha) | – | ✅ | ✅ | ✅ `/applications` | Domain, Playwright, Flutter | Rate card still labels Commodity Murabaha "coming soon" |
+| Home finance application (Ijara / conventional) | J4 | ❌ | ❌ | ❌ | – | Calculator only |
+| Credit officer review of referred applications | – | ❌ | ➖ | ❌ | – | Referred applications stay referred |
+| Life-event bundles | – | ✅ | ✅ | ✅ `/life-events`, `/life-events/{id}/bundle` | Domain, Playwright, Flutter | Placeholder amounts and premiums; some items "coming soon" |
+| My installments, garage, rewards balance (account) | J5 | ✅ | ✅ | ✅ `/me` | Playwright, Flutter | Demo contracts for every customer until core lending is integrated |
+| Early settlement quote and "settle now" | – | ✅ | ✅ | ✅ `/me/contracts/{id}/settlement-quote` | Domain, Playwright, Flutter | Paying goes through checkout but does **not** close the demo contract |
+| Autopay on / off | J5 | ✅ | ✅ | ✅ `PATCH /me/contracts/{id}` | Playwright, Flutter | A stored flag; nothing is charged on a schedule |
+| Motor insurance comparison and purchase | – | ✅ | ✅ | ✅ `/insurance/motor-quotes`, `/policies/*` | Domain, Playwright, Flutter | |
+| Travel insurance comparison and purchase | – | ✅ | ✅ | ✅ `/insurance/travel-quotes`, `/policies/*` | Domain, Playwright, Flutter | |
+| Home insurance comparison and purchase (incl. from a listing) | J4 | ✅ | ✅ | ✅ `/insurance/home-quotes`, `/policies/*` | Domain, Playwright, Flutter | Suggested sums insured are rules of thumb |
+| Policies bound to payments, My policies | – | ✅ | ✅ | ✅ `/policies/quotes`, `/policies/confirm`, `/me/policies` | Domain, Playwright, Flutter | Issued only for a CAPTURED payment whose amount and reference match the held quote |
+| Share pre-approval with a dealer (customer side) | J7 | ✅ | ✅ | ✅ `/me/preapproval-token` | Domain, Playwright | 15-minute code, minimal data |
+| Dealer & broker portal: inventory, leads board, showroom offer | J7 | ✅ | ➖ web-first | ✅ `/dealer/*` | Domain, Playwright | No staff login; offers are not pushed to the customer |
+| Arabic (RTL) and English | all | ✅ | ✅ | ✅ localized fields | Playwright (RTL checks), Flutter | |
+| Real login (eKey / OIDC, passkeys, biometrics) | J1 | ❌ | ❌ | ❌ | – | |
+| Back-office console | – | ❌ | ➖ | ❌ | – | |
+| Claims, Suhail / Suhaila 2.0, push notifications, rewards redemption | J6, J8 | ❌ | ❌ | ❌ | – | |
+
+Where the tests live: `packages/domain/test` (Vitest), `apps/web/e2e` (Playwright, desktop and Pixel 7 viewports), `apps/mobile/test` (Flutter widget tests on recorded API fixtures in `test/fixtures`). CI runs all three.
+
+## 2. How the sandbox works
+
+| Piece | Sandbox behavior | Code |
+|---|---|---|
+| Customer session | Opaque random id; web: `sahel_session` cookie (HttpOnly, SameSite=Lax, Secure on HTTPS); mobile: `X-Sahel-Session` header (`new` until the API returns an id; kept in memory in the app). Unknown or expired ids get a new session; idle sessions expire and the store is size-capped | `apps/web/lib/session.ts`, `session-store.ts`, `apps/mobile/lib/core/api/session.dart` |
+| Customer data | Every session starts as the fictional demo customer. Onboarding replaces salary, obligations and pre-approval with the customer's own (self-declared) numbers. Contracts, garage and rewards stay demo data | `packages/domain/src/customer.ts` |
+| Stores | Payments, applications, cards, share tokens, leads, contract settings, policies: in-memory singletons on the Next.js server, lost on restart. Scoped per session customer; another session gets 404 | `apps/web/lib/api.ts`, `apps/web/lib/policy-store.ts` |
+| Idempotency | `Idempotency-Key` header (or body field) required on payments and applications, scoped per customer. A repeated key returns the **original** result | `packages/domain/src/payments.ts`, `origination.ts` |
+| Payments | Create → confirm (captured). No money moves; no refunds or voids are exercised | `packages/domain/src/payments.ts` |
+
+## 3. Placeholders that need business sign-off
+
+Each item is marked ⚠️ in the code. None of these values may go live without the named owner signing off.
+
+| # | Placeholder | Current value | Where | Owner |
+|---|---|---|---|---|
+| P1 | **DBR cap** | 50% of monthly salary | `rates.ts` `DBR_CAP_PCT` | Risk ⚠️ VERIFY against current CBB rules |
+| P2 | **Rates** | Vehicle: 6.5% conventional APR, 3.5% Murabaha flat. Personal: 7.5% / 4.0%. Home: 6.0% conventional, 3.25% Murabaha flat, 6.0% Ijara. Tenures and minimum down payments per line | `rates.ts` `RATE_CARDS` | Treasury, Risk, Shari'a board |
+| P3 | Calculator limits | Maximum down payment 90% of price (calculator); listing defaults (20% down, 60 / 48 / 240 months) | `pricing.ts` `financeLimits`, `rates.ts` | Product |
+| P4 | **Credit decision rules** | DBR_EXCEEDED → decline; AMOUNT_ABOVE_PREAPPROVAL → refer; **HIGH_DBR_UTILISATION** → refer when the new installment uses more than **80%** of the remaining DBR headroom | `origination.ts` `decide`, `REFER_ABOVE_HEADROOM_PCT` | Credit Risk |
+| P5 | Minimum personal finance | BHD 500; slider default BHD 5,000, step BHD 100 | `origination.ts`, `config.ts` | Product |
+| P6 | Pre-approval | Full DBR headroom at the longest tenure, priced at the **conventional** rate for every structure; valid 30 days | `affordability.ts` `preApprove` | Risk |
+| P7 | **Card limit rule** | 2× monthly salary, capped at BHD 15,000, zero without DBR headroom; per-card minimum salary | `affordability.ts`, `cards.ts` | Cards, Risk |
+| P8 | **Early-settlement fee** (conventional) | **1%** of remaining principal | `settlement.ts` `EARLY_SETTLEMENT_FEE_PCT` | Risk ⚠️ VERIFY with CBB rules |
+| P9 | **Ibra' rule** (Murabaha) | **100%** of unearned profit (straight-line) rebated; figures as of the last paid installment | `settlement.ts` `IBRA_REBATE_PCT` | Shari'a board (Ibra' is discretionary; it cannot be a contract condition) |
+| P10 | Settlement quote validity | 7 days | `settlement.ts` | Operations |
+| P11 | **Insurance pricing** | Demo rates for fictional insurers (motor, travel, home); travel limits (180-day trip, 365 days ahead, Schengen medical ≈ BHD 12,000); home sums insured limits; suggested cover (buildings at 60% of sale price) | `insurance*.ts` | Tasheelat Insurance, partner insurers |
+| P12 | Policy quote hold | 24 hours | `policies.ts` `POLICY_QUOTE_TTL_MS` | Insurance |
+| P13 | Bundle rules | Wedding finance BHD 5,000, furniture BHD 4,000; home cover 0.08% of value / year; life / family Takaful BHD 9 / month | `bundles.ts` | Product, Insurance |
+| P14 | **Valuation fee** | BHD 150, hard-coded in the web page and the Flutter screen | `apps/web/app/[locale]/property/[id]/page.tsx`, `apps/mobile/lib/features/property/property_detail_screen.dart` | Real estate. Should move into `/config` |
+| P15 | **Reservation deposit** | BHD 100 | `config.ts` `RESERVATION_DEPOSIT_FILS` | Automotive (NMC / TAC) |
+| P16 | Consent validity | 90 days for CRB and Open Banking | `onboarding.ts` | Compliance ⚠️ VERIFY with CBB Open Banking rules |
+| P17 | Pre-approval share code | 15 minutes, 8 characters | `dealer.ts` | Product, Compliance |
+
+## 4. Privacy decisions pending
+
+| # | Decision | What the prototype does today |
+|---|---|---|
+| D1 | **Should a dealer see the customer's monthly headroom (`maxMonthly`)?** | Redeeming a share code shows the dealer the first name, vehicle finance limit, **maximum monthly installment**, and validity. No salary, CPR, obligations, contracts or contact details. Headroom lets a dealer infer a lot about income; Compliance should confirm this is minimal enough under PDPL |
+| D2 | Consent for dealer sharing | Sharing is an explicit customer action (generate a code) but there is no recorded consent artifact |
+| D3 | Masked CPR | The eKey step returns a masked CPR; confirm what may be stored and shown |
+| D4 | Data retention | Nothing is persisted today. Retention periods for applications, declined decisions, and quotes are undecided |
+
+## 5. Gap list to production
+
+| Area | Gap | Notes |
+|---|---|---|
+| **Identity** | Real auth: eKey 2.0 federation (OIDC), our own OIDC provider, device binding, step-up for money movement; passkeys on web; secure token storage on mobile | Replace `lib/session.ts` and the mobile session header. See [06](06-architecture.md), [12](12-web-platform.md) |
+| **Partner auth** | Dealer / broker staff login (partner SSO), roles, per-dealer data access | `DealerAuthProvider` is the plug-in point in `apps/web/lib/api.ts` |
+| **Persistence** | A database (Aurora PostgreSQL) for sessions, applications, cards, policies, payments, leads; migrations; backups | Every store is in memory today |
+| **Payments** | Tap server integration and verified webhooks; **refunds and reconciliation**, including **captured premium payments that never bind to a policy** (quote expired, insurer refused, mismatch); voids; settlement payments that actually close contracts; scheduled autopay charges; server-side amount binding for every purpose | See [05](05-payments.md) |
+| **Credit data** | CRB pull under consent, Open Banking (AISP) income and obligations, salary verification | Obligations are self-declared today |
+| **Decisioning** | Real decision engine and credit policy; credit officer queue for referred applications | |
+| **Core lending** | Contracts, schedules, settlement figures, and autopay from the core lending system; real fulfilment steps (with evidence) for the Murabaha sequence; disbursement | Accept runs all steps instantly today |
+| **E-signature** | Signed contract documents with eKey identity | |
+| **Cards** | Issuer / processor integration, real PANs (never in our origin), push provisioning | |
+| **Insurance** | Insurer / broker APIs for quoting, binding, policy documents | |
+| **Audit logging** | Who did what, when, for every decision, consent, payment, and dealer action | |
+| **Abuse protection** | Rate limiting, WAF / bot control, CAPTCHA on onboarding and share-code redemption; CSP, HSTS, CSRF protection; restrict API CORS (open to `*` today for the app) | |
+| **Operations** | Back-office console, monitoring, alerting, observability | |
+| **Mobile release** | Bundle IDs `com.cbt.bcfc` / App Store id `6443493467`, signing, Huawei (HMS) build, obfuscation, RASP | Currently `bh.bcfc.sahel` |
+| **Hosting** | AWS landing zone, CI/CD to environments, a dedicated API service when needed | The API runs inside Next.js today |
