@@ -90,6 +90,15 @@ export class SessionStore {
     return s.profile;
   }
 
+  /**
+   * The live profile of a customer id (not a session id), without refreshing its idle timer. Back office only:
+   * staff look up the applicant of an application. Undefined once that session expired.
+   */
+  profileOf(customerId: string): CustomerProfile | undefined {
+    for (const s of this.sessions.values()) if (s.profile.customerId === customerId) return s.profile;
+    return undefined;
+  }
+
   get size(): number {
     return this.sessions.size;
   }

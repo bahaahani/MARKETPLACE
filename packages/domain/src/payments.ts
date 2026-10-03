@@ -148,6 +148,25 @@ export class SandboxPaymentGateway implements PaymentGateway {
     return updated;
   }
 
+  /**
+   * Refund a CAPTURED payment (CAPTURED → REFUNDED). Refunding an already REFUNDED payment returns it unchanged,
+   * so a retried refund never refunds twice. Back office only (backoffice.ts checks the role and writes the audit).
+   * ⚠️ Sandbox: no money moves. Production: Tap's refund API, confirmed by its webhook.
+   */
+  async refund(paymentId: string): Promise<Payment> {
+    const p = this.byId.get(paymentId);
+    if (!p) throw new PaymentNotFoundError(paymentId);
+    if (p.status === 'REFUNDED') return p;
+    const updated = { ...p, status: transition(p.status, 'refund') };
+    this.byId.set(paymentId, updated);
+    return updated;
+  }
+
+  /** Every payment with the customer it belongs to (if any), oldest first. Back office only. */
+  listAll(): { payment: Payment; ownerId?: string }[] {
+    return [...this.byId.values()].map((payment) => ({ payment, ownerId: this.owners.get(payment.id) }));
+  }
+
   /** With `ownerId`, another owner's payment reads as undefined (like confirm). */
   get(paymentId: string, ownerId?: string): Payment | undefined {
     const owner = this.owners.get(paymentId);

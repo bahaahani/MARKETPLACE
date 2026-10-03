@@ -24,7 +24,7 @@ class FakeSahelRepository implements SahelRepository {
   final accepted = <String>{};
 
   static FinanceApplication _app(String name) => FinanceApplication.fromJson(fixture(name) as Json);
-  static final _byId = {for (final n in ['application_crv', 'application_declined', 'application_personal']) _app(n).id: n};
+  static final _byId = {for (final n in ['application_crv', 'application_declined', 'application_personal', 'application_reviewed']) _app(n).id: n};
 
   @override
   Future<List<Vehicle>> vehicles({String? query, String? condition, int? maxMonthlyFils}) async {

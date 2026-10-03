@@ -20,3 +20,4 @@ export * from './insurance-home';
 export * from './policies';
 export * from './customer';
 export * from './config';
+export * from './backoffice';

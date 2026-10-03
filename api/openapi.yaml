@@ -713,8 +713,189 @@ paths:
       responses:
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/VirtualCard'}}}}}}
         '404': {$ref: '#/components/responses/Error'}
+  /backoffice/session:
+    get:
+      summary: The signed-in staff member and role (back office). 401 UNAUTHENTICATED when not signed in
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/StaffSession'}}}}}}
+        '401': {$ref: '#/components/responses/Error'}
+    post:
+      summary: |
+        ⚠️ Sandbox staff sign-in: pick a role. Sets the HttpOnly, SameSite=Strict cookie `sahel_staff` and records
+        STAFF_SIGNED_IN in the audit log. Production replaces this with staff SSO (role from the token claims).
+        API clients may send the `X-Sahel-Staff-Role` header on each request instead of the cookie.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: {$ref: '#/components/schemas/StaffRole'}
+      responses:
+        '200': {description: Signed in, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/StaffSession'}}}}}}
+        '400': {$ref: '#/components/responses/Error'}
+    delete:
+      summary: Sign out of the back office (clears the cookie)
+      responses:
+        '200': {description: Signed out}
+  /backoffice/dashboard:
+    get:
+      summary: Back-office KPIs (aggregates only, no personal data). Every staff role
+      parameters: [{$ref: '#/components/parameters/StaffRoleHeader'}]
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/BackOfficeKpis'}}}}}}
+        '401': {$ref: '#/components/responses/Error'}
+  /backoffice/applications:
+    get:
+      summary: |
+        Credit review queue: REFERRED applications of every customer, oldest referral first. Credit officer and
+        compliance. Data minimization: first name and masked CPR only; salary and obligations (`financials`) only
+        for the credit officer.
+      parameters: [{$ref: '#/components/parameters/StaffRoleHeader'}]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: {type: array, items: {$ref: '#/components/schemas/ReferredApplication'}}
+                      total: {type: integer}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {description: FORBIDDEN (operations), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /backoffice/applications/{id}/decision:
+    post:
+      summary: |
+        A credit officer approves or declines a REFERRED application (REFERRED → APPROVED / DECLINED) with a
+        mandatory note, recorded in the audit log (who, role, when, note). The note is internal: the customer sees
+        the new status and "Reviewed by credit officer" (`review`, timeline `by`). Repeating the same decision
+        returns the original result (`replayed: true`, no new audit entry).
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {$ref: '#/components/parameters/StaffRoleHeader'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [outcome, note]
+              properties:
+                outcome: {enum: [APPROVED, DECLINED]}
+                note: {type: string, minLength: 5, maxLength: 1000}
+      responses:
+        '200':
+          description: Decided
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      application: {$ref: '#/components/schemas/FinanceApplication'}
+                      audit: {$ref: '#/components/schemas/AuditEntry'}
+                      replayed: {type: boolean}
+        '400': {description: 'INVALID_REQUEST (outcome), BAD_JSON', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {description: FORBIDDEN (not a credit officer), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: APPLICATION_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '409': {description: NOT_REFERRED (already decided differently or never referred), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {description: NOTE_REQUIRED, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /backoffice/refunds:
+    get:
+      summary: |
+        Refund queue: CAPTURED `insurance_premium` payments with no policy (quote expired, paid twice, never
+        confirmed), older than the minimum age (⚠️ sandbox: 0 minutes). Payment data only. Operations and compliance.
+      parameters: [{$ref: '#/components/parameters/StaffRoleHeader'}]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: {type: array, items: {$ref: '#/components/schemas/RefundCandidate'}}
+                      total: {type: integer}
+                      totalFils: {type: integer}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {description: FORBIDDEN (credit officer), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /backoffice/refunds/{paymentId}:
+    post:
+      summary: |
+        Operations refunds a captured premium that has no policy (CAPTURED → REFUNDED; ⚠️ sandbox: no money moves),
+        with an audit entry. Re-checks the policy binding first. Idempotent: refunding again returns the original
+        refund and audit entry (`replayed: true`). A refunded premium can no longer be bound to a policy.
+      parameters:
+        - {name: paymentId, in: path, required: true, schema: {type: string}}
+        - {$ref: '#/components/parameters/StaffRoleHeader'}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note: {type: string, maxLength: 1000}
+      responses:
+        '200':
+          description: Refunded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      payment: {type: object}
+                      audit: {$ref: '#/components/schemas/AuditEntry'}
+                      replayed: {type: boolean}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {description: FORBIDDEN (not operations), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: PAYMENT_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '409': {description: 'POLICY_BOUND, NOT_REFUNDABLE (not a premium, not captured, too recent)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /backoffice/audit:
+    get:
+      summary: Audit log of back-office actions, newest first (compliance viewer, read-only)
+      parameters:
+        - {name: type, in: query, schema: {$ref: '#/components/schemas/AuditType'}}
+        - {$ref: '#/components/parameters/StaffRoleHeader'}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: {type: array, items: {$ref: '#/components/schemas/AuditEntry'}}
+                      total: {type: integer}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {description: FORBIDDEN (not compliance), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
 components:
   parameters:
+    StaffRoleHeader:
+      name: X-Sahel-Staff-Role
+      in: header
+      required: false
+      description: ⚠️ Sandbox back-office role, instead of the `sahel_staff` cookie. Production uses staff SSO.
+      schema: {$ref: '#/components/schemas/StaffRole'}
     SellerId:
       name: sellerId
       in: path
@@ -940,6 +1121,8 @@ components:
             properties:
               status: {$ref: '#/components/schemas/ApplicationStatus'}
               at: {type: string, format: date-time}
+              by: {enum: [CREDIT_OFFICER], description: Present when a credit officer made this step}
+        review: {$ref: '#/components/schemas/CreditReview'}
         steps:
           type: array
           description: Timeline to render (done steps with timestamps, then steps still to come). Clients render it as-is.
@@ -950,6 +1133,7 @@ components:
               at: {type: string, format: date-time, description: Absent for steps still to come}
               done: {type: boolean}
               murabaha: {type: boolean, description: Part of the Murabaha buy / own / sell sequence}
+              by: {enum: [CREDIT_OFFICER], description: 'Present when a credit officer decided this step ("Reviewed by credit officer")'}
         idempotencyKey: {type: string}
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}
@@ -1227,3 +1411,83 @@ components:
             buildingMaxFils: {type: integer}
             contentsMinFils: {type: integer}
             contentsMaxFils: {type: integer}
+    CreditReview:
+      type: object
+      description: A credit officer's decision on a referred application, as the customer sees it (who and the note stay in the audit log)
+      properties:
+        outcome: {enum: [APPROVED, DECLINED]}
+        reviewedBy: {enum: [CREDIT_OFFICER]}
+        reviewedAt: {type: string, format: date-time}
+    StaffRole:
+      enum: [credit_officer, operations, compliance]
+    StaffSession:
+      type: object
+      properties:
+        staffId: {type: string}
+        staffName: {type: string}
+        role: {$ref: '#/components/schemas/StaffRole'}
+        sandbox: {type: boolean}
+    AuditType:
+      enum: [STAFF_SIGNED_IN, APPLICATION_APPROVED, APPLICATION_DECLINED, PAYMENT_REFUNDED]
+    AuditEntry:
+      type: object
+      properties:
+        id: {type: string}
+        type: {$ref: '#/components/schemas/AuditType'}
+        at: {type: string, format: date-time}
+        staffId: {type: string}
+        staffName: {type: string}
+        role: {$ref: '#/components/schemas/StaffRole'}
+        subject:
+          type: object
+          properties:
+            kind: {enum: [application, payment]}
+            id: {type: string}
+        note: {type: string}
+        amountFils: {type: integer}
+    ReferredApplication:
+      type: object
+      properties:
+        id: {type: string}
+        firstName: {$ref: '#/components/schemas/Localized'}
+        cprMasked: {type: string, description: When the customer logged in with eKey}
+        productLine: {enum: [vehicle, personal]}
+        structure: {enum: [conventional, murabaha]}
+        reference: {type: string}
+        financedFils: {type: integer}
+        tenureMonths: {type: integer}
+        monthlyFils: {type: integer}
+        dbrAfterPct: {type: [number, 'null']}
+        dbrCapPct: {type: number}
+        reasons: {type: array, items: {enum: [OK, DBR_EXCEEDED, AMOUNT_ABOVE_PREAPPROVAL, HIGH_DBR_UTILISATION]}}
+        status: {$ref: '#/components/schemas/ApplicationStatus'}
+        referredAt: {type: string, format: date-time}
+        financials:
+          type: object
+          description: Credit officer only
+          properties:
+            monthlySalaryFils: {type: integer}
+            existingObligationsFils: {type: integer}
+            maxMonthlyFils: {type: integer}
+            preApprovedLimitFils: {type: integer}
+    RefundCandidate:
+      type: object
+      properties:
+        paymentId: {type: string}
+        amountFils: {type: integer}
+        method: {type: string}
+        quoteId: {type: string}
+        capturedAt: {type: string, format: date-time}
+        ageMinutes: {type: integer}
+    BackOfficeKpis:
+      type: object
+      properties:
+        date: {type: string, format: date, description: Bahrain date of the "today" figures}
+        applicationsToday: {type: object, additionalProperties: {type: integer}, description: Applications created today by current status}
+        applicationsTodayTotal: {type: integer}
+        approvalRatePct: {type: [number, 'null'], description: 'Approved / (approved + declined) today, percent'}
+        avgDecisionMinutes: {type: [number, 'null'], description: Submission to final decision (today)}
+        avgReviewMinutes: {type: [number, 'null'], description: Referral to credit officer decision (today's reviews)}
+        referredPending: {type: integer}
+        refundsPending: {type: integer}
+        refundsPendingFils: {type: integer}

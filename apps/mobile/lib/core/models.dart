@@ -500,7 +500,7 @@ class ApplicationDecision {
 
 /// One timeline step, in the order the API returns them (done steps first, then steps to come).
 class ApplicationStep {
-  const ApplicationStep({required this.status, required this.done, required this.murabaha, this.at});
+  const ApplicationStep({required this.status, required this.done, required this.murabaha, this.at, this.by});
   final String status;
   final bool done;
 
@@ -508,11 +508,31 @@ class ApplicationStep {
   final bool murabaha;
   final DateTime? at;
 
+  /// CREDIT_OFFICER when a credit officer made this step (reviewed a referred application)
+  final String? by;
+
+  bool get reviewedByOfficer => by == 'CREDIT_OFFICER';
+
   factory ApplicationStep.fromJson(Json j) => ApplicationStep(
         status: j['status'] as String,
         done: j['done'] as bool,
         murabaha: j['murabaha'] as bool,
         at: j['at'] == null ? null : DateTime.parse(j['at'] as String),
+        by: j['by'] as String?,
+      );
+}
+
+/// A credit officer's decision on a referred application (the officer's note stays internal to the back office).
+class CreditReview {
+  const CreditReview({required this.outcome, required this.reviewedAt});
+
+  /// APPROVED or DECLINED
+  final String outcome;
+  final DateTime reviewedAt;
+
+  factory CreditReview.fromJson(Json j) => CreditReview(
+        outcome: j['outcome'] as String,
+        reviewedAt: DateTime.parse(j['reviewedAt'] as String),
       );
 }
 
@@ -526,6 +546,7 @@ class FinanceApplication {
     required this.status,
     required this.steps,
     this.decision,
+    this.review,
   });
 
   final String id;
@@ -539,6 +560,12 @@ class FinanceApplication {
   final List<ApplicationStep> steps;
   final ApplicationDecision? decision;
 
+  /// Present once a credit officer decided a referred application
+  final CreditReview? review;
+
+  /// What to show: the credit officer's outcome when reviewed, else the automatic decision.
+  String? get outcome => review?.outcome ?? decision?.outcome;
+
   bool get canAccept => status == 'APPROVED';
 
   factory FinanceApplication.fromJson(Json j) => FinanceApplication(
@@ -550,6 +577,7 @@ class FinanceApplication {
         status: j['status'] as String,
         steps: [for (final s in j['steps'] as List) ApplicationStep.fromJson(s as Json)],
         decision: j['decision'] == null ? null : ApplicationDecision.fromJson(j['decision'] as Json),
+        review: j['review'] == null ? null : CreditReview.fromJson(j['review'] as Json),
       );
 }
 

@@ -112,13 +112,17 @@ class _DecisionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = context.l10n;
     final d = app.decision!;
-    final (title, body, color, background) = switch (d.outcome) {
+    // A credit officer's review of a referred application replaces the automatic outcome.
+    final review = app.review;
+    final outcome = app.outcome!;
+    var (title, body, color, background) = switch (outcome) {
       'APPROVED' => (l.decisionApproved, l.decisionApprovedBody, SahelColors.islamic, SahelColors.islamicSoft),
       'REFERRED' => (l.decisionReferred, l.decisionReferredBody, SahelColors.accent, SahelColors.background),
       _ => (l.decisionDeclined, l.decisionDeclinedBody, SahelColors.danger, SahelColors.background),
     };
+    if (review != null) body = review.outcome == 'APPROVED' ? l.boReviewedApprovedBody : l.boReviewedDeclinedBody;
     return Container(
-      key: Key('decision-${d.outcome}'),
+      key: Key('decision-$outcome'),
       padding: const EdgeInsets.all(SahelSpace.md),
       decoration: BoxDecoration(
         color: background,
@@ -127,6 +131,15 @@ class _DecisionCard extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(title, style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
+        if (review != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Chip(
+              key: const Key('reviewed-by-officer'),
+              label: Text(l.boReviewedByOfficer, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
         Text(body),
         const SizedBox(height: SahelSpace.sm),
         Text(l.decisionReasons, style: const TextStyle(color: SahelColors.textMuted, fontWeight: FontWeight.w600, fontSize: 12)),
@@ -139,7 +152,7 @@ class _DecisionCard extends StatelessWidget {
               Expanded(child: Text(_reason(context, r, d), style: const TextStyle(fontSize: 13))),
             ]),
           ),
-        if (d.outcome == 'DECLINED') ...[
+        if (outcome == 'DECLINED') ...[
           const SizedBox(height: SahelSpace.sm),
           Text(l.tryLowerAmount, style: const TextStyle(fontSize: 13)),
         ],
@@ -284,6 +297,10 @@ class _StepTile extends StatelessWidget {
               at == null ? l.stepUpcoming : DateFormat.MMMd(context.lang).add_Hm().format(at.toLocal()),
               style: const TextStyle(color: SahelColors.textMuted, fontSize: 11),
             ),
+            if (step.reviewedByOfficer)
+              Text(l.boReviewedByOfficer,
+                  key: Key('step-${step.status}-reviewed-by-officer'),
+                  style: const TextStyle(color: SahelColors.brand, fontSize: 11, fontWeight: FontWeight.w600)),
           ]),
         ),
       ]),
