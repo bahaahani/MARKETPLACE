@@ -11,10 +11,13 @@ import '../../core/providers.dart';
 import '../../core/theme/tokens.g.dart';
 import '../bundles/bundles_providers.dart';
 import '../insurance/insurance_providers.dart';
+import 'payment_price.dart';
 
 /// Sandbox checkout. Production replaces the "pay" step with the Tap Flutter SDKs
 /// (BenefitPay, Apple Pay, Google Pay, Samsung Pay, Click to Pay, card); the backend
 /// confirms only after the verified Tap webhook.
+/// Server-priced purposes (reservation deposit, valuation fee) show and pay the amount from GET /payments/price,
+/// whatever the link says (the API refuses any other amount).
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key, required this.amountFils, required this.purpose, required this.reference, required this.label});
 
@@ -50,14 +53,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   // One key per checkout attempt, so a double tap never double-charges.
   final String _idempotencyKey = List.generate(24, (_) => Random.secure().nextInt(16).toRadixString(16)).join();
 
-  Future<void> _pay() async {
+  Future<void> _pay(int amountFils) async {
     setState(() {
       _busy = true;
       _error = false;
     });
     try {
       final p = await ref.read(repositoryProvider).pay(
-            amountFils: widget.amountFils,
+            amountFils: amountFils,
             method: _method,
             purpose: widget.purpose,
             reference: widget.reference,
@@ -74,6 +77,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       // The API may have changed the customer's contracts (e.g. an early settlement closes one), so reload them.
       ref.invalidate(meProvider);
       ref.invalidate(settlementQuoteProvider);
+      // A valuation fee lets a home finance application continue, so reload applications too.
+      ref.invalidate(applicationProvider);
+      ref.invalidate(applicationsProvider);
       if (mounted) setState(() => _result = p);
     } catch (_) {
       if (mounted) setState(() => _error = true);
@@ -97,7 +103,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final amount = context.money(widget.amountFils);
+    final price = ref.watch(paymentPriceProvider((purpose: widget.purpose, reference: widget.reference)));
+    final serverAmount = price.value?.amountFils;
+    final amountFils = serverAmount ?? widget.amountFils;
+    final amount = price.isLoading ? '…' : context.money(amountFils);
     final result = _result;
     return Scaffold(
       appBar: AppBar(title: Text(l.choosePaymentMethod)),
@@ -129,7 +138,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             )
           : ListView(padding: const EdgeInsets.all(SahelSpace.md), children: [
               Text(widget.label, style: const TextStyle(color: SahelColors.textMuted)),
-              Text(amount, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+              Text(amount, key: const Key('checkout-amount'), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+              if (serverAmount != null)
+                Text(l.bindServerAmount, key: const Key('server-priced'), style: const TextStyle(color: SahelColors.textMuted, fontSize: 12)),
               const SizedBox(height: SahelSpace.md),
               RadioGroup<PaymentMethod>(
                 groupValue: _method,
@@ -141,7 +152,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               ),
               if (_error) Text(l.errorGeneric, style: const TextStyle(color: SahelColors.danger)),
               const SizedBox(height: SahelSpace.md),
-              FilledButton(key: const Key('pay'), onPressed: _busy ? null : _pay, child: Text(l.pay(amount))),
+              FilledButton(key: const Key('pay'), onPressed: _busy || price.isLoading ? null : () => _pay(amountFils), child: Text(l.pay(amount))),
               const SizedBox(height: SahelSpace.sm),
               Text(l.sandboxNotice, textAlign: TextAlign.center, style: const TextStyle(color: SahelColors.textMuted, fontSize: 12)),
             ]),

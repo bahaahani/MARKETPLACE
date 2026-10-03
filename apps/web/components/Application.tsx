@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { findVehicle, type ApplicationStep, type ApplicationView, type Decision, type DecisionReason } from '@sahel/domain';
+import { findProperty, findVehicle, type ApplicationStep, type ApplicationView, type Decision, type DecisionReason } from '@sahel/domain';
 import type { MessageKey } from '@sahel/i18n';
 import type { Translator } from '@/lib/i18n';
 import { STATUS_LABEL, STRUCTURE_LABEL } from '@/lib/labels';
@@ -27,6 +27,7 @@ export function reasonText(reason: DecisionReason, app: ApplicationView, tr: Tra
 
 export function applicationTitle(app: ApplicationView, tr: Translator): string {
   if (app.productLine === 'personal') return tr.t('personalFinanceTitle');
+  if (app.productLine === 'home') return findProperty(app.reference)?.title[tr.locale] ?? app.reference;
   const v = findVehicle(app.reference);
   return v ? `${v.make} ${v.model} ${v.year}` : app.reference;
 }
@@ -66,7 +67,7 @@ export function OfferSummary({ app, tr }: { app: ApplicationView; tr: Translator
   const islamic = q.structure !== 'conventional';
   const rateLabel: MessageKey = q.rateBasis === 'apr' ? 'rateApr' : q.rateBasis === 'flat' ? 'rateFlat' : 'rateProfit';
   const rows: [string, string][] = [
-    ...(app.productLine === 'vehicle'
+    ...(app.productLine !== 'personal'
       ? ([
           [tr.t('price'), tr.money(q.assetPriceFils, 0)],
           [tr.t('downPayment'), tr.money(q.downPaymentFils, 0)],
@@ -84,7 +85,7 @@ export function OfferSummary({ app, tr }: { app: ApplicationView; tr: Translator
     <section className="card p-5" data-testid="offer-summary" aria-labelledby="offer-title">
       <h2 id="offer-title" className="text-lg font-bold">{tr.t('yourOffer')}</h2>
       <p className={`text-sm font-semibold ${islamic ? 'text-islamic' : 'text-brand'}`}>{tr.t(STRUCTURE_LABEL[q.structure])}</p>
-      <p className="mt-3 text-xs text-text-muted">{tr.t('monthlyInstallment')}</p>
+      <p className="mt-3 text-xs text-text-muted">{tr.t(q.structure === 'ijara' ? 'monthlyRental' : 'monthlyInstallment')}</p>
       <p className="text-2xl font-bold" data-testid="offer-monthly">{tr.money(q.monthlyFils)}</p>
       <dl className="mt-3 space-y-1 text-sm">
         {rows.map(([label, value]) => (
@@ -99,13 +100,14 @@ export function OfferSummary({ app, tr }: { app: ApplicationView; tr: Translator
   );
 }
 
-/** Vertical timeline. Murabaha steps are grouped and explained, since their order is a Shari'a requirement. */
+/** Vertical timeline. Murabaha and Ijara steps are grouped and explained, since their order is a Shari'a requirement. */
 export function Timeline({ steps, tr }: { steps: ApplicationStep[]; tr: Translator }) {
-  const groups: { murabaha: boolean; steps: ApplicationStep[] }[] = [];
+  const kind = (s: ApplicationStep) => (s.murabaha ? 'murabaha' : s.ijara ? 'ijara' : 'plain');
+  const groups: { kind: 'murabaha' | 'ijara' | 'plain'; steps: ApplicationStep[] }[] = [];
   for (const s of steps) {
     const last = groups[groups.length - 1];
-    if (last && last.murabaha === s.murabaha) last.steps.push(s);
-    else groups.push({ murabaha: s.murabaha, steps: [s] });
+    if (last && last.kind === kind(s)) last.steps.push(s);
+    else groups.push({ kind: kind(s), steps: [s] });
   }
   const when = new Intl.DateTimeFormat(tr.locale === 'ar' ? 'ar-BH-u-nu-latn' : 'en-GB', {
     day: 'numeric',
@@ -126,7 +128,7 @@ export function Timeline({ steps, tr }: { steps: ApplicationStep[]; tr: Translat
       <span
         aria-hidden
         className={`absolute start-0 top-1 h-4 w-4 rounded-full border-2 ${
-          s.done ? (s.murabaha ? 'border-islamic bg-islamic' : 'border-brand bg-brand') : 'border-border bg-surface'
+          s.done ? (s.murabaha || s.ijara ? 'border-islamic bg-islamic' : 'border-brand bg-brand') : 'border-border bg-surface'
         }`}
       />
       <p className={`font-medium ${s.done ? '' : 'text-text-muted'}`}>{tr.t(STATUS_LABEL[s.status])}</p>
@@ -144,9 +146,13 @@ export function Timeline({ steps, tr }: { steps: ApplicationStep[]; tr: Translat
       <h2 id="progress-title" className="mb-4 text-lg font-bold">{tr.t('applicationProgress')}</h2>
       <ol data-testid="timeline">
         {groups.map((g) =>
-          g.murabaha ? (
-            <li key={g.steps[0]!.status} className="mb-4 rounded-[var(--radius-md)] border border-islamic bg-islamic-soft p-3" data-testid="murabaha-steps">
-              <p className="mb-3 text-xs font-semibold text-islamic">{tr.t('murabahaSequenceNote')}</p>
+          g.kind !== 'plain' ? (
+            <li
+              key={g.steps[0]!.status}
+              className="mb-4 rounded-[var(--radius-md)] border border-islamic bg-islamic-soft p-3"
+              data-testid={g.kind === 'murabaha' ? 'murabaha-steps' : 'ijara-steps'}
+            >
+              <p className="mb-3 text-xs font-semibold text-islamic">{tr.t(g.kind === 'murabaha' ? 'murabahaSequenceNote' : 'homeIjaraSequenceNote')}</p>
               <ol>{g.steps.map(item)}</ol>
             </li>
           ) : (

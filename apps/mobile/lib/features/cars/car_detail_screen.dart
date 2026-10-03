@@ -82,6 +82,7 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen> {
                             structure: sel.structure,
                             tenureMonths: sel.tenureMonths,
                             vehicleId: v.id,
+                            propertyId: null,
                             downPaymentFils: sel.downPaymentFils,
                             amountFils: null,
                           ),

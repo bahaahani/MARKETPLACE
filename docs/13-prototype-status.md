@@ -13,8 +13,8 @@
 | Car and property listings, search, filters, detail pages | J2, J4 | ✅ | ✅ | ✅ `/vehicles`, `/properties` | Domain, Playwright, Flutter | Demo catalog (NMC, TAC, a partner dealer, a broker) |
 | Finance calculator: conventional, Murabaha, Ijara side by side | J2, J4 | ✅ | ✅ | ✅ `/quotes/finance` | Domain, Playwright (UI = API), Flutter | Illustrative rate cards |
 | Product rules for the apps | all | ✅ (imports `packages/domain`) | ✅ (reads `/config`) | ✅ `GET /config` | Playwright, Flutter fixtures | Calculator ranges, steps and defaults, personal finance range, consent period, insurance form limits, reservation deposit |
-| Reserve a car (deposit) | J2 | ✅ | ✅ | ✅ `/payments` | Playwright | Deposit amount is a placeholder |
-| Request a property valuation (fee) | J4 | ✅ | ✅ | ✅ `/payments` | – | Fee hard-coded in both apps (not yet in `/config`) |
+| Reserve a car (deposit) | J2 | ✅ | ✅ | ✅ `/payments`, `/payments/price` | Domain, Playwright | Deposit amount is a placeholder; any other amount is 422 `AMOUNT_MISMATCH` |
+| Request a property valuation (fee) | J4 | ✅ | ✅ | ✅ `/payments`, `/payments/price` | Domain, Playwright, Flutter | Fee priced by the server (`payment-amounts.ts`); any other amount is 422 `AMOUNT_MISMATCH` |
 | Checkout (Tap methods: card, Apple / Google / Samsung Pay, BenefitPay) | J5 | ✅ | ✅ | ✅ `/payments`, `/payments/{id}/confirm` | Domain, Playwright | Sandbox gateway; confirm stands in for Tap's webhook |
 | Onboarding: eKey step, consent, salary and obligations, pre-approval | J1 | ✅ | ✅ | ✅ `/onboarding/ekey`, `/onboarding/pre-approval` | Domain, Playwright, Flutter | eKey, CRB and Open Banking simulated |
 | Sandbox customer session | all | ✅ HttpOnly cookie | ✅ `X-Sahel-Session` header | ✅ | Domain (store, isolation), Playwright | Stand-in for login; data is private per session |
@@ -22,11 +22,11 @@
 | My cards | J3 | ✅ | ✅ | ✅ `/me/cards`, `/me/cards/{id}` | Playwright, Flutter | |
 | Apply for vehicle finance (conventional / Murabaha) | J2 | ✅ | ✅ | ✅ `/applications` | Domain, Playwright, Flutter | Decision, accept, timeline; Murabaha steps recorded in Shari'a order |
 | Apply for personal finance (conventional / commodity Murabaha) | – | ✅ | ✅ | ✅ `/applications` | Domain, Playwright, Flutter | Rate card still labels Commodity Murabaha "coming soon" |
-| Home finance application (Ijara / conventional) | J4 | ❌ | ❌ | ❌ | – | Calculator only |
+| Home finance application (Ijara / conventional) | J4 | ✅ | ✅ | ✅ `/applications` (`productLine: home`) | Domain, Playwright, Flutter | Price from the catalog; decision on the session customer's DBR and home pre-approval. Ijara: BCFC buys → lease starts (ownership transfers after the final rental, shown as a future step). Conventional: valuation confirmed only with a captured TRESCO valuation fee, then paid out |
 | Credit officer review of referred applications | – | ✅ back office | ✅ customer sees "Reviewed by credit officer" | ✅ `/backoffice/applications`, `/backoffice/applications/{id}/decision` | Domain, Playwright, Flutter | REFERRED → APPROVED / DECLINED with a mandatory internal note (audit log). Queue across every customer; salary and obligations for credit officers only |
 | Life-event bundles | – | ✅ | ✅ | ✅ `/life-events`, `/life-events/{id}/bundle` | Domain, Playwright, Flutter | Placeholder amounts and premiums; some items "coming soon" |
 | My installments, garage, rewards balance (account) | J5 | ✅ | ✅ | ✅ `/me` | Playwright, Flutter | Demo contracts for every customer until core lending is integrated |
-| Early settlement quote and "settle now" | – | ✅ | ✅ | ✅ `/me/contracts/{id}/settlement-quote` | Domain, Playwright, Flutter | Paying the exact quote through checkout marks the contract settled (per customer); wrong amount → 422, repeat → 409 `ALREADY_SETTLED`. Settled contracts don't yet reduce obligations for pre-approval/DBR |
+| Early settlement quote and "settle now" | – | ✅ | ✅ | ✅ `/me/contracts/{id}/settlement-quote` | Domain, Playwright, Flutter | Paying the exact quote through checkout marks the contract settled (per customer); wrong amount → 422, repeat → 409 `ALREADY_SETTLED`. A settled contract no longer counts as an obligation (pre-approval, card eligibility, bundles, decisions) |
 | Autopay on / off | J5 | ✅ | ✅ | ✅ `PATCH /me/contracts/{id}` | Playwright, Flutter | A stored flag; nothing is charged on a schedule |
 | Motor insurance comparison and purchase | – | ✅ | ✅ | ✅ `/insurance/motor-quotes`, `/policies/*` | Domain, Playwright, Flutter | |
 | Travel insurance comparison and purchase | – | ✅ | ✅ | ✅ `/insurance/travel-quotes`, `/policies/*` | Domain, Playwright, Flutter | |
@@ -70,7 +70,7 @@ Each item is marked ⚠️ in the code. None of these values may go live without
 | P11 | **Insurance pricing** | Demo rates for fictional insurers (motor, travel, home); travel limits (180-day trip, 365 days ahead, Schengen medical ≈ BHD 12,000); home sums insured limits; suggested cover (buildings at 60% of sale price) | `insurance*.ts` | Tasheelat Insurance, partner insurers |
 | P12 | Policy quote hold | 24 hours | `policies.ts` `POLICY_QUOTE_TTL_MS` | Insurance |
 | P13 | Bundle rules | Wedding finance BHD 5,000, furniture BHD 4,000; home cover 0.08% of value / year; life / family Takaful BHD 9 / month | `bundles.ts` | Product, Insurance |
-| P14 | **Valuation fee** | BHD 150, hard-coded in the web page and the Flutter screen | `apps/web/app/[locale]/property/[id]/page.tsx`, `apps/mobile/lib/features/property/property_detail_screen.dart` | Real estate. Should move into `/config` |
+| P14 | **Valuation fee** | BHD 150, priced by the server (`GET /payments/price`) | `payment-amounts.ts` `VALUATION_FEE_FILS` | Real estate (TRESCO) |
 | P15 | **Reservation deposit** | BHD 100 | `config.ts` `RESERVATION_DEPOSIT_FILS` | Automotive (NMC / TAC) |
 | P16 | Consent validity | 90 days for CRB and Open Banking | `onboarding.ts` | Compliance ⚠️ VERIFY with CBB Open Banking rules |
 | P17 | Pre-approval share code | 15 minutes, 8 characters | `dealer.ts` | Product, Compliance |
@@ -92,10 +92,10 @@ Each item is marked ⚠️ in the code. None of these values may go live without
 | **Identity** | Real auth: eKey 2.0 federation (OIDC), our own OIDC provider, device binding, step-up for money movement; passkeys on web; secure token storage on mobile | Replace `lib/session.ts` and the mobile session header. See [06](06-architecture.md), [12](12-web-platform.md) |
 | **Partner auth** | Dealer / broker staff login (partner SSO), roles, per-dealer data access | `DealerAuthProvider` is the plug-in point in `apps/web/lib/api.ts` |
 | **Persistence** | A database (Aurora PostgreSQL) for sessions, applications, cards, policies, payments, leads; migrations; backups | Every store is in memory today |
-| **Payments** | Tap server integration and verified webhooks; **refunds and reconciliation** (the sandbox back office lists and refunds **captured premium payments that never bind to a policy**, but no money moves and there is no reconciliation); voids; settlement payments that close contracts in core lending (the prototype only marks them settled in memory); settled contracts reducing obligations in DBR; scheduled autopay charges; server-side amount binding for every purpose | See [05](05-payments.md) |
+| **Payments** | Tap server integration and verified webhooks; **refunds and reconciliation** (the sandbox back office lists and refunds **captured premium payments that never bind to a policy**, but no money moves and there is no reconciliation); voids; settlement payments that close contracts in core lending (the prototype only marks them settled in memory, and takes their installments off the obligations); scheduled autopay charges; server-side amount binding for installments (deposits and valuation fees are priced by the server; premiums and settlements are bound to their held quotes) | See [05](05-payments.md) |
 | **Credit data** | CRB pull under consent, Open Banking (AISP) income and obligations, salary verification | Obligations are self-declared today |
 | **Decisioning** | Real decision engine and credit policy; credit officer queue for referred applications | |
-| **Core lending** | Contracts, schedules, settlement figures, and autopay from the core lending system; real fulfilment steps (with evidence) for the Murabaha sequence; disbursement | Accept runs all steps instantly today |
+| **Core lending** | Contracts, schedules, settlement figures, and autopay from the core lending system; real fulfilment steps (with evidence) for the Murabaha and Ijara sequences (purchase, lease registration, ownership transfer at the end of the lease); a real TRESCO valuation report; disbursement | Accept runs the steps instantly today (Ijara stops at the lease; conventional home finance waits for a captured valuation fee) |
 | **E-signature** | Signed contract documents with eKey identity | |
 | **Cards** | Issuer / processor integration, real PANs (never in our origin), push provisioning | |
 | **Insurance** | Insurer / broker APIs for quoting, binding, policy documents | |

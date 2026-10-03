@@ -113,6 +113,11 @@ export class SandboxPaymentGateway implements PaymentGateway {
   private readonly owners = new Map<string, string>();
   private seq = 0;
 
+  /** This owner's payments, oldest first (e.g. to find a captured valuation fee for a home finance application). */
+  list(ownerId: string): Payment[] {
+    return [...this.byId.values()].filter((p) => this.owners.get(p.id) === ownerId);
+  }
+
   /**
    * With `ownerId` (the sandbox customer session), idempotency keys are scoped to that owner and only the
    * owner can confirm the payment.

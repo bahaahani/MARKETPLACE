@@ -278,4 +278,10 @@ export class SandboxContractSettings {
       }),
     };
   }
+
+  /** Ids of the contracts this customer has settled (they no longer count as obligations; see withSettledContracts). */
+  settledContractIds(customerId: string): string[] {
+    const prefix = `${customerId}:`;
+    return [...this.settled.keys()].filter((k) => k.startsWith(prefix)).map((k) => k.slice(prefix.length));
+  }
 }

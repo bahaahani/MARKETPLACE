@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { customerOverview, newCustomerProfile, type CustomerProfile, type CustomerView } from '@sahel/domain';
+import { customerOverview, newCustomerProfile, withSettledContracts, type CustomerProfile, type CustomerView } from '@sahel/domain';
 import { contractSettings, handleError } from './api';
 import { SessionStore } from './session-store';
 
@@ -28,6 +28,14 @@ export const sessions = (g.__sahelSessions ??= new SessionStore());
  */
 export function customerView(profile: CustomerProfile): CustomerView {
   return contractSettings.apply(customerOverview(profile));
+}
+
+/**
+ * The stored profile plus the contracts this customer settled early (kept by contractSettings), so obligations,
+ * pre-approval, card eligibility, bundles and finance decisions all exclude settled contracts.
+ */
+export function settledProfile(profile: CustomerProfile): CustomerProfile {
+  return withSettledContracts(profile, contractSettings.settledContractIds(profile.customerId));
 }
 
 export interface RequestSession {
@@ -65,10 +73,10 @@ export function customerSession(req: Request): RequestSession {
       return session.profile.customerId;
     },
     get profile() {
-      return session.profile;
+      return settledProfile(session.profile);
     },
     get customer() {
-      return customerView(session.profile);
+      return customerView(settledProfile(session.profile));
     },
     created,
     update: (fn) => sessions.update(session.id, fn),
@@ -112,7 +120,7 @@ const ANONYMOUS_CUSTOMER_ID = 'cus_anonymous';
  */
 export async function pageCustomer(): Promise<CustomerProfile> {
   const id = (await cookies()).get(SESSION_COOKIE)?.value;
-  return sessions.get(id)?.profile ?? newCustomerProfile(ANONYMOUS_CUSTOMER_ID);
+  return settledProfile(sessions.get(id)?.profile ?? newCustomerProfile(ANONYMOUS_CUSTOMER_ID));
 }
 
 /** customerView() of the page's session customer (see pageCustomer). */

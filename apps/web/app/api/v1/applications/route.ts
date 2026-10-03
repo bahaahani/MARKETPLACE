@@ -2,6 +2,7 @@ import {
   applicationView,
   customerFinancials,
   findVehicle,
+  homeApplicationRequest,
   ORIGINATION_PRODUCT_LINES,
   ORIGINATION_STRUCTURES,
   type ApplicationRequest,
@@ -28,6 +29,7 @@ export function GET(req: Request) {
  * Idempotency-Key header (or body field) required; keys are scoped to the customer.
  * - vehicle:  { productLine, structure, vehicleId, downPaymentFils, tenureMonths } (price comes from the catalog)
  * - personal: { productLine, structure, amountFils, tenureMonths }
+ * - home:     { productLine, structure, propertyId, downPaymentFils, tenureMonths } (conventional or Ijara; price from the catalog)
  */
 export function POST(req: Request) {
   return withCustomer(req, async (s) => {
@@ -35,6 +37,7 @@ export function POST(req: Request) {
       productLine?: OriginationProductLine;
       structure?: OriginationStructure;
       vehicleId?: string;
+      propertyId?: string;
       amountFils?: number;
       downPaymentFils?: number;
       tenureMonths?: number;
@@ -43,15 +46,17 @@ export function POST(req: Request) {
     const idempotencyKey = req.headers.get('Idempotency-Key') ?? body.idempotencyKey;
     if (!idempotencyKey || typeof idempotencyKey !== 'string') return problem(400, 'BAD_REQUEST', 'Idempotency-Key is required');
     if (!body.productLine || !ORIGINATION_PRODUCT_LINES.includes(body.productLine)) {
-      return problem(400, 'BAD_REQUEST', 'productLine must be vehicle or personal');
+      return problem(400, 'BAD_REQUEST', 'productLine must be vehicle, personal or home');
     }
     if (!body.structure || !ORIGINATION_STRUCTURES.includes(body.structure)) {
-      return problem(400, 'BAD_REQUEST', 'structure must be conventional or murabaha');
+      return problem(400, 'BAD_REQUEST', 'structure must be conventional, murabaha or ijara');
     }
     if (typeof body.tenureMonths !== 'number') return problem(400, 'BAD_REQUEST', 'tenureMonths is required');
 
     let request: ApplicationRequest;
-    if (body.productLine === 'vehicle') {
+    if (body.productLine === 'home') {
+      request = homeApplicationRequest({ ...body, structure: body.structure, tenureMonths: body.tenureMonths, idempotencyKey });
+    } else if (body.productLine === 'vehicle') {
       if (typeof body.vehicleId !== 'string' || !body.vehicleId) return problem(400, 'BAD_REQUEST', 'vehicleId is required for vehicle finance');
       const v = findVehicle(body.vehicleId);
       if (!v) return problem(404, 'NOT_FOUND', 'vehicleId must be a vehicle in the catalog');

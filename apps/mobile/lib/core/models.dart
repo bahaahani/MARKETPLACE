@@ -500,12 +500,15 @@ class ApplicationDecision {
 
 /// One timeline step, in the order the API returns them (done steps first, then steps to come).
 class ApplicationStep {
-  const ApplicationStep({required this.status, required this.done, required this.murabaha, this.at, this.by});
+  const ApplicationStep({required this.status, required this.done, required this.murabaha, this.ijara = false, this.at, this.by});
   final String status;
   final bool done;
 
   /// Part of the Murabaha sequence: BCFC buys, owns, then sells the asset.
   final bool murabaha;
+
+  /// Part of the Ijara Muntahia Bittamleek sequence: BCFC buys, leases, then ownership passes after the final rental.
+  final bool ijara;
   final DateTime? at;
 
   /// CREDIT_OFFICER when a credit officer made this step (reviewed a referred application)
@@ -517,6 +520,7 @@ class ApplicationStep {
         status: j['status'] as String,
         done: j['done'] as bool,
         murabaha: j['murabaha'] as bool,
+        ijara: j['ijara'] as bool? ?? false,
         at: j['at'] == null ? null : DateTime.parse(j['at'] as String),
         by: j['by'] as String?,
       );
@@ -547,6 +551,7 @@ class FinanceApplication {
     required this.steps,
     this.decision,
     this.review,
+    this.nextAction,
   });
 
   final String id;
@@ -554,7 +559,7 @@ class FinanceApplication {
   final FinanceStructure structure;
   final FinanceQuote quote;
 
-  /// Vehicle id for cars, "personal" for personal finance
+  /// Vehicle id for cars, property id for home finance, "personal" for personal finance
   final String reference;
   final String status;
   final List<ApplicationStep> steps;
@@ -565,6 +570,9 @@ class FinanceApplication {
 
   /// What to show: the credit officer's outcome when reviewed, else the automatic decision.
   String? get outcome => review?.outcome ?? decision?.outcome;
+
+  /// What the customer must do before fulfilment continues (e.g. pay the valuation fee), from the API.
+  final ApplicationNextAction? nextAction;
 
   bool get canAccept => status == 'APPROVED';
 
@@ -578,7 +586,22 @@ class FinanceApplication {
         steps: [for (final s in j['steps'] as List) ApplicationStep.fromJson(s as Json)],
         decision: j['decision'] == null ? null : ApplicationDecision.fromJson(j['decision'] as Json),
         review: j['review'] == null ? null : CreditReview.fromJson(j['review'] as Json),
+        nextAction: j['nextAction'] == null ? null : ApplicationNextAction.fromJson(j['nextAction'] as Json),
       );
+}
+
+/// A payment the customer must make before the application continues (home finance: the TRESCO valuation fee).
+/// The amount comes from GET /payments/price.
+class ApplicationNextAction {
+  const ApplicationNextAction({required this.type, required this.purpose, required this.reference});
+
+  /// PAY_VALUATION_FEE
+  final String type;
+  final String purpose;
+  final String reference;
+
+  factory ApplicationNextAction.fromJson(Json j) =>
+      ApplicationNextAction(type: j['type'] as String, purpose: j['purpose'] as String, reference: j['reference'] as String);
 }
 
 // ---- Onboarding (journey J1). ⚠️ Sandbox: eKey, CRB and Open Banking are simulated by the API.

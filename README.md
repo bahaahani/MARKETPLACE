@@ -13,21 +13,22 @@ Every customer feature works on **web and mobile**, in **English and Arabic (RTL
 
 | Feature | Web | Mobile | Sandbox caveats |
 |---|---|---|---|
-| **Marketplace: cars and property** | ✅ Search, filters, detail pages with "from BHD X / month", Islamic vs conventional comparison | ✅ | Demo catalog. Home finance is a calculator only (no home application yet) |
+| **Marketplace: cars and property** | ✅ Search, filters, detail pages with "from BHD X / month", Islamic vs conventional comparison | ✅ | Demo catalog |
 | **Finance calculator** (conventional, Murabaha, Ijara) | ✅ | ✅ | Illustrative rates. Slider ranges, steps and defaults come from `GET /api/v1/config` |
 | **Onboarding + pre-approval** (J1) | ✅ eKey step, consent, salary and obligations, pre-approval | ✅ | eKey simulated (any valid 9-digit CPR gives a fictional identity). Obligations are self-declared, no CRB / Open Banking call |
 | **Instant IMTIAZ card** (J3) | ✅ Eligibility, decision, masked virtual card, **My cards** on the account page | ✅ | No issuer or processor. Card number is always masked. "Add to wallet" is simulated |
 | **Apply for finance** (vehicle and personal; conventional and Murabaha) | ✅ Apply, decision (approve / refer / decline with reasons), accept, timeline | ✅ | Placeholder credit rules. Accepting e-signs and runs fulfilment to the end in one step. The Murabaha sequence (BCFC buys → owns → sells) is recorded in order |
+| **Home finance** (J4; conventional and Ijara Muntahia Bittamleek) | ✅ Apply from a property for sale, decision, accept, timeline; conventional waits for the TRESCO valuation fee | ✅ | Price from the catalog. Ijara: BCFC buys → lease starts; ownership transfers after the final rental (a future step). No real valuation, purchase or registration |
 | **Life-event bundles** (married, new baby, new job, ...) | ✅ Islamic / conventional bundle with budget check | ✅ | Placeholder amounts and premiums; some items are "coming soon" |
-| **Early settlement + autopay** ("My installments") | ✅ Settlement quote (fee or Ibra'), pay through checkout, autopay toggle | ✅ | Placeholder fee (1%) and Ibra' rule. Paying the exact quoted amount closes the contract for that customer ("Settled on…"); settling does not yet reduce obligations used for pre-approval. Autopay is a stored flag only |
+| **Early settlement + autopay** ("My installments") | ✅ Settlement quote (fee or Ibra'), pay through checkout, autopay toggle | ✅ | Placeholder fee (1%) and Ibra' rule. Paying the exact quoted amount closes the contract for that customer ("Settled on…") and takes its installment off the obligations used for pre-approval and decisions. Autopay is a stored flag only |
 | **Insurance: motor, travel, home** + **My policies** | ✅ Compare (cheapest first, Takaful filter), hold a quote, pay, policy issued | ✅ | Fictional insurers, illustrative pricing. A policy is issued only for a captured payment that matches the held quote |
-| **Checkout** (reservation deposit, valuation fee, premiums, settlement) | ✅ All Tap methods, sandbox confirm | ✅ | Sandbox gateway; no money moves |
+| **Checkout** (reservation deposit, valuation fee, premiums, settlement) | ✅ All Tap methods, sandbox confirm | ✅ | Sandbox gateway; no money moves. Deposits and valuation fees are priced by the server (`GET /api/v1/payments/price`); other amounts are refused |
 | **Dealer & broker portal** (J7) | ✅ Inventory with monthly prices, leads board, showroom: redeem a customer's pre-approval code and build an offer | Customer side only (share pre-approval code from the account screen) | No staff login (anyone can act as any dealer). Offers are not pushed to the customer's app. Web-first by design (desktop in showrooms) |
 | **Back-office console** (staff) | ✅ `/backoffice`: KPIs, credit officer review of referred applications, refunds of premiums that never became a policy, audit log | Customer side only ("Reviewed by credit officer" on the application) | No staff login (pick a role). Audit log in memory; refunds move no money. Web-only staff tool |
 | **Sandbox customer session** | ✅ HttpOnly cookie | ✅ `X-Sahel-Session` header | Stands in for eKey / OIDC login. Each session starts as the demo customer until onboarding |
 | **Suhail & Suhaila 2.0** (J8) | ✅ Chat button on customer pages: balance, next installment, settlement quote, cars by monthly budget, pre-approval, policies, cards, handoff; EN + AR (Gulf phrasings) | ✅ `/assistant` (home app bar) | ⚠️ Rules-based, no language model (`AssistantBrain` interface ready for an in-region model). Actions are links the customer confirms in the normal UI. Memory and rate limit in server memory |
 
-Not built yet (planned in the docs): real login (customer and staff), home finance applications (Ijara), claims, rewards redemption, a language model behind Suhail / Suhaila, push notifications, Huawei-specific services.
+Not built yet (planned in the docs): real login (customer and staff), claims, rewards redemption, a language model behind Suhail / Suhaila, push notifications, Huawei-specific services.
 
 ## Run it
 
@@ -90,11 +91,12 @@ cd apps/mobile && flutter analyze && flutter test    # widget + API-contract tes
 | `config.ts` | Product rules for the apps (`GET /api/v1/config`) |
 | `catalog.ts`, `search.ts` | Demo cars and properties, search and filters |
 | `cards.ts` | Card eligibility, instant decision, sandbox issuer |
-| `origination.ts` | Finance applications: decision rules, status machine, Murabaha sequence, idempotency |
+| `origination.ts` | Finance applications: decision rules, status machine, Murabaha and Ijara sequences, idempotency |
 | `bundles.ts` | Life-event bundles |
 | `settlement.ts` | Early-settlement quotes (conventional fee, Murabaha Ibra', Ijara) and autopay settings |
 | `insurance*.ts`, `policies.ts` | Motor, travel and home quotes; held policy quotes bound to captured payments |
-| `payments.ts` | Payment state machine and the sandbox gateway |
+| `payments.ts`, `payment-amounts.ts` | Payment state machine and the sandbox gateway; server-priced amounts (deposit, ⚠️ valuation fee) |
+| `home-finance.ts` | Home finance applications from the catalog (conventional, Ijara) |
 | `dealer.ts` | Dealer inventory, leads pipeline, pre-approval share tokens, offers |
 | `backoffice.ts` | Back office: staff roles and auth plug-in, credit review queue and decisions, premium refunds, audit log, KPIs |
 | `assistant/` | Suhail & Suhaila: Arabic normalization, EN / AR intent rules, read-only tools over existing domain functions, replies with cards and actions, PII redaction, rate limit and conversation memory; ⚠️ `RulesBrain` until an LLM brain is plugged in |

@@ -2,8 +2,9 @@ import 'api/api_client.dart';
 import 'models.dart';
 import 'models/bundles.dart';
 import 'models/config.dart';
-import 'models/insurance.dart';
 import '../features/assistant/assistant_models.dart';
+import 'models/insurance.dart';
+import 'models/payment_price.dart';
 
 /// Everything the app needs from the backend. The API implementation calls the same
 /// endpoints as the Next.js web app, so both channels show identical data and pricing.
@@ -48,13 +49,14 @@ abstract interface class SahelRepository {
   /// Virtual cards issued in this sandbox session.
   Future<List<VirtualCard>> myCards();
 
-  /// Apply for vehicle finance (vehicleId + downPaymentFils) or personal finance (amountFils).
-  /// The API decides immediately.
+  /// Apply for vehicle finance (vehicleId + downPaymentFils), home finance (propertyId + downPaymentFils)
+  /// or personal finance (amountFils). The API decides immediately.
   Future<FinanceApplication> applyForFinance({
     required String productLine,
     required FinanceStructure structure,
     required int tenureMonths,
     String? vehicleId,
+    String? propertyId,
     int? downPaymentFils,
     int? amountFils,
     required String idempotencyKey,
@@ -62,7 +64,8 @@ abstract interface class SahelRepository {
   Future<FinanceApplication> application(String id);
   Future<List<FinanceApplication>> applications();
 
-  /// Accept the offer and e-sign (sandbox).
+  /// Accept the offer and e-sign (sandbox). Calling it again continues an accepted application where it stopped
+  /// (home finance: after the valuation fee is paid).
   Future<FinanceApplication> acceptApplication(String id);
 
   /// Life-Event Engine: curated events, and a priced bundle checked against the DBR headroom.
@@ -109,6 +112,10 @@ abstract interface class SahelRepository {
 
   /// Suhail & Suhaila: one message; the reply's suggested actions are links the customer confirms (⚠️ sandbox).
   Future<AssistantReply> sendAssistantMessage({required String text, required String locale, required AssistantPersona persona});
+
+  /// The server amount for a server-priced payment (reservation deposit, valuation fee). Other purposes throw
+  /// ApiException(422, NOT_SERVER_PRICED).
+  Future<PaymentPrice> paymentPrice({required String purpose, required String reference});
 }
 
 class ApiSahelRepository implements SahelRepository {
@@ -218,6 +225,7 @@ class ApiSahelRepository implements SahelRepository {
     required FinanceStructure structure,
     required int tenureMonths,
     String? vehicleId,
+    String? propertyId,
     int? downPaymentFils,
     int? amountFils,
     required String idempotencyKey,
@@ -229,6 +237,7 @@ class ApiSahelRepository implements SahelRepository {
           'structure': structure.name,
           'tenureMonths': tenureMonths,
           'vehicleId': ?vehicleId,
+          'propertyId': ?propertyId,
           'downPaymentFils': ?downPaymentFils,
           'amountFils': ?amountFils,
         },
@@ -316,4 +325,8 @@ class ApiSahelRepository implements SahelRepository {
   @override
   Future<AssistantReply> sendAssistantMessage({required String text, required String locale, required AssistantPersona persona}) async =>
       AssistantReply.fromJson(await _api.post('/assistant/messages', {'text': text, 'locale': locale, 'persona': persona.wire}) as Json);
+
+  @override
+  Future<PaymentPrice> paymentPrice({required String purpose, required String reference}) async =>
+      PaymentPrice.fromJson(await _api.get('/payments/price', query: {'purpose': purpose, 'reference': reference}) as Json);
 }
