@@ -406,6 +406,119 @@ class Payment {
       Payment(id: j['id'] as String, status: j['status'] as String, amountFils: j['amountFils'] as int);
 }
 
+// ---- Onboarding (journey J1). ⚠️ Sandbox: eKey, CRB and Open Banking are simulated by the API.
+
+class EKeyIdentity {
+  const EKeyIdentity({required this.name, required this.cprMasked, required this.nationality, required this.provider});
+  final Localized name;
+
+  /// Last 3 digits only; the API never returns the full CPR.
+  final String cprMasked;
+  final Localized nationality;
+  final String provider;
+
+  factory EKeyIdentity.fromJson(Json j) => EKeyIdentity(
+        name: Localized.fromJson(j['name'] as Json),
+        cprMasked: j['cprMasked'] as String,
+        nationality: Localized.fromJson(j['nationality'] as Json),
+        provider: j['provider'] as String,
+      );
+}
+
+class ConsentRecord {
+  const ConsentRecord({required this.scopes, required this.grantedAt, required this.expiresAt});
+  final List<String> scopes;
+  final DateTime grantedAt;
+  final DateTime expiresAt;
+
+  factory ConsentRecord.fromJson(Json j) => ConsentRecord(
+        scopes: [for (final s in j['scopes'] as List) s as String],
+        grantedAt: DateTime.parse(j['grantedAt'] as String),
+        expiresAt: DateTime.parse(j['expiresAt'] as String),
+      );
+}
+
+class OnboardingResult {
+  const OnboardingResult({required this.preApproval, required this.consent});
+  final PreApproval preApproval;
+  final ConsentRecord consent;
+
+  factory OnboardingResult.fromJson(Json j) => OnboardingResult(
+        preApproval: PreApproval.fromJson(j['preApproval'] as Json),
+        consent: ConsentRecord.fromJson(j['consent'] as Json),
+      );
+}
+
+// ---- Instant card (journey J3). ⚠️ Sandbox: no processor; the number is always masked.
+
+class WalletProvisioning {
+  const WalletProvisioning({required this.applePay, required this.googlePay, required this.samsungPay});
+  final bool applePay;
+  final bool googlePay;
+  final bool samsungPay;
+
+  factory WalletProvisioning.fromJson(Json j) => WalletProvisioning(
+        applePay: j['applePay'] as bool,
+        googlePay: j['googlePay'] as bool,
+        samsungPay: j['samsungPay'] as bool,
+      );
+}
+
+class VirtualCard {
+  const VirtualCard({
+    required this.id,
+    required this.cardId,
+    required this.name,
+    required this.panMasked,
+    required this.expiry,
+    required this.status,
+    required this.limitFils,
+    required this.gradient,
+    required this.wallet,
+  });
+
+  final String id;
+  final String cardId;
+  final Localized name;
+
+  /// "5xxx xxxx xxxx 1234": a full PAN or CVV never reaches the app.
+  final String panMasked;
+  final String expiry;
+  final String status;
+  final int limitFils;
+  final List<String> gradient;
+  final WalletProvisioning wallet;
+
+  factory VirtualCard.fromJson(Json j) => VirtualCard(
+        id: j['id'] as String,
+        cardId: j['cardId'] as String,
+        name: Localized.fromJson(j['name'] as Json),
+        panMasked: j['panMasked'] as String,
+        expiry: j['expiry'] as String,
+        status: j['status'] as String,
+        limitFils: j['limitFils'] as int,
+        gradient: [for (final g in j['gradient'] as List) g as String],
+        wallet: WalletProvisioning.fromJson(j['wallet'] as Json),
+      );
+}
+
+class CardApplication {
+  const CardApplication({required this.decision, required this.cardId, this.virtualCard, this.reason});
+  final String decision;
+  final String cardId;
+  final VirtualCard? virtualCard;
+  final String? reason;
+
+  bool get approved => decision == 'APPROVED';
+
+  factory CardApplication.fromJson(Json j) => CardApplication(
+        decision: j['decision'] as String,
+        cardId: j['cardId'] as String,
+        virtualCard: j['virtualCard'] == null ? null : VirtualCard.fromJson(j['virtualCard'] as Json),
+        reason: j['reason'] as String?,
+      );
+}
+
 /// Short-lived code the customer shows a dealer (POST /me/preapproval-token). The dealer redeems it
 /// for first name and limits only, never salary or CPR.
 class PreApprovalShare {

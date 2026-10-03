@@ -1,10 +1,13 @@
 import {
   assertDealerAccess,
+  CardApplicationError,
   DealerError,
   LeadStore,
+  OnboardingError,
   PaymentValidationError,
   PreApprovalTokenStore,
   QuoteError,
+  SandboxCardIssuer,
   SandboxDealerAuth,
   SandboxPaymentGateway,
   type DealerAuthProvider,
@@ -41,6 +44,8 @@ export function handleError(e: unknown) {
   if (e instanceof QuoteError) return problem(422, e.code, e.message);
   if (e instanceof DealerError) return problem(DEALER_STATUS[e.code], e.code, e.message);
   if (e instanceof PaymentValidationError) return problem(422, 'PAYMENT_INVALID', e.message);
+  if (e instanceof OnboardingError) return problem(422, e.code, e.message);
+  if (e instanceof CardApplicationError) return problem(e.code === 'CARD_NOT_FOUND' ? 404 : 422, e.code, e.message);
   if (e instanceof SyntaxError) return problem(400, 'BAD_JSON', 'request body must be valid JSON');
   console.error(e);
   return problem(500, 'INTERNAL', 'unexpected error');
@@ -56,6 +61,7 @@ const g = globalThis as unknown as {
   __sahelPayments?: SandboxPaymentGateway;
   __sahelLeads?: LeadStore;
   __sahelPreApprovalTokens?: PreApprovalTokenStore;
+  __sahelCards?: SandboxCardIssuer;
 };
 /** Sandbox payments, standing in for the Tap server integration. */
 export const payments = (g.__sahelPayments ??= new SandboxPaymentGateway());
@@ -63,6 +69,8 @@ export const payments = (g.__sahelPayments ??= new SandboxPaymentGateway());
 export const leads = (g.__sahelLeads ??= new LeadStore());
 /** ⚠️ Sandbox pre-approval share tokens, standing in for a short-TTL store. */
 export const preApprovalTokens = (g.__sahelPreApprovalTokens ??= new PreApprovalTokenStore());
+/** ⚠️ Sandbox card issuer: virtual cards issued in this server session (no processor, no real PAN). */
+export const cardIssuer = (g.__sahelCards ??= new SandboxCardIssuer());
 
 /** ⚠️ Sandbox: no staff login. Production swaps in a provider that verifies partner-SSO tokens. */
 const dealerAuth: DealerAuthProvider = new SandboxDealerAuth();

@@ -18,15 +18,15 @@ paths:
     get:
       summary: Search vehicles (with "from BHD X / month" on each listing)
       parameters:
-        - { name: q, in: query, schema: { type: string } }
-        - { name: condition, in: query, schema: { enum: [new, used] } }
-        - { name: bodyType, in: query, schema: { enum: [sedan, suv, hatchback, pickup, coupe] } }
-        - { name: fuel, in: query, schema: { enum: [petrol, hybrid, electric] } }
-        - { name: make, in: query, schema: { type: string } }
-        - { name: maxPriceFils, in: query, schema: { type: integer } }
-        - { name: maxMonthlyFils, in: query, schema: { type: integer } }
-        - { name: structure, in: query, schema: { $ref: '#/components/schemas/FinanceStructure' } }
-        - { name: sort, in: query, schema: { enum: [price-asc, price-desc, year-desc, mileage-asc] } }
+        - {name: q, in: query, schema: {type: string}}
+        - {name: condition, in: query, schema: {enum: [new, used]}}
+        - {name: bodyType, in: query, schema: {enum: [sedan, suv, hatchback, pickup, coupe]}}
+        - {name: fuel, in: query, schema: {enum: [petrol, hybrid, electric]}}
+        - {name: make, in: query, schema: {type: string}}
+        - {name: maxPriceFils, in: query, schema: {type: integer}}
+        - {name: maxMonthlyFils, in: query, schema: {type: integer}}
+        - {name: structure, in: query, schema: {$ref: '#/components/schemas/FinanceStructure'}}
+        - {name: sort, in: query, schema: {enum: [price-asc, price-desc, year-desc, mileage-asc]}}
       responses:
         '200':
           description: OK
@@ -38,24 +38,24 @@ paths:
                   data:
                     type: object
                     properties:
-                      items: { type: array, items: { $ref: '#/components/schemas/VehicleListing' } }
-                      total: { type: integer }
+                      items: {type: array, items: {$ref: '#/components/schemas/VehicleListing'}}
+                      total: {type: integer}
   /vehicles/{id}:
     get:
       summary: Vehicle detail
-      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
       responses:
-        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/VehicleListing' } } } } } }
-        '404': { $ref: '#/components/responses/Error' }
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/VehicleListing'}}}}}}
+        '404': {$ref: '#/components/responses/Error'}
   /properties:
     get:
       summary: Search properties
       parameters:
-        - { name: purpose, in: query, schema: { enum: [sale, rent] } }
-        - { name: type, in: query, schema: { enum: [villa, apartment, townhouse, land, office] } }
-        - { name: minBedrooms, in: query, schema: { type: integer } }
-        - { name: maxPriceFils, in: query, schema: { type: integer } }
-        - { name: q, in: query, schema: { type: string } }
+        - {name: purpose, in: query, schema: {enum: [sale, rent]}}
+        - {name: type, in: query, schema: {enum: [villa, apartment, townhouse, land, office]}}
+        - {name: minBedrooms, in: query, schema: {type: integer}}
+        - {name: maxPriceFils, in: query, schema: {type: integer}}
+        - {name: q, in: query, schema: {type: string}}
       responses:
         '200':
           description: OK
@@ -67,20 +67,20 @@ paths:
                   data:
                     type: object
                     properties:
-                      items: { type: array, items: { $ref: '#/components/schemas/PropertyListing' } }
-                      total: { type: integer }
+                      items: {type: array, items: {$ref: '#/components/schemas/PropertyListing'}}
+                      total: {type: integer}
   /properties/{id}:
     get:
       summary: Property detail
-      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
       responses:
-        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/PropertyListing' } } } } } }
-        '404': { $ref: '#/components/responses/Error' }
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/PropertyListing'}}}}}}
+        '404': {$ref: '#/components/responses/Error'}
   /cards:
     get:
       summary: IMTIAZ card products
       responses:
-        '200': { description: OK }
+        '200': {description: OK}
   /quotes/finance:
     post:
       summary: Finance quote. Omit `structure` to get every offered structure side by side.
@@ -92,11 +92,11 @@ paths:
               type: object
               required: [productLine, assetPriceFils, tenureMonths]
               properties:
-                productLine: { enum: [vehicle, personal, home] }
-                assetPriceFils: { type: integer, minimum: 1 }
-                downPaymentFils: { type: integer, minimum: 0, default: 0 }
-                tenureMonths: { type: integer }
-                structure: { $ref: '#/components/schemas/FinanceStructure' }
+                productLine: {enum: [vehicle, personal, home]}
+                assetPriceFils: {type: integer, minimum: 1}
+                downPaymentFils: {type: integer, minimum: 0, default: 0}
+                tenureMonths: {type: integer}
+                structure: {$ref: '#/components/schemas/FinanceStructure'}
       responses:
         '200':
           description: OK
@@ -108,12 +108,12 @@ paths:
                   data:
                     type: object
                     properties:
-                      quotes: { type: array, items: { $ref: '#/components/schemas/FinanceQuote' } }
-                      limits: { $ref: '#/components/schemas/FinanceLimits' }
-        '400': { $ref: '#/components/responses/Error' }
+                      quotes: {type: array, items: {$ref: '#/components/schemas/FinanceQuote'}}
+                      limits: {$ref: '#/components/schemas/FinanceLimits'}
+        '400': {$ref: '#/components/responses/Error'}
         '422':
           description: Business rule violated (STRUCTURE_NOT_OFFERED, TENURE_OUT_OF_RANGE, DOWN_PAYMENT_TOO_LOW, DOWN_PAYMENT_TOO_HIGH, INVALID_AMOUNT)
-          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
   /insurance/motor-quotes:
     post:
       summary: Motor insurance comparison (sorted by premium)
@@ -125,23 +125,23 @@ paths:
               type: object
               required: [vehicleValueFils]
               properties:
-                vehicleValueFils: { type: integer, minimum: 1 }
-                cover: { enum: [comprehensive, third-party], default: comprehensive }
-                takafulOnly: { type: boolean }
-                agencyRepair: { type: boolean }
+                vehicleValueFils: {type: integer, minimum: 1}
+                cover: {enum: [comprehensive, third-party], default: comprehensive}
+                takafulOnly: {type: boolean}
+                agencyRepair: {type: boolean}
       responses:
-        '200': { description: OK }
-        '400': { $ref: '#/components/responses/Error' }
+        '200': {description: OK}
+        '400': {$ref: '#/components/responses/Error'}
   /me:
     get:
       summary: Customer overview (pre-approval, contracts, garage). Demo customer until eKey login exists.
       responses:
-        '200': { description: OK }
+        '200': {description: OK}
   /payments:
     post:
       summary: Create a payment (sandbox; production wraps Tap Payments server-side)
       parameters:
-        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 8 } }
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8}}
       requestBody:
         required: true
         content:
@@ -150,19 +150,19 @@ paths:
               type: object
               required: [amountFils, method, purpose, reference]
               properties:
-                amountFils: { type: integer, minimum: 1 }
-                method: { enum: [card, click_to_pay, apple_pay, google_pay, samsung_pay, benefitpay] }
-                purpose: { enum: [reservation_deposit, installment, insurance_premium, early_settlement, valuation_fee] }
-                reference: { type: string }
+                amountFils: {type: integer, minimum: 1}
+                method: {enum: [card, click_to_pay, apple_pay, google_pay, samsung_pay, benefitpay]}
+                purpose: {enum: [reservation_deposit, installment, insurance_premium, early_settlement, valuation_fee]}
+                reference: {type: string}
       responses:
-        '201': { description: Created (status INITIATED, with nextAction) }
-        '422': { $ref: '#/components/responses/Error' }
+        '201': {description: Created (status INITIATED, with nextAction): null}
+        '422': {$ref: '#/components/responses/Error'}
   /payments/{id}/confirm:
     post:
       summary: Sandbox stand-in for "customer completed the Tap flow and the webhook verified it"
-      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
       responses:
-        '200': { description: OK (status CAPTURED) }
+        '200': {description: OK (status CAPTURED)}
   /me/preapproval-token:
     post:
       summary: Share my pre-approval with a dealer. Returns a short-lived (15 min), random, opaque token to show as text or QR.
@@ -174,8 +174,8 @@ paths:
           description: Created
           content:
             application/json:
-              schema: { type: object, properties: { data: { $ref: '#/components/schemas/PreApprovalShare' } } }
-        '422': { description: NO_PREAPPROVAL (no vehicle headroom to share), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+              schema: {type: object, properties: {data: {$ref: '#/components/schemas/PreApprovalShare'}}}
+        '422': {description: NO_PREAPPROVAL (no vehicle headroom to share), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /dealer/preapproval/redeem:
     post:
       summary: "Dealer portal: redeem a customer's pre-approval token for the minimal summary"
@@ -188,21 +188,21 @@ paths:
               type: object
               required: [sellerId, token]
               properties:
-                sellerId: { type: string, description: 'nmc, tac or demo-dealer' }
-                token: { type: string, description: Case-insensitive; spaces and dashes are ignored }
+                sellerId: {type: string, description: 'nmc, tac or demo-dealer'}
+                token: {type: string, description: Case-insensitive; spaces and dashes are ignored}
       responses:
         '200':
           description: OK
           content:
             application/json:
-              schema: { type: object, properties: { data: { $ref: '#/components/schemas/SharedPreApproval' } } }
-        '400': { $ref: '#/components/responses/Error' }
-        '404': { description: TOKEN_NOT_FOUND or UNKNOWN_DEALER, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
-        '410': { description: TOKEN_EXPIRED, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+              schema: {type: object, properties: {data: {$ref: '#/components/schemas/SharedPreApproval'}}}
+        '400': {$ref: '#/components/responses/Error'}
+        '404': {description: TOKEN_NOT_FOUND or UNKNOWN_DEALER, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '410': {description: TOKEN_EXPIRED, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /dealer/{sellerId}/inventory:
     get:
       summary: "Dealer portal: the dealer's vehicles with monthly prices (conventional and Murabaha) and stock stats"
-      parameters: [{ $ref: '#/components/parameters/SellerId' }]
+      parameters: [$ref: '#/components/parameters/SellerId']
       responses:
         '200':
           description: OK
@@ -214,26 +214,26 @@ paths:
                   data:
                     type: object
                     properties:
-                      seller: { type: object }
+                      seller: {type: object}
                       items:
                         type: array
                         items:
                           allOf:
-                            - { $ref: '#/components/schemas/VehicleListing' }
-                            - { type: object, properties: { fromMonthlyMurabahaFils: { type: integer } } }
+                            - {$ref: '#/components/schemas/VehicleListing'}
+                            - {type: object, properties: {fromMonthlyMurabahaFils: {type: integer}}}
                       stats:
                         type: object
                         properties:
-                          count: { type: integer }
-                          newCount: { type: integer }
-                          usedCount: { type: integer }
-                          avgPriceFils: { type: integer }
-                          totalValueFils: { type: integer }
-        '404': { $ref: '#/components/responses/Error' }
+                          count: {type: integer}
+                          newCount: {type: integer}
+                          usedCount: {type: integer}
+                          avgPriceFils: {type: integer}
+                          totalValueFils: {type: integer}
+        '404': {$ref: '#/components/responses/Error'}
   /dealer/{sellerId}/leads:
     get:
       summary: "Dealer portal: leads (customers who reserved, applied for, or viewed a car), newest first, with pipeline counts"
-      parameters: [{ $ref: '#/components/parameters/SellerId' }]
+      parameters: [$ref: '#/components/parameters/SellerId']
       responses:
         '200':
           description: OK
@@ -245,26 +245,26 @@ paths:
                   data:
                     type: object
                     properties:
-                      items: { type: array, items: { $ref: '#/components/schemas/Lead' } }
-                      total: { type: integer }
+                      items: {type: array, items: {$ref: '#/components/schemas/Lead'}}
+                      total: {type: integer}
                       stats:
                         type: object
                         properties:
-                          total: { type: integer }
-                          open: { type: integer }
-                          won: { type: integer }
-                          lost: { type: integer }
-                          byStatus: { type: object, additionalProperties: { type: integer } }
-        '404': { $ref: '#/components/responses/Error' }
+                          total: {type: integer}
+                          open: {type: integer}
+                          won: {type: integer}
+                          lost: {type: integer}
+                          byStatus: {type: object, additionalProperties: {type: integer}}
+        '404': {$ref: '#/components/responses/Error'}
   /dealer/{sellerId}/leads/{leadId}:
     parameters:
-      - { $ref: '#/components/parameters/SellerId' }
-      - { name: leadId, in: path, required: true, schema: { type: string } }
+      - {$ref: '#/components/parameters/SellerId'}
+      - {name: leadId, in: path, required: true, schema: {type: string}}
     get:
       summary: "Dealer portal: one lead"
       responses:
-        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/Lead' } } } } } }
-        '404': { $ref: '#/components/responses/Error' }
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/Lead'}}}}}}
+        '404': {$ref: '#/components/responses/Error'}
     patch:
       summary: "Dealer portal: move a lead along NEW → CONTACTED → TEST_DRIVE → OFFER_SENT → WON / LOST"
       description: Allowed moves are NEW→CONTACTED|LOST, CONTACTED→TEST_DRIVE|OFFER_SENT|LOST, TEST_DRIVE→OFFER_SENT|LOST, OFFER_SENT→WON|LOST. WON and LOST are final.
@@ -276,12 +276,12 @@ paths:
               type: object
               required: [status]
               properties:
-                status: { $ref: '#/components/schemas/LeadStatus' }
+                status: {$ref: '#/components/schemas/LeadStatus'}
       responses:
-        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/Lead' } } } } } }
-        '400': { $ref: '#/components/responses/Error' }
-        '404': { description: LEAD_NOT_FOUND (also for another dealer's lead), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
-        '409': { description: INVALID_TRANSITION, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/Lead'}}}}}}
+        '400': {$ref: '#/components/responses/Error'}
+        '404': {description: LEAD_NOT_FOUND (also for another dealer's lead), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '409': {description: INVALID_TRANSITION, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /dealer/offers:
     post:
       summary: "Dealer portal: price a car for a customer who shared their pre-approval, every structure side by side, checked against the shared limit"
@@ -297,12 +297,12 @@ paths:
               type: object
               required: [sellerId, token, vehicleId, downPaymentFils, tenureMonths]
               properties:
-                sellerId: { type: string }
-                token: { type: string }
-                vehicleId: { type: string, description: Must be in this dealer's inventory }
-                downPaymentFils: { type: integer, minimum: 0 }
-                tenureMonths: { type: integer }
-                structures: { type: array, items: { $ref: '#/components/schemas/FinanceStructure' }, description: Defaults to every structure offered for vehicles }
+                sellerId: {type: string}
+                token: {type: string}
+                vehicleId: {type: string, description: Must be in this dealer's inventory}
+                downPaymentFils: {type: integer, minimum: 0}
+                tenureMonths: {type: integer}
+                structures: {type: array, items: {$ref: '#/components/schemas/FinanceStructure'}, description: Defaults to every structure offered for vehicles}
       responses:
         '200':
           description: OK
@@ -314,25 +314,106 @@ paths:
                   data:
                     type: object
                     properties:
-                      sellerId: { type: string }
-                      vehicle: { $ref: '#/components/schemas/VehicleListing' }
-                      customer: { $ref: '#/components/schemas/SharedPreApproval' }
+                      sellerId: {type: string}
+                      vehicle: {$ref: '#/components/schemas/VehicleListing'}
+                      customer: {$ref: '#/components/schemas/SharedPreApproval'}
                       quotes:
                         type: array
                         items:
                           allOf:
-                            - { $ref: '#/components/schemas/FinanceQuote' }
+                            - {$ref: '#/components/schemas/FinanceQuote'}
                             - type: object
                               properties:
-                                withinFinanceLimit: { type: boolean }
-                                withinMonthlyLimit: { type: boolean }
-                                withinLimit: { type: boolean }
-                      withinLimit: { type: boolean, description: At least one structure fits }
-                      createdAt: { type: string, format: date-time }
-        '400': { $ref: '#/components/responses/Error' }
-        '404': { description: TOKEN_NOT_FOUND, VEHICLE_NOT_FOUND or UNKNOWN_DEALER, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
-        '410': { description: TOKEN_EXPIRED, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
-        '422': { description: VEHICLE_NOT_IN_INVENTORY or a quote rule (DOWN_PAYMENT_TOO_LOW, TENURE_OUT_OF_RANGE, ...), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+                                withinFinanceLimit: {type: boolean}
+                                withinMonthlyLimit: {type: boolean}
+                                withinLimit: {type: boolean}
+                      withinLimit: {type: boolean, description: At least one structure fits}
+                      createdAt: {type: string, format: date-time}
+        '400': {$ref: '#/components/responses/Error'}
+        '404': {description: TOKEN_NOT_FOUND, VEHICLE_NOT_FOUND or UNKNOWN_DEALER: null, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '410': {description: TOKEN_EXPIRED, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {description: VEHICLE_NOT_IN_INVENTORY or a quote rule (DOWN_PAYMENT_TOO_LOW, TENURE_OUT_OF_RANGE: null, '...)': null, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /onboarding/ekey:
+    post:
+      summary: "Log in with eKey (SANDBOX, simulated): any valid 9-digit CPR returns a fictional verified identity. Only the masked CPR is returned"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cpr]
+              properties:
+                cpr: {type: string, pattern: '^\d{9}$'}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/EKeyIdentity'}}}}}}
+        '400': {$ref: '#/components/responses/Error'}
+        '422':
+          description: INVALID_CPR (not exactly 9 digits)
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+  /onboarding/pre-approval:
+    post:
+      summary: "Live pre-approval at the end of onboarding (journey J1). Records the consent (valid 90 days) and returns indicative limits. SANDBOX: no CRB or Open Banking call"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [monthlySalaryFils, consentScopes]
+              properties:
+                monthlySalaryFils: {type: integer, minimum: 1}
+                existingObligationsFils: {type: integer, minimum: 0, default: 0}
+                employer: {type: string, maxLength: 120}
+                consentScopes:
+                  type: array
+                  description: Both scopes are required
+                  items: {$ref: '#/components/schemas/ConsentScope'}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/OnboardingPreApproval'}}}}}}
+        '400': {$ref: '#/components/responses/Error'}
+        '422':
+          description: CONSENT_REQUIRED (missing or partial consent), CONSENT_EXPIRED, INVALID_SALARY, INVALID_OBLIGATIONS
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+  /cards/{id}/apply:
+    post:
+      summary: "Instant IMTIAZ card application (journey J3, SANDBOX). APPROVED issues a virtual card with a masked number (never a full PAN or CVV); DECLINED gives a reason. Both return 200"
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: false
+        description: Optional. Financials default to the signed-in (demo) customer's, since the eligibility check comes from pre-approval
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                monthlySalaryFils: {type: integer, minimum: 1}
+                existingObligationsFils: {type: integer, minimum: 0}
+                requestedLimitFils: {type: integer, minimum: 1, description: Capped at the pre-approved card limit}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/CardApplication'}}}}}}
+        '404':
+          description: CARD_NOT_FOUND
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+        '422':
+          description: INVALID_SALARY, INVALID_OBLIGATIONS
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+  /me/cards:
+    get:
+      summary: Virtual cards issued in this sandbox session (in-memory; masked numbers only)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: {type: array, items: {$ref: '#/components/schemas/VirtualCard'}}
+                      total: {type: integer}
 components:
   parameters:
     SellerId:
@@ -340,11 +421,11 @@ components:
       in: path
       required: true
       description: Dealer (nmc, tac, demo-dealer). ⚠️ Sandbox has no staff login.
-      schema: { type: string }
+      schema: {type: string}
   responses:
     Error:
       description: Error
-      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
   schemas:
     Error:
       type: object
@@ -352,96 +433,167 @@ components:
         error:
           type: object
           properties:
-            code: { type: string }
-            message: { type: string }
+            code: {type: string}
+            message: {type: string}
     Localized:
       type: object
       required: [en, ar]
-      properties: { en: { type: string }, ar: { type: string } }
+      properties: {en: {type: string}, ar: {type: string}}
     FinanceStructure:
       enum: [conventional, murabaha, ijara]
     VehicleListing:
       type: object
       properties:
-        id: { type: string }
-        make: { type: string }
-        model: { type: string }
-        trim: { type: string }
-        year: { type: integer }
-        condition: { enum: [new, used] }
-        mileageKm: { type: integer }
-        priceFils: { type: integer }
-        bodyType: { type: string }
-        fuel: { type: string }
-        seats: { type: integer }
-        color: { $ref: '#/components/schemas/Localized' }
-        seller: { type: object }
-        inspected: { type: boolean }
-        accentHue: { type: integer }
-        fromMonthlyFils: { type: integer }
+        id: {type: string}
+        make: {type: string}
+        model: {type: string}
+        trim: {type: string}
+        year: {type: integer}
+        condition: {enum: [new, used]}
+        mileageKm: {type: integer}
+        priceFils: {type: integer}
+        bodyType: {type: string}
+        fuel: {type: string}
+        seats: {type: integer}
+        color: {$ref: '#/components/schemas/Localized'}
+        seller: {type: object}
+        inspected: {type: boolean}
+        accentHue: {type: integer}
+        fromMonthlyFils: {type: integer}
     PropertyListing:
       type: object
       properties:
-        id: { type: string }
-        title: { $ref: '#/components/schemas/Localized' }
-        area: { $ref: '#/components/schemas/Localized' }
-        type: { type: string }
-        purpose: { enum: [sale, rent] }
-        priceFils: { type: integer, description: Sale price, or monthly rent when purpose is rent }
-        bedrooms: { type: integer }
-        bathrooms: { type: integer }
-        sizeSqm: { type: integer }
-        valued: { type: boolean }
-        fromMonthlyFils: { type: integer }
+        id: {type: string}
+        title: {$ref: '#/components/schemas/Localized'}
+        area: {$ref: '#/components/schemas/Localized'}
+        type: {type: string}
+        purpose: {enum: [sale, rent]}
+        priceFils: {type: integer, description: Sale price, or monthly rent when purpose is rent: null}
+        bedrooms: {type: integer}
+        bathrooms: {type: integer}
+        sizeSqm: {type: integer}
+        valued: {type: boolean}
+        fromMonthlyFils: {type: integer}
     FinanceQuote:
       type: object
       properties:
-        structure: { $ref: '#/components/schemas/FinanceStructure' }
-        financedFils: { type: integer }
-        tenureMonths: { type: integer }
-        monthlyFils: { type: integer }
-        finalInstallmentFils: { type: integer }
-        totalPayableFils: { type: integer }
-        costOfFinanceFils: { type: integer, description: Interest (conventional) or profit (Islamic) }
-        ratePct: { type: number }
-        rateBasis: { enum: [apr, flat, profit] }
-        aprPct: { type: number, description: APR computed from cash flows, comparable across structures }
-        salePriceFils: { type: integer, description: Murabaha only }
+        structure: {$ref: '#/components/schemas/FinanceStructure'}
+        financedFils: {type: integer}
+        tenureMonths: {type: integer}
+        monthlyFils: {type: integer}
+        finalInstallmentFils: {type: integer}
+        totalPayableFils: {type: integer}
+        costOfFinanceFils: {type: integer, description: Interest (conventional) or profit (Islamic)}
+        ratePct: {type: number}
+        rateBasis: {enum: [apr, flat, profit]}
+        aprPct: {type: number, description: APR computed from cash flows, comparable across structures: null}
+        salePriceFils: {type: integer, description: Murabaha only}
     FinanceLimits:
       type: object
       properties:
-        minTenureMonths: { type: integer }
-        maxTenureMonths: { type: integer }
-        minDownPaymentFils: { type: integer }
-        maxDownPaymentFils: { type: integer }
-        structures: { type: array, items: { $ref: '#/components/schemas/FinanceStructure' } }
+        minTenureMonths: {type: integer}
+        maxTenureMonths: {type: integer}
+        minDownPaymentFils: {type: integer}
+        maxDownPaymentFils: {type: integer}
+        structures: {type: array, items: {$ref: '#/components/schemas/FinanceStructure'}}
     PreApprovalShare:
       type: object
       properties:
-        token: { type: string, description: 'Random and opaque, formatted XXXX-XXXX (Crockford base32)' }
-        expiresAt: { type: string, format: date-time }
-        ttlSeconds: { type: integer }
+        token: {type: string, description: 'Random and opaque, formatted XXXX-XXXX (Crockford base32)'}
+        expiresAt: {type: string, format: date-time}
+        ttlSeconds: {type: integer}
     SharedPreApproval:
       type: object
       description: Everything a dealer learns from a token (data minimization; no salary, CPR or obligations).
       properties:
-        firstName: { $ref: '#/components/schemas/Localized' }
-        vehicleLimitFils: { type: integer }
-        maxMonthlyFils: { type: integer }
-        validUntil: { type: string, format: date, description: Pre-approval validity }
-        tokenExpiresAt: { type: string, format: date-time }
+        firstName: {$ref: '#/components/schemas/Localized'}
+        vehicleLimitFils: {type: integer}
+        maxMonthlyFils: {type: integer}
+        validUntil: {type: string, format: date, description: Pre-approval validity}
+        tokenExpiresAt: {type: string, format: date-time}
     LeadStatus:
       enum: [NEW, CONTACTED, TEST_DRIVE, OFFER_SENT, WON, LOST]
     Lead:
       type: object
       properties:
-        id: { type: string }
-        sellerId: { type: string }
-        vehicleId: { type: string }
-        vehicleTitle: { type: string }
-        customerName: { $ref: '#/components/schemas/Localized' }
-        source: { enum: [reserved, applied, viewed] }
-        status: { $ref: '#/components/schemas/LeadStatus' }
-        preApproved: { type: boolean }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
+        id: {type: string}
+        sellerId: {type: string}
+        vehicleId: {type: string}
+        vehicleTitle: {type: string}
+        customerName: {$ref: '#/components/schemas/Localized'}
+        source: {enum: [reserved, applied, viewed]}
+        status: {$ref: '#/components/schemas/LeadStatus'}
+        preApproved: {type: boolean}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    ConsentScope:
+      enum: [CRB, OPEN_BANKING]
+    EKeyIdentity:
+      type: object
+      properties:
+        provider: {const: ekey-sandbox}
+        verified: {type: boolean}
+        name: {$ref: '#/components/schemas/Localized'}
+        cprMasked: {type: string, example: '******345', description: Last 3 digits only}
+        nationality: {$ref: '#/components/schemas/Localized'}
+        verifiedAt: {type: string, format: date-time}
+    ConsentRecord:
+      type: object
+      properties:
+        scopes: {type: array, items: {$ref: '#/components/schemas/ConsentScope'}}
+        grantedAt: {type: string, format: date-time}
+        expiresAt: {type: string, format: date-time, description: grantedAt + 90 days}
+    PreApproval:
+      type: object
+      properties:
+        maxMonthlyFils: {type: integer}
+        limits:
+          type: array
+          items:
+            type: object
+            properties:
+              productLine: {enum: [vehicle, personal, home]}
+              maxFinanceFils: {type: integer}
+              maxMonthlyFils: {type: integer}
+              tenureMonths: {type: integer}
+        cardLimitFils: {type: integer}
+        validUntil: {type: string, format: date}
+    OnboardingPreApproval:
+      type: object
+      properties:
+        preApproval: {$ref: '#/components/schemas/PreApproval'}
+        consent: {$ref: '#/components/schemas/ConsentRecord'}
+        employer: {type: string}
+        sandbox: {const: true}
+    VirtualCard:
+      type: object
+      description: Display record only. A full PAN or CVV is never generated or returned.
+      properties:
+        id: {type: string}
+        cardId: {type: string}
+        name: {$ref: '#/components/schemas/Localized'}
+        network: {const: mastercard}
+        panMasked: {type: string, example: 5xxx xxxx xxxx 1234}
+        last4: {type: string, pattern: '^\d{4}$'}
+        expiry: {type: string, example: 10/29, description: MM/YY}
+        status: {enum: [ACTIVE, FROZEN, CLOSED]}
+        limitFils: {type: integer, description: 0 for prepaid}
+        issuedAt: {type: string, format: date-time}
+        gradient: {type: array, items: {type: string}}
+        wallet:
+          type: object
+          description: Push-provisioning availability (sandbox, simulated)
+          properties:
+            applePay: {type: boolean}
+            googlePay: {type: boolean}
+            samsungPay: {type: boolean}
+            sandbox: {const: true}
+    CardApplication:
+      type: object
+      required: [decision, cardId]
+      properties:
+        decision: {enum: [APPROVED, DECLINED]}
+        cardId: {type: string}
+        limitFils: {type: integer, description: APPROVED only}
+        virtualCard: {$ref: '#/components/schemas/VirtualCard'}
+        reason: {enum: [BELOW_MIN_SALARY, NO_DBR_HEADROOM], description: DECLINED only}
