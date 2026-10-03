@@ -4,9 +4,11 @@ import { applicationView, demoCustomer } from '@sahel/domain';
 import { t } from '@sahel/i18n';
 import { ApplicationRow } from '@/components/Application';
 import { SharePreApproval } from '@/components/SharePreApproval';
+import { PolicyList } from '@/components/PolicyList';
 import { originations } from '@/lib/api';
 import { STRUCTURE_LABEL } from '@/lib/labels';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { policyCustomerId, policyStore } from '@/lib/policy-store';
 
 // Personalized (customer data and due dates), so render per request.
 export const dynamic = 'force-dynamic';
@@ -31,6 +33,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
           </div>
         </section>
       )}
+      <PolicyList policies={policyStore.list(policyCustomerId())} tr={tr} />
       <section aria-labelledby="inst">
         <div className="mb-3 flex items-baseline justify-between">
           <h1 id="inst" className="text-2xl font-bold">{tr.t('myInstallments')}</h1>

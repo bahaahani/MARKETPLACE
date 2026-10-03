@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { formatBhd, type MotorCover, type MotorQuote } from '@sahel/domain';
 import { t, type AppLocale, type MessageKey } from '@sahel/i18n';
+import { BuyPolicyButton } from './BuyPolicyButton';
 
 /** Motor insurance comparison, via the shared API (same endpoint the Flutter app calls). */
 export function InsuranceQuotes({ locale, vehicleValueFils, reference, defaultTakaful = false }: { locale: AppLocale; vehicleValueFils: number; reference: string; defaultTakaful?: boolean }) {
@@ -63,12 +64,11 @@ export function InsuranceQuotes({ locale, vehicleValueFils, reference, defaultTa
               </p>
             </div>
             <p className="font-bold">{tr('perYear', { amount: formatBhd(q.annualPremiumFils, locale) })}</p>
-            <a
-              className="btn btn-ghost text-sm"
-              href={`/${locale}/checkout?purpose=insurance_premium&amount=${q.annualPremiumFils}&reference=${encodeURIComponent(`${reference}:${q.insurerId}`)}&label=${encodeURIComponent(q.insurerName[locale])}`}
-            >
-              {tr('buyPolicy')}
-            </a>
+            <BuyPolicyButton
+              locale={locale}
+              label={q.insurerName[locale]}
+              request={{ line: 'motor', insurerId: q.insurerId, input: { vehicleValueFils, cover, reference } }}
+            />
           </li>
         ))}
       </ul>

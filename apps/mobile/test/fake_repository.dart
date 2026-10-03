@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:sahel/core/api/api_client.dart';
 import 'package:sahel/core/models.dart';
+import 'package:sahel/core/models/insurance.dart';
 import 'package:sahel/core/repository.dart';
 
 /// Recorded responses from the real shared API (apps/web/app/api/v1), refreshed by
@@ -170,4 +171,76 @@ class FakeSahelRepository implements SahelRepository {
     accepted.add(id);
     return _app('application_crv_accepted');
   }
+
+  // ---- Insurance (travel, home, policies)
+
+  /// Every travel / home quote request and every held policy quote, as sent.
+  final travelRequests = <Map<String, Object?>>[];
+  final homeRequests = <Map<String, Object?>>[];
+  final heldQuotes = <Map<String, Object?>>[];
+
+  /// (paymentId, quoteId) of every policy confirmation.
+  final confirmedPolicies = <(String, String)>[];
+
+  @override
+  Future<List<TravelQuote>> travelQuotes({
+    required String region,
+    required String tier,
+    required String startDate,
+    required String endDate,
+    required int adults,
+    required int children,
+    required bool takafulOnly,
+  }) async {
+    travelRequests.add({'region': region, 'tier': tier, 'startDate': startDate, 'endDate': endDate, 'adults': adults, 'children': children});
+    // Mirrors the API's 422 for traveller limits (recorded fixture: GCC, Basic, 1 adult, 7 days).
+    if (adults < 1 || adults > 6) throw ApiException(422, 'INVALID_TRAVELLERS', 'adults must be between 1 and 6');
+    return [
+      for (final j in fixture('travel_quotes')['quotes'] as List)
+        if (!takafulOnly || (j as Json)['takaful'] == true) TravelQuote.fromJson(j as Json),
+    ];
+  }
+
+  @override
+  Future<HomeQuotes> homeQuotes({
+    String? propertyType,
+    int? buildingSumInsuredFils,
+    int? contentsSumInsuredFils,
+    String? propertyId,
+    required bool takafulOnly,
+  }) async {
+    homeRequests.add({
+      'propertyType': propertyType,
+      'buildingSumInsuredFils': buildingSumInsuredFils,
+      'contentsSumInsuredFils': contentsSumInsuredFils,
+      'propertyId': propertyId,
+    });
+    // Mirrors the API's 422 for a building sum below the minimum (recorded fixture: the Saar villa listing).
+    if (buildingSumInsuredFils != null && buildingSumInsuredFils > 0 && buildingSumInsuredFils < 10000000) {
+      throw ApiException(422, 'INVALID_SUM_INSURED', 'building sum out of range');
+    }
+    final recorded = fixture('home_quotes') as Json;
+    return HomeQuotes.fromJson({
+      'input': recorded['input'],
+      'quotes': [
+        for (final j in recorded['quotes'] as List)
+          if (!takafulOnly || (j as Json)['takaful'] == true) j,
+      ],
+    });
+  }
+
+  @override
+  Future<PolicyQuote> holdPolicyQuote({required String line, required String insurerId, required Json input}) async {
+    heldQuotes.add({'line': line, 'insurerId': insurerId, 'input': input});
+    return PolicyQuote.fromJson(fixture('policy_quote_travel') as Json);
+  }
+
+  @override
+  Future<Policy> confirmPolicy({required String paymentId, required String quoteId}) async {
+    confirmedPolicies.add((paymentId, quoteId));
+    return Policy.fromJson(fixture('policy_travel') as Json);
+  }
+
+  @override
+  Future<List<Policy>> myPolicies() async => [for (final j in fixture('me_policies')['items'] as List) Policy.fromJson(j as Json)];
 }

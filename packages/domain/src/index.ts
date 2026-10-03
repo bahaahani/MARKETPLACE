@@ -12,3 +12,7 @@ export * from './dealer';
 export * from './onboarding';
 export * from './cards';
 export * from './origination';
+export * from './insurance-common';
+export * from './insurance-travel';
+export * from './insurance-home';
+export * from './policies';

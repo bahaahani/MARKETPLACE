@@ -12,6 +12,8 @@ import '../../core/theme/tokens.g.dart';
 import '../../widgets/common.dart';
 import '../checkout/checkout_screen.dart';
 import '../finance/application_screen.dart';
+import '../insurance/insurance_providers.dart';
+import '../insurance/policies.dart';
 
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
@@ -28,6 +30,7 @@ class AccountScreen extends ConsumerWidget {
           onRefresh: () async {
             ref.invalidate(meProvider);
             ref.invalidate(applicationsProvider);
+            ref.invalidate(myPoliciesProvider);
           },
           child: ListView(padding: const EdgeInsets.all(SahelSpace.md), children: [
             ...switch (ref.watch(applicationsProvider)) {
@@ -37,6 +40,7 @@ class AccountScreen extends ConsumerWidget {
                 ],
               _ => const <Widget>[],
             },
+            const MyPoliciesSection(),
             SectionHeader(l.myInstallments, action: '★ ${l.rewardsPoints(context.number(me.rewardsPoints))}'),
             for (final c in me.contracts) ...[_ContractCard(c), const SizedBox(height: SahelSpace.sm)],
             SectionHeader(l.myGarage),

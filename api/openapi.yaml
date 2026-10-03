@@ -482,6 +482,151 @@ paths:
         '200': {description: OK (status COMPLETED), content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/FinanceApplication'}}}}}}
         '404': {$ref: '#/components/responses/Error'}
         '409': {description: NOT_APPROVED (only APPROVED offers can be accepted) or INVALID_TRANSITION, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /insurance/travel-quotes:
+    post:
+      summary: |
+        Travel insurance comparison, cheapest first (⚠️ demo insurers, illustrative prices).
+        Premium = daily rate for the region × days × (adults + children / 2), × the Plus percentage, never below
+        the insurer's minimum. Dates are Bahrain calendar dates.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [region, startDate, endDate]
+              properties:
+                region: {$ref: '#/components/schemas/TravelRegion'}
+                tier: {enum: [basic, plus], default: basic}
+                startDate: {type: string, format: date, description: 'Today or later, within 365 days'}
+                endDate: {type: string, format: date, description: 'On or after startDate; at most 180 days in all'}
+                adults: {type: integer, minimum: 1, maximum: 6, default: 1}
+                children: {type: integer, minimum: 0, maximum: 8, default: 0}
+                takafulOnly: {type: boolean}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      quotes: {type: array, items: {$ref: '#/components/schemas/TravelQuote'}}
+        '400': {$ref: '#/components/responses/Error'}
+        '422':
+          description: INVALID_REQUEST, INVALID_DATES, TRIP_TOO_LONG, INVALID_TRAVELLERS
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+  /insurance/home-quotes:
+    post:
+      summary: |
+        Home insurance comparison (building and/or contents, one year), cheapest first (⚠️ demo insurers).
+        With a propertyId the listing's type is used, and when no sums are sent they are suggested from the listing.
+        `input` echoes what was priced.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                propertyType: {enum: [villa, apartment, townhouse, office], description: Required without propertyId. Land is not insurable.}
+                buildingSumInsuredFils: {type: integer, description: '0, or 10,000,000 to 2,000,000,000 fils'}
+                contentsSumInsuredFils: {type: integer, description: '0, or 1,000,000 to 250,000,000 fils (not both 0)'}
+                propertyId: {type: string, description: Optional link to a property listing}
+                takafulOnly: {type: boolean}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      input: {$ref: '#/components/schemas/HomeInput'}
+                      quotes: {type: array, items: {$ref: '#/components/schemas/HomeQuote'}}
+        '400': {$ref: '#/components/responses/Error'}
+        '422':
+          description: INVALID_REQUEST, INVALID_SUM_INSURED, PROPERTY_NOT_FOUND, PROPERTY_NOT_INSURABLE
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+  /policies/quotes:
+    post:
+      summary: |
+        Hold a priced quote from one insurer before checkout (sandbox). The server re-prices it; the client's price
+        is never used. Pay `premiumFils` with POST /payments (purpose insurance_premium, reference = the quote id),
+        then POST /policies/confirm. Quotes can be paid for 24 hours.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [line, insurerId, input]
+              properties:
+                line: {enum: [motor, travel, home]}
+                insurerId: {type: string}
+                input:
+                  description: |
+                    The same body as the line's quote endpoint (travel-quotes or home-quotes). For motor:
+                    vehicleValueFils, cover (comprehensive or third-party), agencyRepair and reference (plate or vehicle id).
+                  type: object
+      responses:
+        '201': {description: Created, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/PolicyQuote'}}}}}}
+        '400': {$ref: '#/components/responses/Error'}
+        '422':
+          description: INVALID_REQUEST, INSURER_NOT_FOUND (does not offer this cover), or a quote rule such as INVALID_DATES
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+  /policies/confirm:
+    post:
+      summary: |
+        Issue the policy for a paid quote (sandbox). The payment must be CAPTURED, have purpose insurance_premium,
+        reference the quote, and match its premium to the fils. Confirming again with the same payment returns the same policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paymentId]
+              properties:
+                paymentId: {type: string}
+                quoteId: {type: string, description: Optional; must equal the payment's reference}
+      responses:
+        '200': {description: Policy issued, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/Policy'}}}}}}
+        '400': {$ref: '#/components/responses/Error'}
+        '404':
+          description: PAYMENT_NOT_FOUND or QUOTE_NOT_FOUND
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+        '409':
+          description: PAYMENT_NOT_CAPTURED, or ALREADY_BOUND (the quote was bound to another payment)
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+        '410':
+          description: QUOTE_EXPIRED (paid after the quote expired)
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+        '422':
+          description: AMOUNT_MISMATCH, or PAYMENT_MISMATCH (wrong purpose or reference)
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+  /me/policies:
+    get:
+      summary: The customer's insurance policies, active first (sandbox store in memory, plus one expired demo policy)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: {type: array, items: {$ref: '#/components/schemas/Policy'}}
+                      total: {type: integer}
 components:
   parameters:
     SellerId:
@@ -718,3 +863,86 @@ components:
         idempotencyKey: {type: string}
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}
+    TravelRegion:
+      description: GCC, worldwide excluding the US and Canada, or worldwide
+      enum: [gcc, worldwide-excl-us-ca, worldwide]
+    TravelQuote:
+      type: object
+      properties:
+        insurerId: {type: string}
+        insurerName: {$ref: '#/components/schemas/Localized'}
+        takaful: {type: boolean}
+        region: {$ref: '#/components/schemas/TravelRegion'}
+        tier: {enum: [basic, plus]}
+        startDate: {type: string, format: date}
+        endDate: {type: string, format: date}
+        days: {type: integer, description: Inclusive of both ends}
+        adults: {type: integer}
+        children: {type: integer}
+        premiumFils: {type: integer}
+        medicalCoverFils: {type: integer, description: Emergency medical cover per traveller}
+        schengenCompliant: {type: boolean}
+    HomeInput:
+      type: object
+      properties:
+        propertyType: {enum: [villa, apartment, townhouse, office]}
+        buildingSumInsuredFils: {type: integer}
+        contentsSumInsuredFils: {type: integer}
+        propertyId: {type: string}
+        propertyTitle: {$ref: '#/components/schemas/Localized'}
+    HomeQuote:
+      type: object
+      properties:
+        insurerId: {type: string}
+        insurerName: {$ref: '#/components/schemas/Localized'}
+        takaful: {type: boolean}
+        propertyType: {enum: [villa, apartment, townhouse, office]}
+        propertyId: {type: string}
+        buildingSumInsuredFils: {type: integer}
+        contentsSumInsuredFils: {type: integer}
+        annualPremiumFils: {type: integer}
+        accidentalDamage: {type: boolean}
+        temporaryAccommodation: {type: boolean}
+    PolicyCover:
+      type: object
+      description: |
+        What is covered. motor: cover, vehicleValueFils, agencyRepair, reference. travel: region, tier, adults,
+        children, days, medicalCoverFils. home: propertyType, buildingSumInsuredFils, contentsSumInsuredFils,
+        propertyId and propertyTitle (when linked to a listing).
+      required: [line]
+      properties:
+        line: {enum: [motor, travel, home]}
+    PolicyQuote:
+      type: object
+      properties:
+        id: {type: string, description: 'pq_… (use it as the payment reference)'}
+        customerId: {type: string}
+        line: {enum: [motor, travel, home]}
+        insurerId: {type: string}
+        insurerName: {$ref: '#/components/schemas/Localized'}
+        takaful: {type: boolean}
+        premiumFils: {type: integer}
+        cover: {$ref: '#/components/schemas/PolicyCover'}
+        startDate: {type: string, format: date}
+        endDate: {type: string, format: date}
+        createdAt: {type: string, format: date-time}
+        expiresAt: {type: string, format: date-time}
+        policyId: {type: string, description: Set once a policy was issued}
+    Policy:
+      type: object
+      properties:
+        id: {type: string}
+        policyNumber: {type: string, description: 'Sandbox numbers start with SBX-'}
+        customerId: {type: string}
+        line: {enum: [motor, travel, home]}
+        insurerId: {type: string}
+        insurerName: {$ref: '#/components/schemas/Localized'}
+        takaful: {type: boolean}
+        premiumFils: {type: integer}
+        cover: {$ref: '#/components/schemas/PolicyCover'}
+        startDate: {type: string, format: date, description: First day covered}
+        endDate: {type: string, format: date, description: Last day covered}
+        status: {enum: [ACTIVE, EXPIRED], description: EXPIRED after endDate (Bahrain date)}
+        quoteId: {type: string}
+        paymentId: {type: string}
+        issuedAt: {type: string, format: date-time}

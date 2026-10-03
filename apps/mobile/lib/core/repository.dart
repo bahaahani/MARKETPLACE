@@ -1,5 +1,6 @@
 import 'api/api_client.dart';
 import 'models.dart';
+import 'models/insurance.dart';
 
 /// Everything the app needs from the backend. The API implementation calls the same
 /// endpoints as the Next.js web app, so both channels show identical data and pricing.
@@ -59,6 +60,35 @@ abstract interface class SahelRepository {
 
   /// Accept the offer and e-sign (sandbox).
   Future<FinanceApplication> acceptApplication(String id);
+
+  /// Travel insurance comparison, cheapest first. Invalid dates or travellers throw ApiException(422).
+  Future<List<TravelQuote>> travelQuotes({
+    required String region,
+    required String tier,
+    required String startDate,
+    required String endDate,
+    required int adults,
+    required int children,
+    required bool takafulOnly,
+  });
+
+  /// Home insurance comparison. With only [propertyId], the API suggests the sums insured from the listing.
+  Future<HomeQuotes> homeQuotes({
+    String? propertyType,
+    int? buildingSumInsuredFils,
+    int? contentsSumInsuredFils,
+    String? propertyId,
+    required bool takafulOnly,
+  });
+
+  /// Hold a server-priced quote from one insurer before checkout ([input] is the line's quote request).
+  Future<PolicyQuote> holdPolicyQuote({required String line, required String insurerId, required Json input});
+
+  /// Issue the policy for a captured premium payment.
+  Future<Policy> confirmPolicy({required String paymentId, required String quoteId});
+
+  /// The customer's insurance policies, active first.
+  Future<List<Policy>> myPolicies();
 }
 
 class ApiSahelRepository implements SahelRepository {
@@ -195,4 +225,53 @@ class ApiSahelRepository implements SahelRepository {
   @override
   Future<FinanceApplication> acceptApplication(String id) async =>
       FinanceApplication.fromJson(await _api.post('/applications/$id/accept', const {}) as Json);
+
+  @override
+  Future<List<TravelQuote>> travelQuotes({
+    required String region,
+    required String tier,
+    required String startDate,
+    required String endDate,
+    required int adults,
+    required int children,
+    required bool takafulOnly,
+  }) async {
+    final data = await _api.post('/insurance/travel-quotes', {
+      'region': region,
+      'tier': tier,
+      'startDate': startDate,
+      'endDate': endDate,
+      'adults': adults,
+      'children': children,
+      'takafulOnly': takafulOnly,
+    }) as Json;
+    return [for (final q in data['quotes'] as List) TravelQuote.fromJson(q as Json)];
+  }
+
+  @override
+  Future<HomeQuotes> homeQuotes({
+    String? propertyType,
+    int? buildingSumInsuredFils,
+    int? contentsSumInsuredFils,
+    String? propertyId,
+    required bool takafulOnly,
+  }) async =>
+      HomeQuotes.fromJson(await _api.post('/insurance/home-quotes', {
+        'propertyType': ?propertyType,
+        'buildingSumInsuredFils': ?buildingSumInsuredFils,
+        'contentsSumInsuredFils': ?contentsSumInsuredFils,
+        'propertyId': ?propertyId,
+        'takafulOnly': takafulOnly,
+      }) as Json);
+
+  @override
+  Future<PolicyQuote> holdPolicyQuote({required String line, required String insurerId, required Json input}) async =>
+      PolicyQuote.fromJson(await _api.post('/policies/quotes', {'line': line, 'insurerId': insurerId, 'input': input}) as Json);
+
+  @override
+  Future<Policy> confirmPolicy({required String paymentId, required String quoteId}) async =>
+      Policy.fromJson(await _api.post('/policies/confirm', {'paymentId': paymentId, 'quoteId': quoteId}) as Json);
+
+  @override
+  Future<List<Policy>> myPolicies() async => [for (final j in _items(await _api.get('/me/policies'))) Policy.fromJson(j as Json)];
 }
