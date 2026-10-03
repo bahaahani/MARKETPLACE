@@ -45,6 +45,11 @@ export default async function PropertyDetail({ params }: { params: Promise<{ loc
             <button className="btn btn-primary" type="button" disabled>
               {tr.t('bookViewing')}
             </button>
+            {p.type !== 'land' && (
+              <Link className="btn btn-ghost" href={`/${tr.locale}/insurance/home?propertyId=${p.id}`} data-testid="insure-home">
+                {tr.t('insInsureThisHome')}
+              </Link>
+            )}
             {forSale && (
               <Link
                 className="btn btn-ghost"

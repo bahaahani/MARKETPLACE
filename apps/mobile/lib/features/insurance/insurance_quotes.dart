@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/format.dart';
 import '../../core/providers.dart';
 import '../../core/theme/tokens.g.dart';
 import '../../widgets/common.dart';
-import '../checkout/checkout_screen.dart';
+import 'insurance_providers.dart';
 
 /// Motor insurance comparison (Tasheelat Insurance as broker), from the shared API.
 class InsuranceQuotes extends ConsumerStatefulWidget {
@@ -61,12 +60,20 @@ class _InsuranceQuotesState extends ConsumerState<InsuranceQuotes> {
                   trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
                     Text(l.perYear(context.money(mq.annualPremiumFils)), style: const TextStyle(fontWeight: FontWeight.bold)),
                     InkWell(
-                      onTap: () => context.push(CheckoutScreen.link(
-                        purpose: 'insurance_premium',
-                        amountFils: mq.annualPremiumFils,
-                        reference: '${widget.reference}:${mq.insurerId}',
+                      key: Key('buy-${mq.insurerId}'),
+                      // The API re-prices and holds the quote; the policy is issued after checkout.
+                      onTap: () => buyPolicy(
+                        context,
+                        ref,
+                        line: 'motor',
+                        insurerId: mq.insurerId,
+                        input: {
+                          'vehicleValueFils': widget.vehicleValueFils,
+                          'cover': _comprehensive ? 'comprehensive' : 'third-party',
+                          'reference': widget.reference,
+                        },
                         label: context.loc(mq.insurerName),
-                      )),
+                      ),
                       child: Text(l.buyPolicy, style: const TextStyle(color: SahelColors.brand, fontWeight: FontWeight.w600)),
                     ),
                   ]),

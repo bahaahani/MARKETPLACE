@@ -50,6 +50,15 @@ class PropertyDetailScreen extends ConsumerWidget {
                     const SizedBox(height: 6),
                     Pill('✓ ${l.valuedByTresco}', color: SahelColors.islamic, background: SahelColors.islamicSoft),
                   ],
+                  if (p.type != 'land') ...[
+                    const SizedBox(height: SahelSpace.md),
+                    OutlinedButton.icon(
+                      key: const Key('insure-home'),
+                      onPressed: () => context.push(Uri(path: '/insurance/home', queryParameters: {'propertyId': p.id}).toString()),
+                      icon: const Icon(Icons.shield_outlined),
+                      label: Text(l.insInsureThisHome),
+                    ),
+                  ],
                   if (p.forSale) ...[
                     const SizedBox(height: SahelSpace.md),
                     OutlinedButton(

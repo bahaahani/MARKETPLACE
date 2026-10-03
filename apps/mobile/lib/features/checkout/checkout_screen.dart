@@ -6,8 +6,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/format.dart';
 import '../../core/models.dart';
+import '../../core/models/insurance.dart';
 import '../../core/providers.dart';
 import '../../core/theme/tokens.g.dart';
+import '../insurance/insurance_providers.dart';
 
 /// Sandbox checkout. Production replaces the "pay" step with the Tap Flutter SDKs
 /// (BenefitPay, Apple Pay, Google Pay, Samsung Pay, Click to Pay, card); the backend
@@ -41,6 +43,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   bool _busy = false;
   bool _error = false;
   Payment? _result;
+  // Insurance premiums for a held quote: the policy issued once the payment is captured.
+  Policy? _policy;
+  bool _policyFailed = false;
   // One key per checkout attempt, so a double tap never double-charges.
   final String _idempotencyKey = List.generate(24, (_) => Random.secure().nextInt(16).toRadixString(16)).join();
 
@@ -57,6 +62,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             reference: widget.reference,
             idempotencyKey: _idempotencyKey,
           );
+      if (PolicyQuote.isQuoteReference(widget.purpose, widget.reference)) {
+        try {
+          _policy = await ref.read(repositoryProvider).confirmPolicy(paymentId: p.id, quoteId: widget.reference);
+          ref.invalidate(myPoliciesProvider);
+        } catch (_) {
+          _policyFailed = true;
+        }
+      }
       if (mounted) setState(() => _result = p);
     } catch (_) {
       if (mounted) setState(() => _error = true);
@@ -96,6 +109,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   Text(amount, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                   Text(widget.label, style: const TextStyle(color: SahelColors.textMuted)),
                   Text(l.paymentReference(result.id), style: const TextStyle(color: SahelColors.textMuted, fontSize: 11, fontFamily: 'monospace')),
+                  if (_policy != null) ...[
+                    const SizedBox(height: SahelSpace.md),
+                    Text('${l.insPolicyIssued} · ${_policy!.policyNumber}',
+                        key: const Key('policy-issued'), textAlign: TextAlign.center, style: const TextStyle(color: SahelColors.islamic, fontWeight: FontWeight.w600)),
+                  ],
+                  if (_policyFailed) ...[
+                    const SizedBox(height: SahelSpace.md),
+                    Text(l.insPolicyBindFailed, key: const Key('policy-failed'), textAlign: TextAlign.center, style: const TextStyle(color: SahelColors.danger)),
+                  ],
                   const SizedBox(height: SahelSpace.lg),
                   FilledButton(onPressed: () => context.go('/account'), child: Text(l.done)),
                 ]),

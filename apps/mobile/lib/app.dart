@@ -14,7 +14,9 @@ import 'features/checkout/checkout_screen.dart';
 import 'features/finance/application_screen.dart';
 import 'features/finance/personal_finance_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/insurance/home_insurance_screen.dart';
 import 'features/insurance/insurance_screen.dart';
+import 'features/insurance/travel_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/property/property_detail_screen.dart';
 import 'features/property/property_screen.dart';
@@ -56,7 +58,14 @@ GoRouter buildRouter({String initialLocation = '/'}) => GoRouter(
             StatefulShellBranch(routes: [GoRoute(path: '/account', builder: (_, _) => const AccountScreen())]),
           ],
         ),
-        GoRoute(path: '/insurance', builder: (_, _) => const InsuranceScreen()),
+        GoRoute(
+          path: '/insurance',
+          builder: (_, _) => const InsuranceScreen(),
+          routes: [
+            GoRoute(path: 'travel', builder: (_, _) => const TravelInsuranceScreen()),
+            GoRoute(path: 'home', builder: (_, s) => HomeInsuranceScreen(propertyId: s.uri.queryParameters['propertyId'])),
+          ],
+        ),
         GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
         GoRoute(path: '/checkout', builder: (_, s) => CheckoutScreen.fromQuery(s.uri.queryParameters)),
         GoRoute(path: '/finance/personal', builder: (_, _) => const PersonalFinanceScreen()),
