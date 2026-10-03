@@ -80,18 +80,21 @@ export function FinanceCalculator({ locale, productLine, assetPriceFils }: { loc
   );
 }
 
-function QuoteColumn({
+/** One structure's column in the side-by-side comparison. Also used by the dealer showroom offer. */
+export function QuoteColumn({
   q,
   active,
   onSelect,
   tr,
   money,
+  children,
 }: {
   q: FinanceQuote;
   active: boolean;
   onSelect: () => void;
   tr: (k: MessageKey, v?: Record<string, string | number>) => string;
   money: (f: number, d?: 0 | 3) => string;
+  children?: React.ReactNode;
 }) {
   const islamic = q.structure !== 'conventional';
   const rateLabel: MessageKey = q.rateBasis === 'apr' ? 'rateApr' : q.rateBasis === 'flat' ? 'rateFlat' : 'rateProfit';
@@ -117,6 +120,7 @@ function QuoteColumn({
         <Row label={tr(rateLabel)} value={`${q.ratePct}%`} />
         {q.rateBasis !== 'apr' && <Row label={tr('aprEquivalent')} value={`${q.aprPct}%`} />}
       </dl>
+      {children}
     </button>
   );
 }

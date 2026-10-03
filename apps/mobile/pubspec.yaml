@@ -15,6 +15,7 @@ dependencies:
   go_router: ^18.0.2
   http: ^1.6.0
   intl: any
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

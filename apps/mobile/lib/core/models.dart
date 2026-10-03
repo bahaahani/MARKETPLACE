@@ -405,3 +405,18 @@ class Payment {
   factory Payment.fromJson(Json j) =>
       Payment(id: j['id'] as String, status: j['status'] as String, amountFils: j['amountFils'] as int);
 }
+
+/// Short-lived code the customer shows a dealer (POST /me/preapproval-token). The dealer redeems it
+/// for first name and limits only, never salary or CPR.
+class PreApprovalShare {
+  const PreApprovalShare({required this.token, required this.expiresAt, required this.ttlSeconds});
+  final String token;
+  final DateTime expiresAt;
+  final int ttlSeconds;
+
+  factory PreApprovalShare.fromJson(Json j) => PreApprovalShare(
+        token: j['token'] as String,
+        expiresAt: DateTime.parse(j['expiresAt'] as String),
+        ttlSeconds: j['ttlSeconds'] as int,
+      );
+}

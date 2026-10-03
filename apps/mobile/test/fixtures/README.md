@@ -12,6 +12,7 @@ curl -s $B/properties > properties.json
 curl -s $B/cards > cards.json
 curl -s -X POST $B/quotes/finance -H 'Content-Type: application/json' \
   -d '{"productLine":"vehicle","assetPriceFils":14900000,"downPaymentFils":3000000,"tenureMonths":60}' > quotes_crv.json
+curl -s -X POST $B/me/preapproval-token > preapproval_token.json
 curl -s -X POST $B/insurance/motor-quotes -H 'Content-Type: application/json' \
   -d '{"vehicleValueFils":14900000,"cover":"comprehensive"}' > motor_quotes.json
 ```
