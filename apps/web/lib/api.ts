@@ -17,6 +17,7 @@ import {
   type DealerAuthProvider,
   type DealerSession,
 } from '@sahel/domain';
+import { demoCustomer, LifeEventError, SandboxContractSettings, SettlementError } from '@sahel/domain';
 import { NextResponse } from 'next/server';
 
 /**
@@ -117,4 +118,26 @@ export function dealerSession(req: Request, sellerId: string): DealerSession {
   const session = dealerAuth.authenticate({ sellerId, bearer });
   assertDealerAccess(session, sellerId);
   return session;
+}
+
+// --- Life events and early settlement / autopay ---
+
+const g2 = globalThis as unknown as { __sahelContractSettings?: SandboxContractSettings };
+/** ⚠️ Sandbox contract settings (autopay), in memory, standing in for the core lending system. */
+export const contractSettings = (g2.__sahelContractSettings ??= new SandboxContractSettings());
+
+/** The demo customer with this session's contract settings (autopay) applied. Used by /me and the account page. */
+export function currentCustomer() {
+  return contractSettings.apply(demoCustomer());
+}
+
+/** handleError plus the life-event and settlement errors. */
+export function handleBundlesError(e: unknown) {
+  if (isError<LifeEventError>(e, LifeEventError, 'LifeEventError')) {
+    return problem(e.code === 'EVENT_NOT_FOUND' ? 404 : 422, e.code, e.message);
+  }
+  if (isError<SettlementError>(e, SettlementError, 'SettlementError')) {
+    return problem(e.code === 'CONTRACT_NOT_FOUND' ? 404 : e.code === 'NOTHING_TO_SETTLE' ? 409 : 422, e.code, e.message);
+  }
+  return handleError(e);
 }

@@ -70,6 +70,19 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
         </span>
       </Link>
 
+      <Link href={`/${tr.locale}/life-events`} className="card flex items-center gap-4 p-5 transition hover:shadow-lg" data-testid="life-events-cta">
+        <span aria-hidden className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-islamic-soft text-2xl">
+          💍
+        </span>
+        <span className="flex-1">
+          <span className="block font-bold">{tr.t('lifeEntryTitle')}</span>
+          <span className="block text-sm text-text-muted">{tr.t('lifeEntrySubtitle')}</span>
+        </span>
+        <span className="font-semibold text-brand">
+          {tr.t('lifeEntryCta')} <span className="inline-block rtl:rotate-180">→</span>
+        </span>
+      </Link>
+
       <Section title={tr.t('featuredCars')} href={`/${tr.locale}/cars?maxMonthlyFils=${pa.maxMonthlyFils}`} more={tr.t('seeAll')}>
         {cars.map((v) => (
           <VehicleCard key={v.id} v={v} tr={tr} />

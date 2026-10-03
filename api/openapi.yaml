@@ -482,6 +482,67 @@ paths:
         '200': {description: OK (status COMPLETED), content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/FinanceApplication'}}}}}}
         '404': {$ref: '#/components/responses/Error'}
         '409': {description: NOT_APPROVED (only APPROVED offers can be accepted) or INVALID_TRANSITION, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /life-events:
+    get:
+      summary: Curated life events for the Life-Event Engine (rules-based, not AI)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: {type: array, items: {$ref: '#/components/schemas/LifeEvent'}}
+                      total: {type: integer}
+  /life-events/{id}/bundle:
+    get:
+      summary: |
+        The bundle for a life event, priced with the pricing engine for the demo customer and checked against their
+        DBR headroom (maxMonthlyFils). Deterministic. ⚠️ Illustrative products, amounts and placeholder premiums.
+      parameters:
+        - {name: id, in: path, required: true, schema: {enum: [married, new-job, first-home, new-baby]}}
+        - name: structure
+          in: query
+          description: 'Whole-bundle toggle: islamic uses Murabaha (vehicle, personal) and Ijara (home); conventional uses loans'
+          schema: {enum: [islamic, conventional], default: islamic}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/LifeEventBundle'}}}}}}
+        '404': {description: EVENT_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {description: INVALID_STRUCTURE, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /me/contracts/{id}:
+    patch:
+      summary: Turn autopay on or off for one of the customer's contracts (⚠️ sandbox, in memory; reflected in GET /me)
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [autopay]
+              properties:
+                autopay: {type: boolean}
+      responses:
+        '200': {description: The updated contract, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/Contract'}}}}}}
+        '400': {description: 'BAD_JSON (body is not a JSON object)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: CONTRACT_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {description: 'INVALID_REQUEST (autopay must be a boolean)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /me/contracts/{id}/settlement-quote:
+    get:
+      summary: |
+        Early-settlement quote, as of the last paid installment. Conventional: remaining principal from the amortization
+        schedule plus a placeholder fee. Murabaha: remaining sale price minus an Ibra' rebate (never "interest").
+        ⚠️ Placeholder rules pending the Shari'a board and CBB. Pay it with POST /payments (purpose early_settlement,
+        amountFils and reference from the quote's payment object).
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/SettlementQuote'}}}}}}
+        '404': {description: CONTRACT_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '409': {description: NOTHING_TO_SETTLE (fully paid), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
 components:
   parameters:
     SellerId:
@@ -718,3 +779,88 @@ components:
         idempotencyKey: {type: string}
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}
+    LifeEvent:
+      type: object
+      properties:
+        id: {enum: [married, new-job, first-home, new-baby]}
+        icon: {type: string}
+        title: {$ref: '#/components/schemas/Localized'}
+        subtitle: {$ref: '#/components/schemas/Localized'}
+    BundleItem:
+      type: object
+      properties:
+        id: {type: string}
+        kind: {enum: [personal-finance, vehicle, home-finance, home-rent-to-own, card, travel, home-cover, life-cover]}
+        title: {$ref: '#/components/schemas/Localized'}
+        description: {$ref: '#/components/schemas/Localized'}
+        href: {type: string, description: 'In-app path without the locale prefix (web: /{locale}{href}; mobile: same route)'}
+        productLine: {enum: [vehicle, personal, home]}
+        structure: {$ref: '#/components/schemas/FinanceStructure'}
+        assetPriceFils: {type: integer}
+        downPaymentFils: {type: integer}
+        financedFils: {type: integer}
+        tenureMonths: {type: integer}
+        costOfFinanceFils: {type: integer, description: Interest (conventional) or profit (Islamic)}
+        cardId: {type: string}
+        annualFeeFils: {type: integer}
+        cardLimitFils: {type: integer}
+        monthlyFils: {type: integer, description: 'Installment from the pricing engine, or an indicative premium for cover placeholders; 0 when not applicable'}
+        countsTowardDbr: {type: boolean}
+        placeholder: {type: boolean, description: ⚠️ Not a live product yet}
+    LifeEventBundle:
+      type: object
+      properties:
+        event: {$ref: '#/components/schemas/LifeEvent'}
+        structure: {enum: [islamic, conventional]}
+        items: {type: array, items: {$ref: '#/components/schemas/BundleItem'}}
+        totalMonthlyFils: {type: integer, description: Sum of the financed items (what the DBR cap applies to)}
+        otherMonthlyFils: {type: integer, description: Indicative cover premiums, outside the DBR check}
+        maxMonthlyFils: {type: integer, description: DBR headroom}
+        headroomAfterFils: {type: integer, description: Negative when over budget}
+        verdict: {enum: [fits, over-budget]}
+        shortfallFils: {type: integer}
+        illustrative: {const: true}
+    Contract:
+      type: object
+      properties:
+        id: {type: string}
+        title: {$ref: '#/components/schemas/Localized'}
+        structure: {$ref: '#/components/schemas/FinanceStructure'}
+        quote: {$ref: '#/components/schemas/FinanceQuote'}
+        startDate: {type: string, format: date}
+        outstandingFils: {type: integer}
+        nextInstallment:
+          type: object
+          properties:
+            number: {type: integer}
+            dueDate: {type: string, format: date}
+            amountFils: {type: integer}
+            status: {enum: [paid, due, upcoming, overdue]}
+        installmentsPaid: {type: integer}
+        autopay: {type: boolean}
+    SettlementQuote:
+      type: object
+      properties:
+        contractId: {type: string}
+        structure: {$ref: '#/components/schemas/FinanceStructure'}
+        installmentsPaid: {type: integer}
+        installmentsRemaining: {type: integer}
+        remainingScheduledFils: {type: integer, description: Paying every remaining installment to term}
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              kind: {enum: [remaining_principal, settlement_fee, remaining_sale_price, ibra_rebate, remaining_asset_cost]}
+              amountFils: {type: integer, description: "Negative for deductions (the Ibra' rebate)"}
+        settlementAmountFils: {type: integer}
+        savingsFils: {type: integer}
+        basis: {enum: [remaining-principal, sale-price-less-ibra, remaining-asset-cost]}
+        pendingApproval: {const: true, description: "⚠️ Placeholder rule pending the Shari'a board / CBB"}
+        validUntil: {type: string, format: date}
+        payment:
+          type: object
+          properties:
+            purpose: {const: early_settlement}
+            amountFils: {type: integer}
+            reference: {type: string}

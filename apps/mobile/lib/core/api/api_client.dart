@@ -42,6 +42,12 @@ class ApiClient {
         body: jsonEncode(body),
       ));
 
+  Future<dynamic> patch(String path, Object body) async => _decode(await _http.patch(
+        _uri(path),
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: jsonEncode(body),
+      ));
+
   dynamic _decode(http.Response r) {
     final body = r.body.isEmpty ? <String, dynamic>{} : jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
     if (r.statusCode >= 400) {

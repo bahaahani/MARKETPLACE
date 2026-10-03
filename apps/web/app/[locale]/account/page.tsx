@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { applicationView, demoCustomer } from '@sahel/domain';
+import { applicationView } from '@sahel/domain';
 import { t } from '@sahel/i18n';
 import { ApplicationRow } from '@/components/Application';
+import { AutopayToggle } from '@/components/BundlesAutopayToggle';
+import { ContractSettlement } from '@/components/BundlesSettlement';
 import { SharePreApproval } from '@/components/SharePreApproval';
-import { originations } from '@/lib/api';
+import { currentCustomer, originations } from '@/lib/api';
 import { STRUCTURE_LABEL } from '@/lib/labels';
 import { resolveLocale, translator } from '@/lib/i18n';
 
@@ -17,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
 export default async function AccountPage({ params }: { params: Promise<{ locale: string }> }) {
   const tr = translator(resolveLocale((await params).locale));
-  const me = demoCustomer();
+  const me = currentCustomer();
   const applications = originations.list(me.customerId).map(applicationView);
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -44,9 +46,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
                   <h2 className="font-semibold">{c.title[tr.locale]}</h2>
                   <p className={`text-xs font-semibold ${c.structure === 'conventional' ? 'text-brand' : 'text-islamic'}`}>{tr.t(STRUCTURE_LABEL[c.structure])}</p>
                 </div>
-                <span className={`rounded-full px-2 py-0.5 text-xs ${c.autopay ? 'bg-islamic-soft text-islamic' : 'bg-background text-text-muted'}`}>
-                  {tr.t(c.autopay ? 'autopayOn' : 'autopayOff')}
-                </span>
+                <AutopayToggle key={String(c.autopay)} locale={tr.locale} contractId={c.id} autopay={c.autopay} />
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 <div>
@@ -68,6 +68,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
                   {tr.t('payNow')}
                 </Link>
               )}
+              <ContractSettlement c={c} tr={tr} />
             </article>
           ))}
         </div>
