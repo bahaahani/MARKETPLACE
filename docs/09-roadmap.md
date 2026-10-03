@@ -6,7 +6,8 @@
 
 **Goal:** Know exactly what we are building and get every partner moving.
 
-- [ ] Decide: **Sahel 2.0 vs. new app** (see open questions)
+- [x] Decide: **Sahel 2.0** ✅
+- [ ] **Sahel tech audit:** current stack, backend, AWS account, users, top features → upgrade vs. rebuild plan
 - [ ] Stakeholder workshops: Finance, Islamic, Cards, NMC, TAC, TCL, TRESCO, Insurance, Collections, IT, Risk, Compliance
 - [ ] Customer interviews (15–20) and teardowns of Sahel's analytics and reviews
 - [ ] Prioritization workshop on [03-crazy-ideas.md](03-crazy-ideas.md)
@@ -31,7 +32,8 @@
 - **Payments:** Tap (cards, Apple Pay, Google Pay, BenefitPay), deposits and installments, autopay with saved cards
 - **My Garage**: registration and insurance renewal reminders, installments
 - Back-office console (operations queue, manual review)
-- Arabic + English, iOS + Android (+ Huawei if Sahel 2.0)
+- Arabic + English, iOS + Android + Huawei (Sahel is on AppGallery)
+- **Migration:** existing Sahel features (transfers, bill pay, card control, applications, motor and travel insurance) keep working. The release ships as an update to the existing store listings
 
 **Launch:** a closed beta with 500 staff and friendly customers → public launch.
 

@@ -29,7 +29,7 @@ BCFC was founded in 1983 and is licensed by the CBB. It is listed on Bahrain Bou
 
 **Strategic insight:** BCFC is the only group in Bahrain that is at once a **lender, a new-car distributor, a used-car dealer, a lessor, a RERA Class A valuer and landlord, and an insurance broker**, with a Shari'a board in place. The marketplace stitches these together. **No competitor can replicate the supply side.**
 
-> ⚠️ KEY DECISION: should the marketplace be **Sahel 2.0** (an evolution of the existing app, its users, and its vendor stack) or a **new app** that links to Sahel? See [11-open-questions.md](11-open-questions.md). The Android package `com.cbt.bcfc` suggests Sahel was built by a vendor. We need to know who owns the code and the contracts.
+> ✅ DECIDED: the marketplace is **Sahel 2.0**, an evolution of the existing app and its users. Sahel was **built in-house by BCFC**, and BCFC owns the code. See [ADR-0001](adr/0001-sahel-2.0.md).
 
 ## 2. Regulators and national infrastructure
 

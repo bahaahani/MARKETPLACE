@@ -62,7 +62,7 @@
 
 ### Web
 - The **public listings website** (cars and property) needs SEO. Flutter Web is weak at SEO, so use **Next.js** for public pages and Flutter Web only for logged-in portals (dealer and back-office). ⚠️ DECISION
-- Domain: is "thevacantwillbe.net" the intended domain, or is it a speech-to-text mix-up of something under bcfc.bh? ⚠️ CONFIRM
+- Domain: not decided yet. **Use bcfc.bh subdomains by default** (e.g., `sahel.bcfc.bh` for web, `api.sahel.bcfc.bh` for the API).
 
 ## 3. Backend
 
@@ -99,7 +99,7 @@
 | Security | GuardDuty, Security Hub, Inspector, Macie (PII in S3), CloudTrail (org-wide), Config rules |
 | Backup / DR | AWS Backup, Aurora cross-region replicas, RPO ≤ 15 min, RTO ≤ 4 h (targets ⚠️ align with CBB BCM requirements) |
 
-The "server we already have": clarify whether it is an EC2 instance, an on-prem server, or the Sahel backend. ⚠️ CONFIRM
+✅ The existing server is on **AWS** ([ADR-0003](adr/0003-aws-hosting.md)). Next: audit that account (region, what runs there, and whether Sahel's backend is there) before designing the landing zone.
 
 ## 5. Non-functional requirements
 

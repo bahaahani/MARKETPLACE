@@ -1,4 +1,4 @@
-# BCF Marketplace — Planning Repository
+# Sahel 2.0 (BCFC Marketplace) — Planning Repository
 
 > **Status:** Planning / discovery (no code yet)
 > **Owner:** Bahrain Commercial Facilities Company (BCF / "Bahrain Credit")
@@ -38,4 +38,4 @@ The verticals are:
 ## Conventions
 
 - Anything marked **⚠️ VERIFY** is an assumption. It must be confirmed with the partner, the regulator, or BCF internal teams before we build on it.
-- Architecture decisions are recorded as ADRs under `docs/adr/` once they are made.
+- Architecture decisions are recorded as ADRs under [`docs/adr/`](docs/adr/README.md). **Decided so far:** Sahel 2.0, GitHub for now, AWS hosting.

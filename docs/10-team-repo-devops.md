@@ -12,7 +12,7 @@ This planning repository lives on **GitHub** (`bahaahani/marketplace`) for now. 
 | Security scanning | ✅ Ultimate tier | ✅ GitHub Advanced Security |
 | Ecosystem / AI tooling | Good | Very strong |
 
-**Recommendation:** use **BCFC's GitLab for production source code**, since regulated financial code often needs to stay on infrastructure BCFC controls. Mirror or keep this planning repo wherever the team prefers. ⚠️ DECISION
+✅ **Decision: GitHub for now** ([ADR-0002](adr/0002-source-control-github.md)). We'll revisit a move to BCFC-hosted GitLab if Compliance or CBB requires source code to stay on BCFC infrastructure. Git history moves over cleanly either way, so keep CI definitions simple (GitHub Actions) and avoid deep lock-in.
 
 ## 2. Repository layout (proposed)
 
@@ -55,7 +55,7 @@ Monorepo vs. multiple repos: start as a **monorepo** for speed, and split if tea
 ## 5. Mobile release pipeline
 
 - Flavors: `dev`, `staging`, `prod` (separate bundle IDs / app names)
-- CI builds: Codemagic or GitLab CI with macOS runners → TestFlight, Play Internal Testing, AppGallery testing
+- CI builds: **GitHub Actions** (macOS runners) or Codemagic → TestFlight, Play Internal Testing, AppGallery testing
 - Signing keys stored in the CI vault, never in the repo
 - Staged rollouts (1% → 10% → 50% → 100%) with a crash-free sessions gate ≥ 99.5%
 - Forced-update mechanism via Remote Config (security fixes)
