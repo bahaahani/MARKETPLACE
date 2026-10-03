@@ -23,7 +23,7 @@
 | Apply for vehicle finance (conventional / Murabaha) | J2 | ✅ | ✅ | ✅ `/applications` | Domain, Playwright, Flutter | Decision, accept, timeline; Murabaha steps recorded in Shari'a order |
 | Apply for personal finance (conventional / commodity Murabaha) | – | ✅ | ✅ | ✅ `/applications` | Domain, Playwright, Flutter | Rate card still labels Commodity Murabaha "coming soon" |
 | Home finance application (Ijara / conventional) | J4 | ❌ | ❌ | ❌ | – | Calculator only |
-| Credit officer review of referred applications | – | ❌ | ➖ | ❌ | – | Referred applications stay referred |
+| Credit officer review of referred applications | – | ✅ back office | ✅ customer sees "Reviewed by credit officer" | ✅ `/backoffice/applications`, `/backoffice/applications/{id}/decision` | Domain, Playwright, Flutter | REFERRED → APPROVED / DECLINED with a mandatory internal note (audit log). Queue across every customer; salary and obligations for credit officers only |
 | Life-event bundles | – | ✅ | ✅ | ✅ `/life-events`, `/life-events/{id}/bundle` | Domain, Playwright, Flutter | Placeholder amounts and premiums; some items "coming soon" |
 | My installments, garage, rewards balance (account) | J5 | ✅ | ✅ | ✅ `/me` | Playwright, Flutter | Demo contracts for every customer until core lending is integrated |
 | Early settlement quote and "settle now" | – | ✅ | ✅ | ✅ `/me/contracts/{id}/settlement-quote` | Domain, Playwright, Flutter | Paying the exact quote through checkout marks the contract settled (per customer); wrong amount → 422, repeat → 409 `ALREADY_SETTLED`. Settled contracts don't yet reduce obligations for pre-approval/DBR |
@@ -36,7 +36,7 @@
 | Dealer & broker portal: inventory, leads board, showroom offer | J7 | ✅ | ➖ web-first | ✅ `/dealer/*` | Domain, Playwright | No staff login; offers are not pushed to the customer |
 | Arabic (RTL) and English | all | ✅ | ✅ | ✅ localized fields | Playwright (RTL checks), Flutter | |
 | Real login (eKey / OIDC, passkeys, biometrics) | J1 | ❌ | ❌ | ❌ | – | |
-| Back-office console | – | ❌ | ➖ | ❌ | – | |
+| Back-office console | – | ✅ `/{locale}/backoffice` | ➖ web-only staff tool | ✅ `/backoffice/*` | Domain, Playwright | ⚠️ No staff login: pick a role (credit officer, operations, compliance viewer); one `staffSession()` check per route (401 / 403). KPIs, credit review, refunds of premiums without a policy (idempotent), audit log (in memory, filterable) |
 | Claims, Suhail / Suhaila 2.0, push notifications, rewards redemption | J6, J8 | ❌ | ❌ | ❌ | – | |
 
 Where the tests live: `packages/domain/test` (Vitest), `apps/web/e2e` (Playwright, desktop and Pixel 7 viewports), `apps/mobile/test` (Flutter widget tests on recorded API fixtures in `test/fixtures`). CI runs all three.
@@ -49,7 +49,7 @@ Where the tests live: `packages/domain/test` (Vitest), `apps/web/e2e` (Playwrigh
 | Customer data | Every session starts as the fictional demo customer. Onboarding replaces salary, obligations and pre-approval with the customer's own (self-declared) numbers. Contracts, garage and rewards stay demo data | `packages/domain/src/customer.ts` |
 | Stores | Payments, applications, cards, share tokens, leads, contract settings, policies: in-memory singletons on the Next.js server, lost on restart. Scoped per session customer; another session gets 404 | `apps/web/lib/api.ts`, `apps/web/lib/policy-store.ts` |
 | Idempotency | `Idempotency-Key` header (or body field) required on payments and applications, scoped per customer. A repeated key returns the **original** result | `packages/domain/src/payments.ts`, `origination.ts` |
-| Payments | Create → confirm (captured). No money moves; no refunds or voids are exercised | `packages/domain/src/payments.ts` |
+| Payments | Create → confirm (captured). No money moves. Back-office Operations can refund a captured premium that never became a policy (CAPTURED → REFUNDED, idempotent); no voids | `packages/domain/src/payments.ts`, `backoffice.ts` |
 
 ## 3. Placeholders that need business sign-off
 
@@ -74,6 +74,7 @@ Each item is marked ⚠️ in the code. None of these values may go live without
 | P15 | **Reservation deposit** | BHD 100 | `config.ts` `RESERVATION_DEPOSIT_FILS` | Automotive (NMC / TAC) |
 | P16 | Consent validity | 90 days for CRB and Open Banking | `onboarding.ts` | Compliance ⚠️ VERIFY with CBB Open Banking rules |
 | P17 | Pre-approval share code | 15 minutes, 8 characters | `dealer.ts` | Product, Compliance |
+| P18 | Back office | Role permissions (`ROLE_PERMISSIONS`), minimum note length (5), premium refundable after **0 minutes** (`ORPHAN_PREMIUM_MIN_AGE_MS`) | `backoffice.ts` | Credit Risk, Operations, Compliance |
 
 ## 4. Privacy decisions pending
 
@@ -91,15 +92,15 @@ Each item is marked ⚠️ in the code. None of these values may go live without
 | **Identity** | Real auth: eKey 2.0 federation (OIDC), our own OIDC provider, device binding, step-up for money movement; passkeys on web; secure token storage on mobile | Replace `lib/session.ts` and the mobile session header. See [06](06-architecture.md), [12](12-web-platform.md) |
 | **Partner auth** | Dealer / broker staff login (partner SSO), roles, per-dealer data access | `DealerAuthProvider` is the plug-in point in `apps/web/lib/api.ts` |
 | **Persistence** | A database (Aurora PostgreSQL) for sessions, applications, cards, policies, payments, leads; migrations; backups | Every store is in memory today |
-| **Payments** | Tap server integration and verified webhooks; **refunds and reconciliation**, including **captured premium payments that never bind to a policy** (quote expired, insurer refused, mismatch); voids; settlement payments that close contracts in core lending (the prototype only marks them settled in memory); settled contracts reducing obligations in DBR; scheduled autopay charges; server-side amount binding for every purpose | See [05](05-payments.md) |
+| **Payments** | Tap server integration and verified webhooks; **refunds and reconciliation** (the sandbox back office lists and refunds **captured premium payments that never bind to a policy**, but no money moves and there is no reconciliation); voids; settlement payments that close contracts in core lending (the prototype only marks them settled in memory); settled contracts reducing obligations in DBR; scheduled autopay charges; server-side amount binding for every purpose | See [05](05-payments.md) |
 | **Credit data** | CRB pull under consent, Open Banking (AISP) income and obligations, salary verification | Obligations are self-declared today |
 | **Decisioning** | Real decision engine and credit policy; credit officer queue for referred applications | |
 | **Core lending** | Contracts, schedules, settlement figures, and autopay from the core lending system; real fulfilment steps (with evidence) for the Murabaha sequence; disbursement | Accept runs all steps instantly today |
 | **E-signature** | Signed contract documents with eKey identity | |
 | **Cards** | Issuer / processor integration, real PANs (never in our origin), push provisioning | |
 | **Insurance** | Insurer / broker APIs for quoting, binding, policy documents | |
-| **Audit logging** | Who did what, when, for every decision, consent, payment, and dealer action | |
+| **Audit logging** | Who did what, when, for every decision, consent, payment, and dealer action | Back-office actions (sign-in, credit decisions, refunds) are logged in memory today; needs an append-only store and coverage of customer and dealer actions |
 | **Abuse protection** | Rate limiting, WAF / bot control, CAPTCHA on onboarding and share-code redemption; CSP, HSTS, CSRF protection; restrict API CORS (open to `*` today for the app) | |
-| **Operations** | Back-office console, monitoring, alerting, observability | |
+| **Operations** | Staff SSO and roles for the back-office console (`StaffAuthProvider` is the plug-in point in `apps/web/lib/backoffice-api.ts`); monitoring, alerting, observability | |
 | **Mobile release** | Bundle IDs `com.cbt.bcfc` / App Store id `6443493467`, signing, Huawei (HMS) build, obfuscation, RASP | Currently `bh.bcfc.sahel` |
 | **Hosting** | AWS landing zone, CI/CD to environments, a dedicated API service when needed | The API runs inside Next.js today |

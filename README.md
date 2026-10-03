@@ -23,9 +23,10 @@ Every customer feature works on **web and mobile**, in **English and Arabic (RTL
 | **Insurance: motor, travel, home** + **My policies** | ✅ Compare (cheapest first, Takaful filter), hold a quote, pay, policy issued | ✅ | Fictional insurers, illustrative pricing. A policy is issued only for a captured payment that matches the held quote |
 | **Checkout** (reservation deposit, valuation fee, premiums, settlement) | ✅ All Tap methods, sandbox confirm | ✅ | Sandbox gateway; no money moves |
 | **Dealer & broker portal** (J7) | ✅ Inventory with monthly prices, leads board, showroom: redeem a customer's pre-approval code and build an offer | Customer side only (share pre-approval code from the account screen) | No staff login (anyone can act as any dealer). Offers are not pushed to the customer's app. Web-first by design (desktop in showrooms) |
+| **Back-office console** (staff) | ✅ `/backoffice`: KPIs, credit officer review of referred applications, refunds of premiums that never became a policy, audit log | Customer side only ("Reviewed by credit officer" on the application) | No staff login (pick a role). Audit log in memory; refunds move no money. Web-only staff tool |
 | **Sandbox customer session** | ✅ HttpOnly cookie | ✅ `X-Sahel-Session` header | Stands in for eKey / OIDC login. Each session starts as the demo customer until onboarding |
 
-Not built yet (planned in the docs): real login, back-office console, credit officer review of referred applications, home finance applications (Ijara), claims, rewards redemption, Suhail / Suhaila 2.0, push notifications, Huawei-specific services.
+Not built yet (planned in the docs): real login (customer and staff), home finance applications (Ijara), claims, rewards redemption, Suhail / Suhaila 2.0, push notifications, Huawei-specific services.
 
 ## Run it
 
@@ -94,6 +95,7 @@ cd apps/mobile && flutter analyze && flutter test    # widget + API-contract tes
 | `insurance*.ts`, `policies.ts` | Motor, travel and home quotes; held policy quotes bound to captured payments |
 | `payments.ts` | Payment state machine and the sandbox gateway |
 | `dealer.ts` | Dealer inventory, leads pipeline, pre-approval share tokens, offers |
+| `backoffice.ts` | Back office: staff roles and auth plug-in, credit review queue and decisions, premium refunds, audit log, KPIs |
 
 **Parity is tested:** Playwright checks that web figures equal the API, and the Flutter tests use recorded API responses plus a money-formatting fixture generated from the TypeScript formatter. Product rules the app needs (slider ranges, steps, defaults, consent period, insurance form limits, reservation deposit) come from `GET /api/v1/config`, not from Dart. See [ADR-0004](docs/adr/0004-web-parity.md).
 

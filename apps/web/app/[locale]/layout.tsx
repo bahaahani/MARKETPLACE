@@ -41,6 +41,10 @@ export default async function LocaleLayout({ children, params }: { children: Rea
           <Link href={`/${locale}/dealer`} className="underline hover:text-text" data-testid="footer-dealer-link">
             {tr.t('dealerPortalLink')}
           </Link>
+          <span className="mx-2" aria-hidden>·</span>
+          <Link href={`/${locale}/backoffice`} className="underline hover:text-text" data-testid="footer-backoffice-link">
+            {tr.t('boLink')}
+          </Link>
         </footer>
       </body>
     </html>

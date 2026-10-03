@@ -137,6 +137,19 @@ export interface TimelineEvent {
   status: ApplicationStatus;
   /** ISO timestamp */
   at: string;
+  /** Set when a person (not the automatic decision) made this step: a credit officer's review */
+  by?: 'CREDIT_OFFICER';
+}
+
+/**
+ * A credit officer's decision on a REFERRED application, as the customer sees it. Who reviewed it and the
+ * officer's internal note stay in the back-office audit log (backoffice.ts), never on the customer's application.
+ */
+export interface CreditReview {
+  outcome: 'APPROVED' | 'DECLINED';
+  reviewedBy: 'CREDIT_OFFICER';
+  /** ISO timestamp */
+  reviewedAt: string;
 }
 
 export interface FinanceApplication {
@@ -151,6 +164,8 @@ export interface FinanceApplication {
   applicant: CustomerFinancials;
   status: ApplicationStatus;
   decision?: Decision;
+  /** Present once a credit officer decided a referred application */
+  review?: CreditReview;
   timeline: TimelineEvent[];
   idempotencyKey: string;
   createdAt: string;
@@ -196,6 +211,8 @@ export interface ApplicationStep {
   done: boolean;
   /** Part of the Murabaha sequence (BCFC buys, owns, then sells) */
   murabaha: boolean;
+  /** CREDIT_OFFICER when a credit officer made this step (reviewed a referred application) */
+  by?: 'CREDIT_OFFICER';
 }
 
 /**
@@ -205,8 +222,15 @@ export interface ApplicationStep {
 export function applicationSteps(app: FinanceApplication): ApplicationStep[] {
   const done = app.timeline.map((e) => e.status);
   // Only an approved offer has steps still to come; referred and declined applications stop at the decision.
-  const planned = app.status !== 'DECLINED' && app.decision?.outcome === 'APPROVED' ? fulfilmentPath(app.productLine, app.structure) : [];
-  const out: ApplicationStep[] = app.timeline.map((e) => ({ status: e.status, at: e.at, done: true, murabaha: MURABAHA_STEPS.includes(e.status) }));
+  const approved = app.decision?.outcome === 'APPROVED' || app.review?.outcome === 'APPROVED';
+  const planned = app.status !== 'DECLINED' && approved ? fulfilmentPath(app.productLine, app.structure) : [];
+  const out: ApplicationStep[] = app.timeline.map((e) => ({
+    status: e.status,
+    at: e.at,
+    done: true,
+    murabaha: MURABAHA_STEPS.includes(e.status),
+    ...(e.by ? { by: e.by } : {}),
+  }));
   for (const status of planned) {
     if (!done.includes(status)) out.push({ status, done: false, murabaha: MURABAHA_STEPS.includes(status) });
   }
@@ -340,6 +364,28 @@ export class SandboxOriginationService {
     if (app.status !== 'APPROVED') throw new OriginationError('NOT_APPROVED', `application is ${app.status}, only APPROVED offers can be accepted`);
     for (const step of fulfilmentPath(app.productLine, app.structure)) app = this.advance(id, step);
     return app;
+  }
+
+  /**
+   * A credit officer decides a REFERRED application: REFERRED → APPROVED or DECLINED (the state machine refuses
+   * anything else with ApplicationTransitionError). The timeline step and `review` record that a person decided it.
+   * Called only by the back office (backoffice.ts), which checks the staff role and writes the audit entry.
+   */
+  review(id: string, outcome: CreditReview['outcome']): FinanceApplication {
+    const advanced = this.advance(id, outcome);
+    const timeline = advanced.timeline.map((e, i) => (i === advanced.timeline.length - 1 ? { ...e, by: 'CREDIT_OFFICER' as const } : e));
+    const reviewed: FinanceApplication = {
+      ...advanced,
+      timeline,
+      review: { outcome, reviewedBy: 'CREDIT_OFFICER', reviewedAt: advanced.updatedAt },
+    };
+    this.byId.set(id, reviewed);
+    return reviewed;
+  }
+
+  /** Every customer's applications, newest first. Back office only: customer routes use list(customerId). */
+  listAll(): FinanceApplication[] {
+    return [...this.byId.values()].reverse();
   }
 
   /** With `customerId`, only that customer's application: another customer's id reads as undefined. */

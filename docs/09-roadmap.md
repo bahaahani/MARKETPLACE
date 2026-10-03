@@ -33,7 +33,7 @@
 - Motor insurance comparison (reuse Sahel's motor insurance). **Prototype ✅** compare and buy, policy bound to a captured payment (fictional insurers)
 - **Payments:** Tap (cards, Apple Pay, Google Pay, BenefitPay), deposits and installments, autopay with saved cards. **Prototype ✅** checkout for every method against a sandbox gateway; autopay is an on/off flag only (no saved cards, no scheduled charges)
 - **My Garage**: registration and insurance renewal reminders, installments. **Prototype ✅** account page with demo installments, garage, early settlement (placeholder fee / Ibra'); no reminders yet
-- Back-office console (operations queue, manual review). Not started (referred applications have no review queue yet)
+- Back-office console (operations queue, manual review). **Prototype ✅** web staff tool: credit officer review of referred applications, refunds of premiums that never became a policy, audit log, KPIs (sandbox role picker, no staff SSO yet)
 - Arabic + English, iOS + Android + Huawei (Sahel is on AppGallery) + **Web: full parity from MVP day 1** (Next.js, server-rendered and SEO-ready). **Prototype ✅** web + Flutter parity in EN and AR (RTL), tested; Huawei-specific services not yet
 - **Migration:** existing Sahel features (transfers, bill pay, card control, applications, motor and travel insurance) keep working. The release ships as an update to the existing store listings
 

@@ -34,11 +34,20 @@ export function applicationTitle(app: ApplicationView, tr: Translator): string {
 export function DecisionCard({ app, tr }: { app: ApplicationView; tr: Translator }) {
   const d = app.decision;
   if (!d) return null;
-  const o = OUTCOME[d.outcome];
+  // A credit officer's review of a referred application replaces the automatic outcome.
+  const review = app.review;
+  const outcome = review?.outcome ?? d.outcome;
+  const o = OUTCOME[outcome];
+  const body: MessageKey = review ? (review.outcome === 'APPROVED' ? 'boReviewedApprovedBody' : 'boReviewedDeclinedBody') : o.body;
   return (
-    <section className={`rounded-[var(--radius-md)] border-2 p-5 ${o.tone}`} data-testid="decision" data-outcome={d.outcome}>
+    <section className={`rounded-[var(--radius-md)] border-2 p-5 ${o.tone}`} data-testid="decision" data-outcome={outcome}>
       <h2 className="text-xl font-bold">{tr.t(o.title)}</h2>
-      <p className="mt-1 text-text">{tr.t(o.body)}</p>
+      {review && (
+        <p className="mt-1 inline-block rounded-full bg-surface px-2 py-0.5 text-xs font-semibold text-text" data-testid="reviewed-by-officer">
+          {tr.t('boReviewedByOfficer')}
+        </p>
+      )}
+      <p className="mt-1 text-text">{tr.t(body)}</p>
       <h3 className="mt-3 text-sm font-semibold text-text-muted">{tr.t('decisionReasons')}</h3>
       <ul className="mt-1 list-disc space-y-1 ps-5 text-sm text-text">
         {d.reasons.map((r) => (
@@ -47,7 +56,7 @@ export function DecisionCard({ app, tr }: { app: ApplicationView; tr: Translator
           </li>
         ))}
       </ul>
-      {d.outcome === 'DECLINED' && <p className="mt-2 text-sm text-text">{tr.t('tryLowerAmount')}</p>}
+      {outcome === 'DECLINED' && <p className="mt-2 text-sm text-text">{tr.t('tryLowerAmount')}</p>}
     </section>
   );
 }
@@ -122,6 +131,11 @@ export function Timeline({ steps, tr }: { steps: ApplicationStep[]; tr: Translat
       />
       <p className={`font-medium ${s.done ? '' : 'text-text-muted'}`}>{tr.t(STATUS_LABEL[s.status])}</p>
       <p className="text-xs text-text-muted">{s.at ? <time dateTime={s.at}>{when.format(new Date(s.at))}</time> : tr.t('stepUpcoming')}</p>
+      {s.by === 'CREDIT_OFFICER' && (
+        <p className="text-xs font-semibold text-brand" data-testid="step-reviewed-by-officer">
+          {tr.t('boReviewedByOfficer')}
+        </p>
+      )}
     </li>
   );
 
