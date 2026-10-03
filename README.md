@@ -27,9 +27,10 @@ Every customer feature works on **web and mobile**, in **English and Arabic (RTL
 | **Back-office console** (staff) | ✅ `/backoffice`: KPIs, credit officer review of referred applications, refunds of premiums that never became a policy, audit log | Customer side only ("Reviewed by credit officer" on the application) | No staff login (pick a role). Audit log in memory; refunds move no money. Web-only staff tool |
 | **Instant trade-in → down payment** | ✅ `/trade-in` (entries on the cars page and My Garage): range, breakdown, instant offer valid 7 days; "Use my trade-in" on a car page sets the calculator's down payment | ✅ `/trade-in` | ⚠️ Deterministic rules model, **not AI**, demo reference prices. Plate shown masked only. Credited at delivery (not yet on the application) |
 | **Sandbox customer session** | ✅ HttpOnly cookie | ✅ `X-Sahel-Session` header | Stands in for eKey / OIDC login. Each session starts as the demo customer until onboarding |
+| **Motor claims** (J6, First Notice of Loss) | ✅ "I had an accident" from My Garage and My policies: form with photos, claim page with status timeline, damage estimate, garage booking, replacement car card; **My claims** on the account page | ✅ | ⚠️ Photos are validated (JPEG / PNG / WebP by magic bytes, size-capped) then discarded: only type and size are kept. The estimate is a fixed rules table, **not AI**. Demo garages; replacement car is information only. Assessment is driven by a sandbox "advance" button |
 | **Suhail & Suhaila 2.0** (J8) | ✅ Chat button on customer pages: balance, next installment, settlement quote, cars by monthly budget, pre-approval, policies, cards, handoff; EN + AR (Gulf phrasings) | ✅ `/assistant` (home app bar) | ⚠️ Rules-based, no language model (`AssistantBrain` interface ready for an in-region model). Actions are links the customer confirms in the normal UI. Memory and rate limit in server memory |
 
-Not built yet (planned in the docs): real login (customer and staff), claims, rewards redemption, a language model behind Suhail / Suhaila, push notifications, Huawei-specific services.
+Not built yet (planned in the docs): real login (customer and staff), rewards redemption, a language model behind Suhail / Suhaila, push notifications, Huawei-specific services.
 
 ## Run it
 
@@ -98,6 +99,7 @@ cd apps/mobile && flutter analyze && flutter test    # widget + API-contract tes
 | `insurance*.ts`, `policies.ts` | Motor, travel and home quotes; held policy quotes bound to captured payments |
 | `payments.ts`, `payment-amounts.ts` | Payment state machine and the sandbox gateway; server-priced amounts (deposit, ⚠️ valuation fee) |
 | `home-finance.ts` | Home finance applications from the catalog (conventional, Ijara) |
+| `claims.ts` | Motor claims (FNOL): validation, status machine, ⚠️ rules-based damage estimate (not AI), demo garages, replacement car offer, sandbox claim store |
 | `dealer.ts` | Dealer inventory, leads pipeline, pre-approval share tokens, offers |
 | `backoffice.ts` | Back office: staff roles and auth plug-in, credit review queue and decisions, premium refunds, audit log, KPIs |
 | `assistant/` | Suhail & Suhaila: Arabic normalization, EN / AR intent rules, read-only tools over existing domain functions, replies with cards and actions, PII redaction, rate limit and conversation memory; ⚠️ `RulesBrain` until an LLM brain is plugged in |

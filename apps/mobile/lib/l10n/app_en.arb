@@ -1161,5 +1161,223 @@
       }
     }
   },
-  "tradeErrorPlate": "The plate must be 1 to 6 digits."
+  "tradeErrorPlate": "The plate must be 1 to 6 digits.",
+  "claimAccidentButton": "I had an accident",
+  "claimNewTitle": "Report an accident",
+  "claimNewSubtitle": "Tell us what happened. It takes a few minutes, and Tasheelat Insurance passes it to your insurer.",
+  "claimNoMotorPolicy": "You have no active motor policy to claim on. Get motor cover first.",
+  "claimGetMotorCover": "Get motor cover",
+  "claimPolicy": "Policy",
+  "claimPolicyOption": "{insurer} · #{plate} · {number}",
+  "@claimPolicyOption": {
+    "placeholders": {
+      "insurer": {
+        "type": "String"
+      },
+      "plate": {
+        "type": "String"
+      },
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "claimIncidentAt": "Date and time of the incident",
+  "claimIncidentDate": "Date",
+  "claimIncidentTime": "Time",
+  "claimLocation": "Where did it happen?",
+  "claimLocationPlaceholder": "e.g. Sheikh Khalifa Highway, near Isa Town",
+  "claimUseMyLocation": "Use my location",
+  "claimLocationAdded": "Location added ({lat}, {lng})",
+  "@claimLocationAdded": {
+    "placeholders": {
+      "lat": {
+        "type": "String"
+      },
+      "lng": {
+        "type": "String"
+      }
+    }
+  },
+  "claimLocationUnavailable": "Location unavailable. Describe the place instead.",
+  "claimType": "What happened?",
+  "claimTypeCollision": "Collision",
+  "claimTypeTheft": "Theft",
+  "claimTypeGlass": "Glass (windscreen, windows)",
+  "claimTypeFire": "Fire",
+  "claimTypeOther": "Other damage",
+  "claimSeverity": "How bad is the damage?",
+  "claimSeverityMinor": "Minor (scratches, small dents)",
+  "claimSeverityModerate": "Moderate (panels, lights)",
+  "claimSeveritySevere": "Severe (not drivable)",
+  "claimDescription": "Describe what happened",
+  "claimDescriptionHint": "{min} to {max} characters",
+  "@claimDescriptionHint": {
+    "placeholders": {
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "claimPoliceReportRequired": "Police report number (required for theft)",
+  "claimPoliceReportOptional": "Police report number (if any)",
+  "claimThirdParty": "Another vehicle or person was involved",
+  "claimPhotos": "Photos of the damage",
+  "claimPhotosHint": "Up to {max} photos (JPEG, PNG or WebP). They are made smaller on your device before upload.",
+  "@claimPhotosHint": {
+    "placeholders": {
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "claimPhotosAdd": "Add photos",
+  "claimPhotosCount": "{count} of {max} photos",
+  "@claimPhotosCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "claimPhotoRemove": "Remove photo {number}",
+  "@claimPhotoRemove": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "claimPhotoAlt": "Damage photo {number}",
+  "@claimPhotoAlt": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "claimPhotosSandboxNote": "Sandbox: photos are checked, then discarded. Only their type and size are kept.",
+  "claimSubmit": "Submit claim",
+  "claimSubmitting": "Submitting…",
+  "claimErrorFuture": "The incident time cannot be in the future.",
+  "claimErrorOutsidePolicy": "The incident must be within your policy period.",
+  "claimErrorTooOld": "This incident is too old to report in the app. Please call us.",
+  "claimErrorTime": "Check the date and time of the incident.",
+  "claimErrorPoliceReport": "Enter a valid police report number.",
+  "claimErrorPhotosRequired": "Add at least one photo of the damage.",
+  "claimErrorPhoto": "A photo cannot be used. Use JPEG, PNG or WebP within the size limit.",
+  "claimErrorTooManyPhotos": "Too many photos.",
+  "claimErrorNotCovered": "Third-party cover only pays for damage to someone else.",
+  "claimErrorLocation": "Describe where it happened.",
+  "claimErrorDescription": "Describe what happened in a little more detail.",
+  "claimErrorPolicy": "This policy cannot be used for a claim.",
+  "claimTitle": "Claim {number}",
+  "@claimTitle": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "claimStatusSubmitted": "Submitted",
+  "claimStatusUnderAssessment": "Under assessment",
+  "claimStatusApproved": "Approved",
+  "claimStatusRejected": "Rejected",
+  "claimStatusRepairBooked": "Repair booked",
+  "claimStatusSettled": "Settled",
+  "claimProgress": "Progress",
+  "claimEstimateTitle": "Damage estimate",
+  "claimEstimateRange": "{low} to {high}",
+  "@claimEstimateRange": {
+    "placeholders": {
+      "low": {
+        "type": "String"
+      },
+      "high": {
+        "type": "String"
+      }
+    }
+  },
+  "claimEstimateNotAi": "Sandbox placeholder: a fixed table by type and severity, not an AI estimate. Your insurer's assessor decides.",
+  "claimEstimateTotalLoss": "Total loss: settled at the insured value of the car.",
+  "claimApprovedAmount": "Approved amount",
+  "claimGarageTitle": "Choose a garage",
+  "claimGarageAgency": "Agency",
+  "claimGarageBook": "Book",
+  "claimGarageBooked": "Repair booked at {garage}",
+  "@claimGarageBooked": {
+    "placeholders": {
+      "garage": {
+        "type": "String"
+      }
+    }
+  },
+  "claimGarageAfterApproval": "You can choose a garage once the claim is approved.",
+  "claimGarageAgencyHint": "Agency garages are listed because your policy includes agency repair.",
+  "claimReplacementTitle": "Replacement car",
+  "claimReplacementBody": "{provider} can give you a {vehicleClass} for up to {days} days while your car is off the road.",
+  "@claimReplacementBody": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      },
+      "vehicleClass": {
+        "type": "String"
+      },
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "claimReplacementNote": "Information only: booking in the app is not available yet.",
+  "claimDetails": "Details",
+  "claimIncident": "Incident",
+  "claimPhotosReceived": "{count} photos received",
+  "@claimPhotosReceived": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "claimThirdPartyYes": "Third party involved",
+  "claimThirdPartyNo": "No third party",
+  "claimPoliceReportNumber": "Police report {number}",
+  "@claimPoliceReportNumber": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "claimSandboxAdvance": "Sandbox: next assessment step",
+  "claimSandboxReject": "Sandbox: reject",
+  "claimSandboxAdvanceNote": "Sandbox only: these buttons stand in for the insurer's claims team.",
+  "claimMyClaims": "My claims",
+  "claimView": "View claim",
+  "claimFiledOn": "Filed {date}",
+  "@claimFiledOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "claimVehicle": "Car #{plate}",
+  "@claimVehicle": {
+    "placeholders": {
+      "plate": {
+        "type": "String"
+      }
+    }
+  },
+  "claimSandboxNote": "Sandbox: claims are kept in memory and are not sent to any insurer.",
+  "claimPhotosGallery": "Choose from gallery",
+  "claimPhotosCamera": "Take a photo"
 }

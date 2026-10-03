@@ -11,6 +11,8 @@ import '../../core/providers.dart';
 import '../../core/theme/tokens.g.dart';
 import '../../widgets/common.dart';
 import '../checkout/checkout_screen.dart';
+import '../claims/claims_providers.dart';
+import '../claims/my_claims.dart';
 import '../finance/application_screen.dart';
 import '../insurance/insurance_providers.dart';
 import '../insurance/policies.dart';
@@ -34,6 +36,7 @@ class AccountScreen extends ConsumerWidget {
             ref.invalidate(applicationsProvider);
             ref.invalidate(myCardsProvider);
             ref.invalidate(myPoliciesProvider);
+            ref.invalidate(myClaimsProvider);
           },
           child: ListView(padding: const EdgeInsets.all(SahelSpace.md), children: [
             ...switch (ref.watch(applicationsProvider)) {
@@ -45,6 +48,7 @@ class AccountScreen extends ConsumerWidget {
             },
             const MyCardsSection(),
             const MyPoliciesSection(),
+            const MyClaimsSection(),
             SectionHeader(l.myInstallments, action: '★ ${l.rewardsPoints(context.number(me.rewardsPoints))}'),
             for (final c in me.contracts) ...[_ContractCard(c), const SizedBox(height: SahelSpace.sm)],
             SectionHeader(l.myGarage),
@@ -73,6 +77,7 @@ class AccountScreen extends ConsumerWidget {
                       onPressed: () => context.push('/trade-in?garage=${Uri.encodeQueryComponent(g.vehicleId)}'),
                       label: Text(l.tradeEntryGarage),
                     ),
+                    AccidentButton(key: Key('garage-accident-${g.plate}'), query: 'plate=${Uri.encodeQueryComponent(g.plate)}'),
                   ]),
                 ),
               ),

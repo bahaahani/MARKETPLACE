@@ -11,6 +11,7 @@ import 'package:sahel/core/models/payment_price.dart';
 import 'package:sahel/core/models/tradein.dart';
 import 'package:sahel/core/repository.dart';
 import 'package:sahel/features/assistant/assistant_models.dart';
+import 'package:sahel/features/claims/claims_models.dart';
 
 /// Recorded responses from the real shared API (apps/web/app/api/v1), refreshed by
 /// re-running the curl commands in test/fixtures/README.md.
@@ -368,7 +369,8 @@ class FakeSahelRepository implements SahelRepository {
   }
 
   @override
-  Future<List<Policy>> myPolicies() async => [for (final j in fixture('me_policies')['items'] as List) Policy.fromJson(j as Json)];
+  Future<List<Policy>> myPolicies() async =>
+      [for (final j in fixture(motorCover ? 'me_policies_motor' : 'me_policies')['items'] as List) Policy.fromJson(j as Json)];
 
   // ---- Config
 
@@ -423,5 +425,58 @@ class FakeSahelRepository implements SahelRepository {
     final had = tradeInActive;
     tradeInActive = false;
     return had;
+  }
+
+  // ---- Motor claims (recorded in test/fixtures/README.md: buy motor cover, file, assess, book a garage)
+
+  /// When true, My policies is the recording with an active motor policy (#123456).
+  bool motorCover = false;
+
+  /// Every claim filed (request body and idempotency key), garage booked and sandbox advance, as sent.
+  final filedClaims = <(Json, String)>[];
+  final garageBookings = <(String, String)>[];
+  final advances = <(String, String?)>[];
+
+  /// Recorded state of the claim: claim_submitted, claim_approved or claim_repair_booked.
+  String claimState = 'claim_submitted';
+
+  Claim _claim() => Claim.fromJson(fixture(claimState) as Json);
+
+  @override
+  Future<Claim> fileClaim(ClaimDraft draft, {required String idempotencyKey}) async {
+    final body = draft.toJson();
+    filedClaims.add((body, idempotencyKey));
+    // Mirrors two of the API's 422s (packages/domain/src/claims.ts).
+    if (draft.type != 'theft' && draft.photos.isEmpty) throw ApiException(422, 'PHOTOS_REQUIRED', 'add at least 1 photo of the damage');
+    if (draft.type == 'theft' && draft.policeReportNumber == null) throw ApiException(422, 'POLICE_REPORT_REQUIRED', 'police report required');
+    claimState = 'claim_submitted';
+    return _claim();
+  }
+
+  @override
+  Future<List<Claim>> myClaims() async =>
+      filedClaims.isEmpty && !motorCover ? const [] : [for (final j in fixture('me_claims')['items'] as List) Claim.fromJson(j as Json)];
+
+  @override
+  Future<Claim> claim(String id) async {
+    final c = _claim();
+    if (c.id != id) throw ApiException(404, 'CLAIM_NOT_FOUND', 'claim not found');
+    return c;
+  }
+
+  @override
+  Future<Claim> bookClaimGarage(String claimId, String garageId) async {
+    garageBookings.add((claimId, garageId));
+    if (claimState != 'claim_approved') throw ApiException(409, 'INVALID_TRANSITION', 'not approved');
+    claimState = 'claim_repair_booked';
+    return _claim();
+  }
+
+  @override
+  Future<Claim> advanceClaim(String claimId, {String? to}) async {
+    advances.add((claimId, to));
+    // Only the approval was recorded; the assessment step in between is skipped here.
+    claimState = 'claim_approved';
+    return _claim();
   }
 }

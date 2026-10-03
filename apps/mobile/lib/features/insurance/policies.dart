@@ -7,6 +7,7 @@ import '../../core/models/insurance.dart';
 import '../../core/theme/tokens.g.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../widgets/common.dart';
+import '../claims/my_claims.dart';
 import 'insurance_providers.dart';
 
 /// "My policies" on the account screen (GET /me/policies, same list as the web account page).
@@ -79,6 +80,10 @@ class PolicyCard extends StatelessWidget {
             ),
             Text(l.insPremiumPaid(context.money(p.premiumFils)), style: const TextStyle(fontWeight: FontWeight.w600)),
           ]),
+          if (p.line == 'motor' && p.active) ...[
+            const SizedBox(height: SahelSpace.sm),
+            AccidentButton(key: Key('policy-accident-${p.policyNumber}'), query: 'policyId=${Uri.encodeQueryComponent(p.id)}'),
+          ],
         ]),
       ),
     );

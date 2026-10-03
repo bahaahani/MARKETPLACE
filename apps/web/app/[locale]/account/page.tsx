@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { claimView } from '@sahel/domain';
 import { t } from '@sahel/i18n';
 import { ApplicationRow } from '@/components/Application';
+import { ClaimList } from '@/components/Claim';
 import { AutopayToggle } from '@/components/BundlesAutopayToggle';
 import { ContractSettlement } from '@/components/BundlesSettlement';
 import { MyCards } from '@/components/MyCards';
@@ -12,6 +14,7 @@ import { customerApplicationView } from '@/lib/home-finance';
 import { STRUCTURE_LABEL } from '@/lib/labels';
 import { resolveLocale, translator } from '@/lib/i18n';
 import { policyStore } from '@/lib/policy-store';
+import { claimStore } from '@/lib/claims-store';
 import { pageCustomerView } from '@/lib/session';
 
 // Personalized (customer data and due dates), so render per request.
@@ -41,6 +44,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
       )}
       <MyCards cards={cards} tr={tr} />
       <PolicyList policies={policyStore.list(me.customerId)} tr={tr} />
+      <ClaimList claims={claimStore.list(me.customerId).map(claimView)} tr={tr} />
       <section aria-labelledby="inst">
         <div className="mb-3 flex items-baseline justify-between">
           <h1 id="inst" className="text-2xl font-bold">{tr.t('myInstallments')}</h1>
@@ -105,6 +109,9 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
             </ul>
             <Link className="btn btn-ghost mt-3 w-full text-sm" href={`/${tr.locale}/trade-in?garage=${encodeURIComponent(g.vehicleId)}`} data-testid="garage-tradein">
               {tr.t('tradeEntryGarage')}
+            </Link>
+            <Link className="btn btn-ghost mt-3 w-full text-danger" href={`/${tr.locale}/claims/new?plate=${encodeURIComponent(g.plate)}`} data-testid="garage-accident">
+              {tr.t('claimAccidentButton')}
             </Link>
           </article>
         ))}

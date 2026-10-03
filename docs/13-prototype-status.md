@@ -39,7 +39,8 @@
 | Real login (eKey / OIDC, passkeys, biometrics) | J1 | ❌ | ❌ | ❌ | – | |
 | Back-office console | – | ✅ `/{locale}/backoffice` | ➖ web-only staff tool | ✅ `/backoffice/*` | Domain, Playwright | ⚠️ No staff login: pick a role (credit officer, operations, compliance viewer); one `staffSession()` check per route (401 / 403). KPIs, credit review, refunds of premiums without a policy (idempotent), audit log (in memory, filterable) |
 | Suhail & Suhaila 2.0 assistant | J8 | ✅ chat button on customer pages | ✅ `/assistant` | ✅ `POST /assistant/messages` | Domain, Playwright, Flutter | ⚠️ Rules-based (`RulesBrain`), no language model yet. Read-only tools over the session customer's data (balance, next installment, settlement quote, cars by budget, pre-approval, policies, cards, handoff); actions are links the customer confirms. PII redaction, input cap, rate limit and memory in server memory |
-| Claims, push notifications, rewards redemption | J6 | ❌ | ❌ | ❌ | – | |
+| Motor claims (First Notice of Loss), My claims | J6 | ✅ | ✅ | ✅ `/claims`, `/claims/{id}`, `/claims/{id}/garage`, `/me/claims`; ⚠️ `/claims/{id}/advance` (sandbox only) | Domain, Playwright, Flutter | On an ACTIVE motor policy of the session customer (another customer's policy or claim is 404). SUBMITTED → UNDER_ASSESSMENT → APPROVED / REJECTED → REPAIR_BOOKED → SETTLED (total loss: APPROVED → SETTLED). Photos validated by magic bytes then discarded (metadata only). Estimate is a rules table, not AI. Demo garages (agency only with agency repair); replacement car from Tasheelat Car Leasing is an info card |
+| Push notifications, rewards redemption | – | ❌ | ❌ | ❌ | – | |
 
 Where the tests live: `packages/domain/test` (Vitest), `apps/web/e2e` (Playwright, desktop and Pixel 7 viewports), `apps/mobile/test` (Flutter widget tests on recorded API fixtures in `test/fixtures`). CI runs all three.
 
@@ -78,6 +79,7 @@ Each item is marked ⚠️ in the code. None of these values may go live without
 | P17 | Pre-approval share code | 15 minutes, 8 characters | `dealer.ts` | Product, Compliance |
 | P18 | Back office | Role permissions (`ROLE_PERMISSIONS`), minimum note length (5), premium refundable after **0 minutes** (`ORPHAN_PREMIUM_MIN_AGE_MS`) | `backoffice.ts` | Credit Risk, Operations, Compliance |
 | P19 | **Trade-in model** | Reference prices (catalog new cars, otherwise illustrative); depreciation 10% current model year, 15% first year then 12% / year; −1% per 5,000 km (max −40%); condition +4% / 0 / −8% / −20%; accident −12%; dealer margin −10%; range −7% / +5%; offer valid 7 days; up to 15 model years old, 500,000 km | `tradein.ts` `TRADE_IN_MODEL` | Tasheelat Automotive pricing desk |
+| P20 | **Motor claims** | Damage estimate table by type and severity (e.g. collision moderate BHD 600 ± 20%; theft and severe fire = total loss at the insured value); claims within **30 days** of the incident; police report mandatory for theft; third-party cover only for collision / other with a third party; at most 6 photos of 400 KB; replacement car up to 14 days; demo garages | `claims.ts` | Tasheelat Insurance, partner insurers |
 
 ## 4. Privacy decisions pending
 
@@ -101,7 +103,7 @@ Each item is marked ⚠️ in the code. None of these values may go live without
 | **Core lending** | Contracts, schedules, settlement figures, and autopay from the core lending system; real fulfilment steps (with evidence) for the Murabaha and Ijara sequences (purchase, lease registration, ownership transfer at the end of the lease); a real TRESCO valuation report; disbursement | Accept runs the steps instantly today (Ijara stops at the lease; conventional home finance waits for a captured valuation fee) |
 | **E-signature** | Signed contract documents with eKey identity | |
 | **Cards** | Issuer / processor integration, real PANs (never in our origin), push provisioning | |
-| **Insurance** | Insurer / broker APIs for quoting, binding, policy documents | |
+| **Insurance** | Insurer / broker APIs for quoting, binding, policy documents; lodging claims with the insurer, its assessor's decision and real damage assessment; encrypted storage for claim photos and police reports; garage network and replacement car booking | Claims are in memory and photos are discarded today |
 | **Audit logging** | Who did what, when, for every decision, consent, payment, and dealer action | Back-office actions (sign-in, credit decisions, refunds) are logged in memory today; needs an append-only store and coverage of customer and dealer actions |
 | **Abuse protection** | Rate limiting, WAF / bot control, CAPTCHA on onboarding and share-code redemption; CSP, HSTS, CSRF protection; restrict API CORS (open to `*` today for the app) | |
 | **Operations** | Staff SSO and roles for the back-office console (`StaffAuthProvider` is the plug-in point in `apps/web/lib/backoffice-api.ts`); monitoring, alerting, observability | |
