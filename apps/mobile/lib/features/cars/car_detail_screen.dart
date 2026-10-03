@@ -8,19 +8,30 @@ import '../../core/theme/tokens.g.dart';
 import '../../widgets/common.dart';
 import '../../widgets/listings.dart';
 import '../checkout/checkout_screen.dart';
+import '../finance/apply_button.dart';
 import '../finance/finance_calculator.dart';
 import '../insurance/insurance_quotes.dart';
 
 const _depositFils = 100000; // BHD 100 reservation deposit (same as web)
 
-class CarDetailScreen extends ConsumerWidget {
+class CarDetailScreen extends ConsumerStatefulWidget {
   const CarDetailScreen({super.key, required this.id});
   final String id;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CarDetailScreen> createState() => _CarDetailScreenState();
+}
+
+class _CarDetailScreenState extends ConsumerState<CarDetailScreen> {
+  /// Carried from the finance calculator, so "Apply for finance" applies for what is shown.
+  FinanceSelection? _selection;
+
+  @override
+  Widget build(BuildContext context) {
     final l = context.l10n;
+    final id = widget.id;
     final car = ref.watch(vehicleProvider(id));
+    final sel = _selection;
     return Scaffold(
       appBar: AppBar(actions: const [LanguageButton()]),
       body: AsyncView(
@@ -59,12 +70,30 @@ class CarDetailScreen extends ConsumerWidget {
                     )),
                     child: Text(l.reserveCar(context.money(_depositFils, decimals: 0))),
                   ),
+                  const SizedBox(height: SahelSpace.sm),
+                  ApplyButton(
+                    filled: false,
+                    terms: sel == null
+                        ? null
+                        : (
+                            productLine: 'vehicle',
+                            structure: sel.structure,
+                            tenureMonths: sel.tenureMonths,
+                            vehicleId: v.id,
+                            downPaymentFils: sel.downPaymentFils,
+                            amountFils: null,
+                          ),
+                  ),
                 ]),
               ),
             ]),
           ),
           const SizedBox(height: SahelSpace.md),
-          FinanceCalculator(productLine: 'vehicle', assetPriceFils: v.priceFils),
+          FinanceCalculator(
+            productLine: 'vehicle',
+            assetPriceFils: v.priceFils,
+            onChanged: (s) => setState(() => _selection = s),
+          ),
           const SizedBox(height: SahelSpace.md),
           InsuranceQuotes(vehicleValueFils: v.priceFils, reference: v.id),
         ]),

@@ -67,7 +67,14 @@ class _HomeBody extends ConsumerWidget {
                 crossAxisSpacing: 8,
                 childAspectRatio: 2.2,
                 children: [
-                  for (final lim in pa.limits) _LimitTile(limitLabel(lim.productLine), l.upTo(context.money(lim.maxFinanceFils, decimals: 0))),
+                  for (final lim in pa.limits)
+                    _LimitTile(
+                      limitLabel(lim.productLine),
+                      l.upTo(context.money(lim.maxFinanceFils, decimals: 0)),
+                      // Personal finance has no listing to start from, so its tile is the entry point.
+                      onTap: lim.productLine == 'personal' ? () => context.push('/finance/personal') : null,
+                      tileKey: lim.productLine == 'personal' ? const Key('personal-finance-link') : null,
+                    ),
                   _LimitTile(l.preApprovalCard, context.money(pa.cardLimitFils, decimals: 0)),
                 ],
               ),
@@ -107,12 +114,18 @@ class _HomeBody extends ConsumerWidget {
 }
 
 class _LimitTile extends StatelessWidget {
-  const _LimitTile(this.label, this.value);
+  const _LimitTile(this.label, this.value, {this.onTap, this.tileKey});
   final String label;
   final String value;
+  final VoidCallback? onTap;
+  final Key? tileKey;
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => onTap == null
+      ? _tile()
+      : InkWell(key: tileKey, onTap: onTap, borderRadius: BorderRadius.circular(SahelRadius.md), child: _tile());
+
+  Widget _tile() => Container(
         padding: const EdgeInsets.all(SahelSpace.sm + 2),
         decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(SahelRadius.md)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [

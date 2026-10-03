@@ -54,3 +54,8 @@ final motorQuotesProvider = FutureProvider.family<List<MotorQuote>, MotorQuery>(
       .watch(repositoryProvider)
       .motorQuotes(vehicleValueFils: q.vehicleValueFils, comprehensive: q.comprehensive, takafulOnly: q.takafulOnly),
 );
+
+final applicationProvider =
+    FutureProvider.family<FinanceApplication, String>((ref, id) => ref.watch(repositoryProvider).application(id));
+
+final applicationsProvider = FutureProvider<List<FinanceApplication>>((ref) => ref.watch(repositoryProvider).applications());

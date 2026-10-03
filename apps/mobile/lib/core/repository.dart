@@ -42,6 +42,23 @@ abstract interface class SahelRepository {
 
   /// Virtual cards issued in this sandbox session.
   Future<List<VirtualCard>> myCards();
+
+  /// Apply for vehicle finance (vehicleId + downPaymentFils) or personal finance (amountFils).
+  /// The API decides immediately.
+  Future<FinanceApplication> applyForFinance({
+    required String productLine,
+    required FinanceStructure structure,
+    required int tenureMonths,
+    String? vehicleId,
+    int? downPaymentFils,
+    int? amountFils,
+    required String idempotencyKey,
+  });
+  Future<FinanceApplication> application(String id);
+  Future<List<FinanceApplication>> applications();
+
+  /// Accept the offer and e-sign (sandbox).
+  Future<FinanceApplication> acceptApplication(String id);
 }
 
 class ApiSahelRepository implements SahelRepository {
@@ -144,4 +161,38 @@ class ApiSahelRepository implements SahelRepository {
 
   @override
   Future<List<VirtualCard>> myCards() async => [for (final j in _items(await _api.get('/me/cards'))) VirtualCard.fromJson(j as Json)];
+
+  @override
+  Future<FinanceApplication> applyForFinance({
+    required String productLine,
+    required FinanceStructure structure,
+    required int tenureMonths,
+    String? vehicleId,
+    int? downPaymentFils,
+    int? amountFils,
+    required String idempotencyKey,
+  }) async =>
+      FinanceApplication.fromJson(await _api.post(
+        '/applications',
+        {
+          'productLine': productLine,
+          'structure': structure.name,
+          'tenureMonths': tenureMonths,
+          'vehicleId': ?vehicleId,
+          'downPaymentFils': ?downPaymentFils,
+          'amountFils': ?amountFils,
+        },
+        headers: {'Idempotency-Key': idempotencyKey},
+      ) as Json);
+
+  @override
+  Future<FinanceApplication> application(String id) async => FinanceApplication.fromJson(await _api.get('/applications/$id') as Json);
+
+  @override
+  Future<List<FinanceApplication>> applications() async =>
+      [for (final j in _items(await _api.get('/applications'))) FinanceApplication.fromJson(j as Json)];
+
+  @override
+  Future<FinanceApplication> acceptApplication(String id) async =>
+      FinanceApplication.fromJson(await _api.post('/applications/$id/accept', const {}) as Json);
 }

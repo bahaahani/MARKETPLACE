@@ -1,14 +1,17 @@
 import {
+  ApplicationTransitionError,
   assertDealerAccess,
   CardApplicationError,
   DealerError,
   LeadStore,
   OnboardingError,
+  OriginationError,
   PaymentValidationError,
   PreApprovalTokenStore,
   QuoteError,
   SandboxCardIssuer,
   SandboxDealerAuth,
+  SandboxOriginationService,
   SandboxPaymentGateway,
   type DealerAuthProvider,
   type DealerSession,
@@ -41,14 +44,26 @@ const DEALER_STATUS: Record<DealerError['code'], number> = {
 };
 
 export function handleError(e: unknown) {
-  if (e instanceof QuoteError) return problem(422, e.code, e.message);
-  if (e instanceof DealerError) return problem(DEALER_STATUS[e.code], e.code, e.message);
-  if (e instanceof PaymentValidationError) return problem(422, 'PAYMENT_INVALID', e.message);
-  if (e instanceof OnboardingError) return problem(422, e.code, e.message);
-  if (e instanceof CardApplicationError) return problem(e.code === 'CARD_NOT_FOUND' ? 404 : 422, e.code, e.message);
+  // Matched by name too: the sandbox stores live on globalThis and may have been created by another
+  // route's bundle, whose copy of the domain error classes is a different constructor.
+  if (isError<QuoteError>(e, QuoteError, 'QuoteError')) return problem(422, e.code, e.message);
+  if (isError<DealerError>(e, DealerError, 'DealerError')) return problem(DEALER_STATUS[e.code] ?? 422, e.code, e.message);
+  if (isError(e, PaymentValidationError, 'PaymentValidationError')) return problem(422, 'PAYMENT_INVALID', e.message);
+  if (isError<OnboardingError>(e, OnboardingError, 'OnboardingError')) return problem(422, e.code, e.message);
+  if (isError<CardApplicationError>(e, CardApplicationError, 'CardApplicationError')) {
+    return problem(e.code === 'CARD_NOT_FOUND' ? 404 : 422, e.code, e.message);
+  }
+  if (isError<OriginationError>(e, OriginationError, 'OriginationError')) {
+    return problem(e.code === 'NOT_FOUND' ? 404 : e.code === 'NOT_APPROVED' ? 409 : 422, e.code, e.message);
+  }
+  if (isError(e, ApplicationTransitionError, 'ApplicationTransitionError')) return problem(409, 'INVALID_TRANSITION', e.message);
   if (e instanceof SyntaxError) return problem(400, 'BAD_JSON', 'request body must be valid JSON');
   console.error(e);
   return problem(500, 'INTERNAL', 'unexpected error');
+}
+
+function isError<T extends Error>(e: unknown, cls: abstract new (...args: never[]) => T, name: string): e is T {
+  return e instanceof cls || (e instanceof Error && e.name === name);
 }
 
 export function intParam(v: string | null): number | undefined {
@@ -62,6 +77,7 @@ const g = globalThis as unknown as {
   __sahelLeads?: LeadStore;
   __sahelPreApprovalTokens?: PreApprovalTokenStore;
   __sahelCards?: SandboxCardIssuer;
+  __sahelOriginations?: SandboxOriginationService;
 };
 /** Sandbox payments, standing in for the Tap server integration. */
 export const payments = (g.__sahelPayments ??= new SandboxPaymentGateway());
@@ -71,6 +87,8 @@ export const leads = (g.__sahelLeads ??= new LeadStore());
 export const preApprovalTokens = (g.__sahelPreApprovalTokens ??= new PreApprovalTokenStore());
 /** ⚠️ Sandbox card issuer: virtual cards issued in this server session (no processor, no real PAN). */
 export const cardIssuer = (g.__sahelCards ??= new SandboxCardIssuer());
+/** ⚠️ Sandbox finance applications (in memory, lost on restart), standing in for the loan origination system. */
+export const originations = (g.__sahelOriginations ??= new SandboxOriginationService());
 
 /** ⚠️ Sandbox: no staff login. Production swaps in a provider that verifies partner-SSO tokens. */
 const dealerAuth: DealerAuthProvider = new SandboxDealerAuth();

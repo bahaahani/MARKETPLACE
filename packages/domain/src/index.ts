@@ -11,3 +11,4 @@ export * from './payments';
 export * from './dealer';
 export * from './onboarding';
 export * from './cards';
+export * from './origination';
