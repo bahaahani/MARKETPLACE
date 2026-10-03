@@ -713,6 +713,35 @@ paths:
       responses:
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/VirtualCard'}}}}}}
         '404': {$ref: '#/components/responses/Error'}
+  /assistant/messages:
+    post:
+      summary: |
+        Suhail & Suhaila 2.0 (⚠️ sandbox: rules-based, no language model). One customer message in English or Arabic
+        (Bahraini / Gulf phrasings and Arabic-Indic digits understood); the reply is in the language of the message.
+        Answers come from the session customer's own data (contracts, settlement quotes, pre-approval, policies, cards)
+        and the car catalog. Suggested actions are links (checkout, listing, account) that the customer confirms in the
+        normal UI: the assistant never pays, signs or applies. The last 10 turns are kept in memory per session
+        (customer text PII-redacted); replies never contain the CPR or the salary.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text, locale]
+              properties:
+                text: {type: string, maxLength: 500, description: 'The message, 1 to 500 characters'}
+                locale: {enum: [en, ar], description: 'App language, used when the text has no letters'}
+                persona: {enum: [suhail, suhaila], default: suhaila, description: 'Changes only the name and greeting'}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/AssistantReply'}}}}}}
+        '400': {description: BAD_JSON, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {description: 'TEXT_REQUIRED, TEXT_TOO_LONG (over 500 characters), INVALID_REQUEST (locale or persona)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '429':
+          description: RATE_LIMITED (more than 20 messages a minute in this session)
+          headers:
+            Retry-After: {schema: {type: integer}, description: Seconds to wait}
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
 components:
   parameters:
     SellerId:
@@ -1227,3 +1256,66 @@ components:
             buildingMaxFils: {type: integer}
             contentsMinFils: {type: integer}
             contentsMaxFils: {type: integer}
+    AssistantReply:
+      type: object
+      required: [id, persona, personaName, locale, intent, text, cards, actions, suggestions, sandbox]
+      properties:
+        id: {type: string}
+        persona: {enum: [suhail, suhaila]}
+        personaName: {type: string}
+        locale: {enum: [en, ar], description: Language of the answer}
+        intent:
+          enum: [outstanding_balance, next_installment, settlement_quote, find_cars, pre_approval, policies, card_status, handoff, help, greeting, thanks, confirm, unknown]
+        text: {type: string}
+        cards: {type: array, items: {$ref: '#/components/schemas/AssistantCard'}}
+        actions: {type: array, items: {$ref: '#/components/schemas/AssistantAction'}}
+        suggestions: {type: array, items: {type: string}, description: "Follow-up prompts in the answer's language"}
+        contractIds: {type: array, items: {type: string}, description: Contracts the answer is about}
+        handoff:
+          type: object
+          description: 'Set when handed to a human (⚠️ sandbox: no agent is connected)'
+          properties:
+            reference: {type: string}
+            sandbox: {const: true}
+        sandbox: {const: true}
+    AssistantCard:
+      type: object
+      required: [kind, title]
+      description: 'amounts: rows of figures (format amountFils with the money formatter); vehicles: cars from the catalog; list: title and detail lines'
+      properties:
+        kind: {enum: [amounts, vehicles, list]}
+        title: {type: string}
+        note: {type: string}
+        rows:
+          type: array
+          items:
+            type: object
+            properties:
+              label: {type: string}
+              amountFils: {type: integer}
+              emphasis: {type: boolean}
+        items:
+          type: array
+          items:
+            type: object
+            description: 'vehicles: id, title, year, condition, bodyType, priceFils, fromMonthlyFils, href; list: title, detail'
+            properties:
+              id: {type: string}
+              title: {type: string}
+              detail: {type: string}
+              year: {type: integer}
+              condition: {enum: [new, used]}
+              bodyType: {type: string}
+              priceFils: {type: integer}
+              fromMonthlyFils: {type: integer}
+              href: {type: string}
+    AssistantAction:
+      type: object
+      required: [id, label, href, kind, requiresConfirmation]
+      description: 'A suggested link, never executed by the assistant; payments open the checkout where the customer confirms.'
+      properties:
+        id: {type: string}
+        label: {type: string}
+        href: {type: string, description: 'Locale-free app path, e.g. /checkout?purpose=early_settlement&amount=…, /cars/{id}, /account'}
+        kind: {enum: [navigate, payment]}
+        requiresConfirmation: {type: boolean}

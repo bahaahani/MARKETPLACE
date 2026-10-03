@@ -17,7 +17,16 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final me = ref.watch(meProvider);
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.appName, style: const TextStyle(color: SahelColors.brand, fontWeight: FontWeight.bold)), actions: const [LanguageButton()]),
+      appBar: AppBar(title: Text(context.l10n.appName, style: const TextStyle(color: SahelColors.brand, fontWeight: FontWeight.bold)), actions: [
+        // Suhail & Suhaila 2.0
+        IconButton(
+          key: const Key('assistant-entry'),
+          tooltip: context.l10n.aiOpen,
+          icon: const Icon(Icons.chat_bubble_outline),
+          onPressed: () => context.push('/assistant'),
+        ),
+        const LanguageButton(),
+      ]),
       body: AsyncView(
         value: me,
         onRetry: () => ref.invalidate(meProvider),

@@ -3,6 +3,7 @@ import 'models.dart';
 import 'models/bundles.dart';
 import 'models/config.dart';
 import 'models/insurance.dart';
+import '../features/assistant/assistant_models.dart';
 
 /// Everything the app needs from the backend. The API implementation calls the same
 /// endpoints as the Next.js web app, so both channels show identical data and pricing.
@@ -105,6 +106,9 @@ abstract interface class SahelRepository {
 
   /// Product rules (consent period, calculator ranges and steps, personal finance range) from GET /config.
   Future<ClientConfig> config();
+
+  /// Suhail & Suhaila: one message; the reply's suggested actions are links the customer confirms (⚠️ sandbox).
+  Future<AssistantReply> sendAssistantMessage({required String text, required String locale, required AssistantPersona persona});
 }
 
 class ApiSahelRepository implements SahelRepository {
@@ -308,4 +312,8 @@ class ApiSahelRepository implements SahelRepository {
 
   @override
   Future<ClientConfig> config() async => ClientConfig.fromJson(await _api.get('/config') as Json);
+
+  @override
+  Future<AssistantReply> sendAssistantMessage({required String text, required String locale, required AssistantPersona persona}) async =>
+      AssistantReply.fromJson(await _api.post('/assistant/messages', {'text': text, 'locale': locale, 'persona': persona.wire}) as Json);
 }
