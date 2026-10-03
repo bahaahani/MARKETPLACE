@@ -1,0 +1,14 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - lib/l10n/gen/**
+    - build/**
+    - android/**
+    - ios/**
+
+linter:
+  rules:
+    prefer_single_quotes: true
+    require_trailing_commas: false
+    avoid_print: true

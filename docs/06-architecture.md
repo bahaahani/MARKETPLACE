@@ -6,9 +6,9 @@
 
 ```
  ┌─────────────────────────── Clients ───────────────────────────┐
- │ Flutter app: iOS / Android / Huawei / WEB (one codebase)      │
- │ Next.js public SEO pages (listings, products, calculators)    │
- │ Dealer & Broker portal (Flutter Web)   Back-office (Web)      │
+ │ Flutter app: iOS / Android / Huawei                           │
+ │ Next.js web: full customer app + SEO pages                    │
+ │ Dealer & Broker portal (Next.js)       Back-office (Next.js)  │
  └───────────────┬───────────────────────────────────────────────┘
                  │ HTTPS (TLS 1.2+/1.3, cert pinning in the app)
         ┌────────▼─────────┐
@@ -38,23 +38,23 @@
 | Concern | Choice | Why |
 |---|---|---|
 | Flutter channel | Stable, pinned via FVM | Reproducible builds |
-| Structure | **Melos monorepo**: `app/` + feature packages (`feature_cars`, `feature_property`, `feature_finance`, `feature_cards`, `feature_insurance`) + `core_*` packages | Teams own verticals; super-app modularity |
+| Structure | One Flutter package with `lib/features/<vertical>` folders today; split into feature packages (Melos / pub workspaces) when teams grow | Teams own verticals; super-app modularity |
 | State | **Riverpod** (or Bloc; pick one) | Testable, scales well |
 | Navigation | `go_router` with deep links / universal links | Marketing links, push notifications, dealer QR codes |
 | Networking | `dio` + generated OpenAPI client | Typed contracts with the backend |
 | Models | `freezed` + `json_serializable` | Immutable data |
 | Localization | `flutter_localizations` + ARB files, **full right-to-left support** | Arabic first-class |
-| Design system | An in-house `bcfc_ui` package (tokens, components, Storybook via Widgetbook) | Consistency across verticals |
+| Design system | Tokens from `packages/design-tokens` (generated into Dart and CSS) + shared widgets; Widgetbook later | Same look on web and mobile |
 | Secure storage | `flutter_secure_storage` (Keychain/Keystore) | Tokens and keys |
 | Biometrics | `local_auth` | Login and transaction signing |
 | Device security | Root/jailbreak detection, anti-tamper, obfuscation (`--obfuscate`), RASP (e.g., freeRASP / Talsec, or a commercial option) | CBB and app-security expectations |
-| Payments | Tap Flutter SDKs (Checkout, Apple Pay, BenefitPay) on mobile; **Tap Web SDKs** (Card, Apple Pay on Safari, Google Pay, BenefitPay Web) on web | See [05-payments.md](05-payments.md) |
+| Payments | Tap Flutter SDKs (Checkout, Apple Pay, BenefitPay) | Web uses the Tap Web SDKs. See [05-payments.md](05-payments.md) |
 | Push | Firebase Messaging + **Huawei Push Kit** | Sahel is on AppGallery, so we must support HMS |
 | Maps | `google_maps_flutter` (+ HMS Map on Huawei) | |
 | ID / NFC | CPR chip reading via an NFC plugin / e-KYC vendor SDK | |
 | AR / 3D | `model_viewer_plus` / ARKit / ARCore (later phase) | |
 | Analytics | Firebase / Amplitude behind an interface | Swappable for PDPL reasons |
-| Testing | Unit, widget, golden, and `integration_test` + Patrol (mobile); **Playwright** (web) | Parity is tested, not assumed |
+| Testing | Unit, widget, golden, and `integration_test` + Patrol (mobile); **Playwright** (web); Vitest (`packages/domain`) | Parity is tested, not assumed |
 
 ### The super-app pattern
 - Each vertical is a **feature package** with its own routes, state, and API client.
@@ -62,7 +62,7 @@
 - Consider **server-driven UI** for home-screen widgets and campaigns, so marketing can change layouts without an app release.
 
 ### Web
-- ✅ **Web parity is mandatory** ([ADR-0004](adr/0004-web-parity.md)). The **same Flutter codebase** runs the full customer app on the web. **Next.js** serves only the public SEO pages. Details, mobile-only fallbacks, and the definition of done: [12-web-platform.md](12-web-platform.md).
+- ✅ **Web parity is mandatory, and the web is Next.js** ([ADR-0004](adr/0004-web-parity.md)). Flutter covers mobile only. Pricing, rules, strings, and tokens are shared through `packages/*` and API v1. Details: [12-web-platform.md](12-web-platform.md).
 - Domain: not decided yet. **Use bcfc.bh subdomains by default** (e.g., `sahel.bcfc.bh` for web, `api.sahel.bcfc.bh` for the API).
 
 ## 3. Backend
@@ -70,7 +70,7 @@
 | Concern | Proposal | Alternatives |
 |---|---|---|
 | Style | **Modular monolith** first, with strict module boundaries. Extract services later (payments, ledger, and decisioning first) | Microservices from day one (too slow for an MVP) |
-| Language | **TypeScript / NestJS** (fast, shares skills with web) **or Kotlin / Spring Boot** (strong in banking) | Go for high-throughput services |
+| Language | **TypeScript** (shares `packages/domain` with the Next.js web app; today the API runs as Next.js route handlers) | Kotlin / Spring Boot if the team prefers JVM later |
 | API | REST + OpenAPI 3.1 (contract-first). GraphQL BFF optional for the app home screen | |
 | Database | **Aurora PostgreSQL** (Multi-AZ), one schema per module | |
 | Search | **OpenSearch** for car and property listings (geo, facets, Arabic analyzers) | |

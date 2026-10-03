@@ -1,0 +1,15 @@
+{
+  "name": "sahel-2",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/web"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:web": "npm run dev -w @sahel/web",
+    "build:web": "npm run build -w @sahel/web",
+    "gen": "node tools/gen.mjs"
+  }
+}

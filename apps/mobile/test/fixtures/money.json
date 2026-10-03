@@ -1,0 +1,146 @@
+[
+  {
+    "fils": 0,
+    "locale": "en",
+    "decimals": 0,
+    "text": "BHD 0"
+  },
+  {
+    "fils": 0,
+    "locale": "en",
+    "decimals": 3,
+    "text": "BHD 0.000"
+  },
+  {
+    "fils": 0,
+    "locale": "ar",
+    "decimals": 0,
+    "text": "0 د.ب."
+  },
+  {
+    "fils": 0,
+    "locale": "ar",
+    "decimals": 3,
+    "text": "0.000 د.ب."
+  },
+  {
+    "fils": 5,
+    "locale": "en",
+    "decimals": 0,
+    "text": "BHD 0"
+  },
+  {
+    "fils": 5,
+    "locale": "en",
+    "decimals": 3,
+    "text": "BHD 0.005"
+  },
+  {
+    "fils": 5,
+    "locale": "ar",
+    "decimals": 0,
+    "text": "0 د.ب."
+  },
+  {
+    "fils": 5,
+    "locale": "ar",
+    "decimals": 3,
+    "text": "0.005 د.ب."
+  },
+  {
+    "fils": 232838,
+    "locale": "en",
+    "decimals": 0,
+    "text": "BHD 233"
+  },
+  {
+    "fils": 232838,
+    "locale": "en",
+    "decimals": 3,
+    "text": "BHD 232.838"
+  },
+  {
+    "fils": 232838,
+    "locale": "ar",
+    "decimals": 0,
+    "text": "233 د.ب."
+  },
+  {
+    "fils": 232838,
+    "locale": "ar",
+    "decimals": 3,
+    "text": "232.838 د.ب."
+  },
+  {
+    "fils": 1234500,
+    "locale": "en",
+    "decimals": 0,
+    "text": "BHD 1,235"
+  },
+  {
+    "fils": 1234500,
+    "locale": "en",
+    "decimals": 3,
+    "text": "BHD 1,234.500"
+  },
+  {
+    "fils": 1234500,
+    "locale": "ar",
+    "decimals": 0,
+    "text": "1,235 د.ب."
+  },
+  {
+    "fils": 1234500,
+    "locale": "ar",
+    "decimals": 3,
+    "text": "1,234.500 د.ب."
+  },
+  {
+    "fils": 14900000,
+    "locale": "en",
+    "decimals": 0,
+    "text": "BHD 14,900"
+  },
+  {
+    "fils": 14900000,
+    "locale": "en",
+    "decimals": 3,
+    "text": "BHD 14,900.000"
+  },
+  {
+    "fils": 14900000,
+    "locale": "ar",
+    "decimals": 0,
+    "text": "14,900 د.ب."
+  },
+  {
+    "fils": 14900000,
+    "locale": "ar",
+    "decimals": 3,
+    "text": "14,900.000 د.ب."
+  },
+  {
+    "fils": 310000000,
+    "locale": "en",
+    "decimals": 0,
+    "text": "BHD 310,000"
+  },
+  {
+    "fils": 310000000,
+    "locale": "en",
+    "decimals": 3,
+    "text": "BHD 310,000.000"
+  },
+  {
+    "fils": 310000000,
+    "locale": "ar",
+    "decimals": 0,
+    "text": "310,000 د.ب."
+  },
+  {
+    "fils": 310000000,
+    "locale": "ar",
+    "decimals": 3,
+    "text": "310,000.000 د.ب."
+  }
+]

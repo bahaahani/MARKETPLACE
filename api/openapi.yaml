@@ -1,0 +1,240 @@
+openapi: 3.1.0
+info:
+  title: Sahel 2.0 API
+  version: 0.1.0
+  description: |
+    The single API used by BOTH the Next.js web app and the Flutter mobile app, so data and
+    pricing are identical on every channel. Currently served by Next.js route handlers
+    (apps/web/app/api/v1); the contract stays the same when it moves to a dedicated service.
+
+    Conventions:
+    - Money is always integer **fils** (1 BHD = 1000 fils). Field names end in `Fils`.
+    - Success: `{ "data": ... }`. Error: `{ "error": { "code", "message" } }`.
+    - Localized text is `{ "en": "...", "ar": "..." }`.
+servers:
+  - url: http://localhost:3000/api/v1
+paths:
+  /vehicles:
+    get:
+      summary: Search vehicles (with "from BHD X / month" on each listing)
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: condition, in: query, schema: { enum: [new, used] } }
+        - { name: bodyType, in: query, schema: { enum: [sedan, suv, hatchback, pickup, coupe] } }
+        - { name: fuel, in: query, schema: { enum: [petrol, hybrid, electric] } }
+        - { name: make, in: query, schema: { type: string } }
+        - { name: maxPriceFils, in: query, schema: { type: integer } }
+        - { name: maxMonthlyFils, in: query, schema: { type: integer } }
+        - { name: structure, in: query, schema: { $ref: '#/components/schemas/FinanceStructure' } }
+        - { name: sort, in: query, schema: { enum: [price-asc, price-desc, year-desc, mileage-asc] } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/VehicleListing' } }
+                      total: { type: integer }
+  /vehicles/{id}:
+    get:
+      summary: Vehicle detail
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/VehicleListing' } } } } } }
+        '404': { $ref: '#/components/responses/Error' }
+  /properties:
+    get:
+      summary: Search properties
+      parameters:
+        - { name: purpose, in: query, schema: { enum: [sale, rent] } }
+        - { name: type, in: query, schema: { enum: [villa, apartment, townhouse, land, office] } }
+        - { name: minBedrooms, in: query, schema: { type: integer } }
+        - { name: maxPriceFils, in: query, schema: { type: integer } }
+        - { name: q, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/PropertyListing' } }
+                      total: { type: integer }
+  /properties/{id}:
+    get:
+      summary: Property detail
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/PropertyListing' } } } } } }
+        '404': { $ref: '#/components/responses/Error' }
+  /cards:
+    get:
+      summary: IMTIAZ card products
+      responses:
+        '200': { description: OK }
+  /quotes/finance:
+    post:
+      summary: Finance quote. Omit `structure` to get every offered structure side by side.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productLine, assetPriceFils, tenureMonths]
+              properties:
+                productLine: { enum: [vehicle, personal, home] }
+                assetPriceFils: { type: integer, minimum: 1 }
+                downPaymentFils: { type: integer, minimum: 0, default: 0 }
+                tenureMonths: { type: integer }
+                structure: { $ref: '#/components/schemas/FinanceStructure' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      quotes: { type: array, items: { $ref: '#/components/schemas/FinanceQuote' } }
+                      limits: { $ref: '#/components/schemas/FinanceLimits' }
+        '400': { $ref: '#/components/responses/Error' }
+        '422':
+          description: Business rule violated (STRUCTURE_NOT_OFFERED, TENURE_OUT_OF_RANGE, DOWN_PAYMENT_TOO_LOW, DOWN_PAYMENT_TOO_HIGH, INVALID_AMOUNT)
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /insurance/motor-quotes:
+    post:
+      summary: Motor insurance comparison (sorted by premium)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vehicleValueFils]
+              properties:
+                vehicleValueFils: { type: integer, minimum: 1 }
+                cover: { enum: [comprehensive, third-party], default: comprehensive }
+                takafulOnly: { type: boolean }
+                agencyRepair: { type: boolean }
+      responses:
+        '200': { description: OK }
+        '400': { $ref: '#/components/responses/Error' }
+  /me:
+    get:
+      summary: Customer overview (pre-approval, contracts, garage). Demo customer until eKey login exists.
+      responses:
+        '200': { description: OK }
+  /payments:
+    post:
+      summary: Create a payment (sandbox; production wraps Tap Payments server-side)
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 8 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amountFils, method, purpose, reference]
+              properties:
+                amountFils: { type: integer, minimum: 1 }
+                method: { enum: [card, click_to_pay, apple_pay, google_pay, samsung_pay, benefitpay] }
+                purpose: { enum: [reservation_deposit, installment, insurance_premium, early_settlement, valuation_fee] }
+                reference: { type: string }
+      responses:
+        '201': { description: Created (status INITIATED, with nextAction) }
+        '422': { $ref: '#/components/responses/Error' }
+  /payments/{id}/confirm:
+    post:
+      summary: Sandbox stand-in for "customer completed the Tap flow and the webhook verified it"
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK (status CAPTURED) }
+components:
+  responses:
+    Error:
+      description: Error
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+    Localized:
+      type: object
+      required: [en, ar]
+      properties: { en: { type: string }, ar: { type: string } }
+    FinanceStructure:
+      enum: [conventional, murabaha, ijara]
+    VehicleListing:
+      type: object
+      properties:
+        id: { type: string }
+        make: { type: string }
+        model: { type: string }
+        trim: { type: string }
+        year: { type: integer }
+        condition: { enum: [new, used] }
+        mileageKm: { type: integer }
+        priceFils: { type: integer }
+        bodyType: { type: string }
+        fuel: { type: string }
+        seats: { type: integer }
+        color: { $ref: '#/components/schemas/Localized' }
+        seller: { type: object }
+        inspected: { type: boolean }
+        accentHue: { type: integer }
+        fromMonthlyFils: { type: integer }
+    PropertyListing:
+      type: object
+      properties:
+        id: { type: string }
+        title: { $ref: '#/components/schemas/Localized' }
+        area: { $ref: '#/components/schemas/Localized' }
+        type: { type: string }
+        purpose: { enum: [sale, rent] }
+        priceFils: { type: integer, description: Sale price, or monthly rent when purpose is rent }
+        bedrooms: { type: integer }
+        bathrooms: { type: integer }
+        sizeSqm: { type: integer }
+        valued: { type: boolean }
+        fromMonthlyFils: { type: integer }
+    FinanceQuote:
+      type: object
+      properties:
+        structure: { $ref: '#/components/schemas/FinanceStructure' }
+        financedFils: { type: integer }
+        tenureMonths: { type: integer }
+        monthlyFils: { type: integer }
+        finalInstallmentFils: { type: integer }
+        totalPayableFils: { type: integer }
+        costOfFinanceFils: { type: integer, description: Interest (conventional) or profit (Islamic) }
+        ratePct: { type: number }
+        rateBasis: { enum: [apr, flat, profit] }
+        aprPct: { type: number, description: APR computed from cash flows, comparable across structures }
+        salePriceFils: { type: integer, description: Murabaha only }
+    FinanceLimits:
+      type: object
+      properties:
+        minTenureMonths: { type: integer }
+        maxTenureMonths: { type: integer }
+        minDownPaymentFils: { type: integer }
+        maxDownPaymentFils: { type: integer }
+        structures: { type: array, items: { $ref: '#/components/schemas/FinanceStructure' } }

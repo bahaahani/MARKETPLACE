@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+.env*.local
+.DS_Store
+# Flutter
+apps/mobile/.dart_tool/
+apps/mobile/build/
+apps/mobile/.flutter-plugins*
+apps/mobile/**/ephemeral/
+apps/mobile/lib/l10n/gen/
+apps/web/test-results/
+apps/web/playwright-report/
+apps/web/next-env.d.ts

@@ -32,7 +32,7 @@
 - **Payments:** Tap (cards, Apple Pay, Google Pay, BenefitPay), deposits and installments, autopay with saved cards
 - **My Garage**: registration and insurance renewal reminders, installments
 - Back-office console (operations queue, manual review)
-- Arabic + English, iOS + Android + Huawei (Sahel is on AppGallery) + **Web: full parity from MVP day 1** (Flutter Web + Next.js SEO pages for car listings)
+- Arabic + English, iOS + Android + Huawei (Sahel is on AppGallery) + **Web: full parity from MVP day 1** (Next.js, server-rendered and SEO-ready)
 - **Migration:** existing Sahel features (transfers, bill pay, card control, applications, motor and travel insurance) keep working. The release ships as an update to the existing store listings
 
 **Launch:** a closed beta with 500 staff and friendly customers → public launch.

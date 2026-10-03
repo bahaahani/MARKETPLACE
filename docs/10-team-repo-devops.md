@@ -17,22 +17,19 @@ This planning repository lives on **GitHub** (`bahaahani/marketplace`) for now. 
 ## 2. Repository layout (proposed)
 
 ```
-marketplace/
-├── docs/                     # this planning set + ADRs
+MARKETPLACE/                  # (current, see README)
+├── docs/                     # planning set + ADRs
+├── api/openapi.yaml          # API v1 contract (source of truth for web + mobile)
+├── packages/
+│   ├── domain/               # TypeScript: pricing engine, rules, catalog, payments (Vitest)
+│   ├── i18n/                 # en/ar strings, shared by both apps
+│   └── design-tokens/        # colors, radius, spacing
 ├── apps/
-│   ├── mobile/               # Flutter app (Melos workspace)
-│   │   ├── app/
-│   │   └── packages/         # feature_* and core_* packages, bcfc_ui
-│   ├── dealer_portal/        # Flutter Web
-│   ├── backoffice/           # Flutter Web
-│   └── web_seo/              # Next.js public SEO pages (the full customer web app is the Flutter app itself)
-├── services/
-│   └── platform/             # modular monolith (modules per domain)
-├── integrations/             # partner adapters + mock servers
-├── infra/                    # Terraform (landing zone, envs)
-├── api/                      # OpenAPI contracts (source of truth)
-└── tools/
+│   ├── web/                  # Next.js: full web app + API v1 route handlers (Playwright)
+│   └── mobile/               # Flutter: iOS / Android / Huawei (flutter test)
+└── tools/gen.mjs             # generates ARB, CSS and Dart from the shared packages
 ```
+Later additions: `apps/dealer-portal` and `apps/backoffice` (Next.js), `services/platform` when the API moves out of Next.js, `integrations/` adapters.
 
 Monorepo vs. multiple repos: start as a **monorepo** for speed, and split if teams or permissions require it.
 
@@ -61,7 +58,7 @@ Monorepo vs. multiple repos: start as a **monorepo** for speed, and split if tea
 - Forced-update mechanism via Remote Config (security fixes)
 
 ### Web release pipeline
-- On every merge to main: Flutter Web build (WebAssembly) + Next.js build → Playwright end-to-end tests → deploy to S3/CloudFront `dev`
+- On every merge to main: Next.js build → Playwright end-to-end tests → deploy to `dev`
 - Promote the same artifact to `staging` → `prod` (blue/green, instant rollback)
 - Performance budget enforced in CI (Lighthouse CI): first load < 3 s on 4G
 - Web and mobile versions are tied to the same feature flags, so features switch on together
@@ -73,8 +70,8 @@ Monorepo vs. multiple repos: start as a **monorepo** for speed, and split if tea
 | Product owner (BCFC) | 1 |
 | Product managers (Finance, Marketplace) | 2 |
 | UX/UI designers (bilingual, right-to-left experience) | 2 |
-| Flutter engineers (mobile **and web**) | 5–6 |
-| Web engineer (Next.js SEO, web performance, web security) | 1–2 |
+| Flutter engineers (mobile) | 4 |
+| Next.js / React engineers (web) | 3–4 |
 | Backend engineers | 4–5 |
 | DevOps / cloud / SRE | 1–2 |
 | QA / automation (mobile + web, Playwright) | 2–3 |

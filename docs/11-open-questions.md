@@ -42,10 +42,10 @@ Please answer these (or assign an owner) before Phase 1 starts. **Bold** marks b
 | # | Decision | Proposal |
 |---|---|---|
 | T1 | Source control | ✅ **GitHub for now** ([ADR-0002](adr/0002-source-control-github.md)); GitLab migration possible later |
-| T2 | Backend language | NestJS (TypeScript) or Kotlin/Spring. Decide based on team skills |
-| T3 | Flutter state management | Riverpod |
+| T2 | Backend language | ✅ TypeScript for now (API v1 in Next.js route handlers, shared `packages/domain`) |
+| T3 | Flutter state management | ✅ Riverpod + go_router |
 | T4 | Compute | ECS Fargate |
-| T5 | Web | ✅ **Web parity mandatory** ([ADR-0004](adr/0004-web-parity.md)): Flutter Web for the full customer app + portals; Next.js for SEO pages |
+| T5 | Web | ✅ **Web parity mandatory; web is Next.js, mobile is Flutter** ([ADR-0004](adr/0004-web-parity.md)) |
 | T6 | Auth | Keycloak/Cognito + eKey federation |
 | T7 | Workflow engine | Step Functions vs. Temporal |
 | T8 | AI | Bedrock (in-region) for Suhail/Suhaila 2.0 |

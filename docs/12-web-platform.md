@@ -13,21 +13,21 @@
 
 **Parity means the same capability, not the same pixels.** The web uses responsive layouts: phone, tablet, and desktop (wide screens get multi-column layouts, side-by-side comparisons, and bigger galleries).
 
-## 2. Technology: one codebase, plus an SEO layer
+## 2. Technology: Next.js web + Flutter mobile + shared core
 
-| Layer | Technology | Why |
-|---|---|---|
-| **Customer app (mobile + web)** | **Flutter, one codebase** for iOS, Android, Huawei, and Web | Parity happens automatically. Each feature is written once and tested on all four targets |
-| **Public SEO pages** (listings, products, offers, blog) | **Next.js** (server-rendered), sharing the design tokens with Flutter | Flutter Web isn't crawlable enough for Google. These pages hand off to the Flutter web app for "Apply / Reserve / Log in" |
-| Dealer portal and back-office | Flutter Web | Reuses the `bcfc_ui` design system and the API clients |
+| Layer | Technology |
+|---|---|
+| **Web** (the full customer app, public SEO pages, and later the dealer portal and back-office) | **Next.js** (App Router, React Server Components, Tailwind) in `apps/web` |
+| **Mobile** (iOS, Android, Huawei) | **Flutter** in `apps/mobile` |
+| **Shared core** | `packages/domain` (pricing and rules), `packages/i18n` (strings), `packages/design-tokens`, and **API v1** (`api/openapi.yaml`) |
 
-The alternative was a separate web app (e.g., React for everything). That means **building every feature twice** with two teams, and parity drifts. Rejected for the logged-in app.
+How parity is guaranteed: see [ADR-0004](adr/0004-web-parity.md).
 
-### Flutter Web specifics
-- Build with **WebAssembly (`--wasm`)** for performance, and fall back to JavaScript for older browsers.
-- **Deferred loading** per vertical (`deferred as`), so the first load stays small. Target: first meaningful paint < 3 s on 4G.
-- **Path URLs** (no `#`) and deep links that match mobile routes in `go_router`, so the same link opens the app on a phone or the website on a desktop.
-- Arabic right-to-left and Arabic web fonts preloaded.
+### Next.js specifics
+- **Locale in the URL** (`/en/...`, `/ar/...`), with `<html dir="rtl">` for Arabic and logical CSS properties (`ms-`, `me-`, `text-start`) so layouts mirror automatically.
+- Listings and product pages are **server-rendered / statically generated**, carry schema.org JSON-LD, and work without JavaScript (filters are plain GET forms).
+- Personalized pages (home, account) render per request.
+- **Same URLs as the mobile deep links** (e.g., `/cars/{id}`, `/checkout?purpose=&amount=&reference=`), so a shared link opens the right screen on either channel.
 - Supported browsers: latest 2 versions of Chrome, Safari (macOS and iOS), Edge, Firefox, and Samsung Internet.
 
 ## 3. Mobile-only capabilities and their web equivalents
@@ -49,7 +49,7 @@ Some phone features don't exist in browsers. Each one needs a web equivalent, so
 | AR showroom | `<model-viewer>` 3D on desktop; AR via WebXR / Quick Look on supported phones |
 | Root/jailbreak detection, RASP | Bot protection, device fingerprinting, CSP, Subresource Integrity, anti-clickjacking |
 | Screenshot blocking | Not possible. Mask sensitive data by default (tap to reveal) |
-| Home-screen widgets / Siri shortcuts | Installable **PWA** (manifest, icons, offline shell) |
+| Home-screen widgets / Siri shortcuts | Installable **PWA** (Next.js manifest, icons, offline shell) |
 
 ## 4. Web security (in addition to [07-security-compliance.md](07-security-compliance.md))
 
@@ -63,8 +63,7 @@ Some phone features don't exist in browsers. Each one needs a web equivalent, so
 ## 5. Hosting on AWS
 
 ```
-Route 53 ─► CloudFront (+ WAF) ─┬─► S3: Flutter web build (static, versioned)
-                                ├─► Next.js SSR (Amplify Hosting, or Lambda@Edge / ECS)
+Route 53 ─► CloudFront (+ WAF) ─┬─► Next.js (SSR + static assets)
                                 └─► /api/* ─► Web BFF (session cookies) ─► platform services
 ```
 
@@ -78,7 +77,8 @@ Route 53 ─► CloudFront (+ WAF) ─┬─► S3: Flutter web build (static, v
 - [ ] Responsive layouts reviewed at 360 px, 768 px, 1280 px, and 1920 px
 - [ ] Arabic right-to-left and English verified on every platform
 - [ ] Web equivalent defined for any mobile-only capability (table above)
-- [ ] Automated tests: Flutter `integration_test` on mobile + **Playwright** end-to-end on web
+- [ ] Automated tests: Flutter widget/integration tests on mobile + **Playwright** end-to-end on web (desktop and mobile viewports)
+- [ ] Business logic lives in `packages/domain` / the API, never only in one app
 - [ ] Accessibility: WCAG 2.1 AA (keyboard navigation and screen readers on the web)
 - [ ] SEO pages (if any) are server-rendered, have metadata and structured data (schema.org `Car`, `Offer`, `RealEstateListing`), and are in the sitemap
 - [ ] Analytics events are the same on web and mobile
