@@ -6,6 +6,7 @@ import 'package:sahel/core/models.dart';
 import 'package:sahel/core/models/bundles.dart';
 import 'package:sahel/core/models/config.dart';
 import 'package:sahel/core/models/insurance.dart';
+import 'package:sahel/core/models/payment_price.dart';
 import 'package:sahel/core/repository.dart';
 
 /// Recorded responses from the real shared API (apps/web/app/api/v1), refreshed by
@@ -24,7 +25,10 @@ class FakeSahelRepository implements SahelRepository {
   final accepted = <String>{};
 
   static FinanceApplication _app(String name) => FinanceApplication.fromJson(fixture(name) as Json);
-  static final _byId = {for (final n in ['application_crv', 'application_declined', 'application_personal']) _app(n).id: n};
+  static final _byId = {
+    for (final n in ['application_crv', 'application_declined', 'application_personal', 'application_home_ijara', 'application_home_conventional'])
+      _app(n).id: n,
+  };
 
   @override
   Future<List<Vehicle>> vehicles({String? query, String? condition, int? maxMonthlyFils}) async {
@@ -59,7 +63,7 @@ class FakeSahelRepository implements SahelRepository {
     int? downPaymentFils,
     int? tenureMonths,
   }) async =>
-      FinanceComparison.fromJson(fixture(productLine == 'personal' ? 'quotes_personal' : 'quotes_crv') as Json);
+      FinanceComparison.fromJson(fixture(switch (productLine) { 'personal' => 'quotes_personal', 'home' => 'quotes_home', _ => 'quotes_crv' }) as Json);
 
   @override
   Future<List<MotorQuote>> motorQuotes({required int vehicleValueFils, required bool comprehensive, required bool takafulOnly}) async => [
@@ -108,6 +112,12 @@ class FakeSahelRepository implements SahelRepository {
       final quote = await settlementQuote(contractId);
       if (amountFils != quote.settlementAmountFils) throw ApiException(422, 'AMOUNT_MISMATCH', 'amount does not match the settlement quote');
       settled.add(contractId);
+    }
+    if (purpose == 'reservation_deposit' || purpose == 'valuation_fee') {
+      // Mirrors the API's server-side amount binding (422 AMOUNT_MISMATCH, nothing created).
+      final price = await paymentPrice(purpose: purpose, reference: reference);
+      if (amountFils != price.amountFils) throw ApiException(422, 'AMOUNT_MISMATCH', 'amount does not match the server price');
+      if (purpose == 'valuation_fee') valuationsPaid.add(reference);
     }
     payments[idempotencyKey] = amountFils;
     return Payment(id: 'pay_test_${payments.length}', status: 'CAPTURED', amountFils: amountFils);
@@ -165,6 +175,7 @@ class FakeSahelRepository implements SahelRepository {
     required FinanceStructure structure,
     required int tenureMonths,
     String? vehicleId,
+    String? propertyId,
     int? downPaymentFils,
     int? amountFils,
     required String idempotencyKey,
@@ -174,18 +185,21 @@ class FakeSahelRepository implements SahelRepository {
       'structure': structure.name,
       'tenureMonths': tenureMonths,
       'vehicleId': vehicleId,
+      'propertyId': propertyId,
       'downPaymentFils': downPaymentFils,
       'amountFils': amountFils,
       'idempotencyKey': idempotencyKey,
     });
     if (productLine == 'personal') return _app('application_personal');
+    // Recorded for p-amwaj-apt-2br with an onboarded customer (BHD 5,000 salary).
+    if (productLine == 'home') return _app(structure == FinanceStructure.ijara ? 'application_home_ijara' : 'application_home_conventional');
     return _app(vehicleId == 'v-cadillac-escalade-2026' ? 'application_declined' : 'application_crv');
   }
 
   @override
   Future<FinanceApplication> application(String id) async {
-    if (accepted.contains(id)) return _app('application_crv_accepted');
     final name = _byId[id];
+    if (accepted.contains(id)) return _acceptedApp(name);
     if (name == null) throw StateError('no fixture for application $id');
     return _app(name);
   }
@@ -196,10 +210,41 @@ class FakeSahelRepository implements SahelRepository {
 
   @override
   Future<FinanceApplication> acceptApplication(String id) async {
-    // Only the CR-V Murabaha application has a recorded "accepted" response.
-    if (_byId[id] != 'application_crv') throw StateError('no accepted fixture for $id');
+    // Recorded "accepted" responses: the CR-V Murabaha and the two home finance applications.
+    final name = _byId[id];
+    if (!const ['application_crv', 'application_home_ijara', 'application_home_conventional'].contains(name)) {
+      throw StateError('no accepted fixture for $id');
+    }
     accepted.add(id);
-    return _app('application_crv_accepted');
+    return _acceptedApp(name);
+  }
+
+  /// Like the API: Ijara stops at LEASE_STARTED; conventional home finance waits at CONTRACT_SIGNED until a valuation
+  /// fee for the property is paid, then runs to COMPLETED (recorded in that order).
+  FinanceApplication _acceptedApp(String? name) => switch (name) {
+        'application_home_ijara' => _app('application_home_ijara_accepted'),
+        'application_home_conventional' => _app(valuationsPaid.contains('p-amwaj-apt-2br')
+            ? 'application_home_conventional_completed'
+            : 'application_home_conventional_signed'),
+        _ => _app('application_crv_accepted'),
+      };
+
+  /// Properties whose valuation fee was paid (server amount).
+  final valuationsPaid = <String>{};
+
+  /// Every server price requested, as "purpose:reference".
+  final priceRequests = <String>[];
+
+  @override
+  Future<PaymentPrice> paymentPrice({required String purpose, required String reference}) async {
+    priceRequests.add('$purpose:$reference');
+    // Recorded: valuation fee (p-amwaj-apt-2br) and reservation deposit (v-honda-crv-2026); same amount for any listing.
+    final name = switch (purpose) {
+      'valuation_fee' => 'payment_price_valuation',
+      'reservation_deposit' => 'payment_price_deposit',
+      _ => throw ApiException(422, 'NOT_SERVER_PRICED', 'not server priced'),
+    };
+    return PaymentPrice.fromJson({...fixture(name) as Json, 'reference': reference});
   }
 
   // --- Life events and early settlement / autopay ---

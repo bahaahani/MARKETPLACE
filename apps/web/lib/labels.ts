@@ -19,6 +19,9 @@ export const STATUS_LABEL: Record<ApplicationStatus, MessageKey> = {
   ASSET_PURCHASED_BY_BCFC: 'statusAssetPurchased',
   OWNERSHIP_TRANSFERRED_TO_BCFC: 'statusOwnershipTransferred',
   SALE_TO_CUSTOMER: 'statusSaleToCustomer',
+  VALUATION_CONFIRMED: 'homeStatusValuationConfirmed',
+  LEASE_STARTED: 'homeStatusLeaseStarted',
+  OWNERSHIP_TRANSFERRED_TO_CUSTOMER: 'homeStatusOwnershipToCustomer',
   DISBURSED: 'statusDisbursed',
   COMPLETED: 'statusCompleted',
 };

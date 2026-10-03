@@ -19,7 +19,22 @@ const METHOD_LABEL: Record<PaymentMethod, MessageKey> = {
  * Sandbox checkout. Production: Tap Web SDKs (Card, Apple Pay, Google Pay, BenefitPay) tokenize in the
  * browser; the server creates the charge and only marks it paid after the verified Tap webhook.
  */
-export function Checkout({ locale, amountFils, purpose, reference, label }: { locale: AppLocale; amountFils: number; purpose: PaymentPurpose; reference: string; label: string }) {
+export function Checkout({
+  locale,
+  amountFils,
+  purpose,
+  reference,
+  label,
+  serverPriced = false,
+}: {
+  locale: AppLocale;
+  amountFils: number;
+  purpose: PaymentPurpose;
+  reference: string;
+  label: string;
+  /** The amount was set by the server (GET /payments/price), not taken from the link */
+  serverPriced?: boolean;
+}) {
   const [method, setMethod] = useState<PaymentMethod>('benefitpay');
   const [state, setState] = useState<'idle' | 'busy' | 'error'>('idle');
   const [result, setResult] = useState<Payment | null>(null);
@@ -75,7 +90,14 @@ export function Checkout({ locale, amountFils, purpose, reference, label }: { lo
   return (
     <div className="card mx-auto max-w-md p-6">
       <p className="text-sm text-text-muted">{label}</p>
-      <p className="mb-5 text-3xl font-bold">{amount}</p>
+      <p className={`${serverPriced ? '' : 'mb-5 '}text-3xl font-bold`} data-testid="checkout-amount">
+        {amount}
+      </p>
+      {serverPriced && (
+        <p className="mb-5 text-xs text-text-muted" data-testid="server-priced">
+          {tr('bindServerAmount')}
+        </p>
+      )}
       <fieldset>
         <legend className="mb-2 font-semibold">{tr('choosePaymentMethod')}</legend>
         <div className="space-y-2">

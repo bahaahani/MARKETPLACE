@@ -149,6 +149,10 @@ paths:
   /payments:
     post:
       summary: Create a payment (sandbox; production wraps Tap Payments server-side). Idempotency keys are scoped to the customer session.
+      description: |
+        Server-side amount binding: for `reservation_deposit` (reference = a catalog vehicle id) and `valuation_fee`
+        (reference = a property for sale) the server decides the amount (GET /payments/price). Any other amount is
+        rejected with 422 AMOUNT_MISMATCH before a charge is created; an unknown reference is 404 UNKNOWN_REFERENCE.
       parameters:
         - {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8}}
       requestBody:
@@ -166,7 +170,8 @@ paths:
       responses:
         '201': {description: 'Created (status INITIATED, with nextAction)'}
         '400': {description: 'Missing Idempotency-Key, or a body that is not a JSON object', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
-        '422': {$ref: '#/components/responses/Error'}
+        '404': {description: 'UNKNOWN_REFERENCE (deposit or valuation fee for a vehicle / property not in the catalog)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {description: 'PAYMENT_INVALID; AMOUNT_MISMATCH (server-priced purpose with another amount; nothing is created)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /payments/{id}/confirm:
     post:
       summary: Sandbox stand-in for "customer completed the Tap flow and the webhook verified it". Only the session that created the payment can confirm it.
@@ -446,9 +451,11 @@ paths:
                       total: {type: integer}
     post:
       summary: |
-        Apply for vehicle or personal finance (sandbox). Creates, submits and decides immediately against the
-        session customer's financials (their own after onboarding, else the demo customer's). The vehicle price
-        comes from the catalog, never from the client. A repeated Idempotency-Key from the same customer returns
+        Apply for vehicle, personal or home finance (sandbox). Creates, submits and decides immediately against the
+        session customer's financials (their own after onboarding, else the demo customer's; settled contracts no longer
+        count as obligations) and their pre-approval limit for the product line. The vehicle and property prices
+        come from the catalog, never from the client. Structures per line come from the rate card: vehicle and personal
+        (conventional, murabaha), home (conventional, ijara). A repeated Idempotency-Key from the same customer returns
         the original application; keys are scoped to the customer.
       parameters:
         - {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8}}
@@ -460,18 +467,19 @@ paths:
               type: object
               required: [productLine, structure, tenureMonths]
               properties:
-                productLine: {enum: [vehicle, personal]}
-                structure: {enum: [conventional, murabaha]}
+                productLine: {enum: [vehicle, personal, home]}
+                structure: {enum: [conventional, murabaha, ijara]}
                 tenureMonths: {type: integer}
                 vehicleId: {type: string, description: Required for vehicle}
-                downPaymentFils: {type: integer, minimum: 0, default: 0, description: Vehicle only}
+                propertyId: {type: string, description: 'Required for home (a property for sale; the price comes from the catalog)'}
+                downPaymentFils: {type: integer, minimum: 0, default: 0, description: Vehicle and home}
                 amountFils: {type: integer, minimum: 500000, description: Required for personal}
       responses:
         '201': {description: Created and decided, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/FinanceApplication'}}}}}}
         '400': {$ref: '#/components/responses/Error'}
-        '404': {description: Unknown vehicleId, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: Unknown vehicleId or propertyId, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '422':
-          description: Invalid terms (INVALID_REQUEST, or a quote rule such as TENURE_OUT_OF_RANGE, DOWN_PAYMENT_TOO_LOW)
+          description: 'Invalid terms (INVALID_REQUEST: e.g. a structure the line does not offer, or a property for rent; or a quote rule such as TENURE_OUT_OF_RANGE, DOWN_PAYMENT_TOO_LOW)'
           content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
   /applications/{id}:
     get:
@@ -483,14 +491,19 @@ paths:
   /applications/{id}/accept:
     post:
       summary: |
-        Accept the offer and e-sign (sandbox). Then runs fulfilment to the end, recording each step in the timeline.
+        Accept the offer and e-sign (sandbox). Then runs fulfilment in order as far as it can go, recording each step in the timeline.
         Conventional: OFFER_ACCEPTED, CONTRACT_SIGNED, DISBURSED, COMPLETED.
         Murabaha: OFFER_ACCEPTED, CONTRACT_SIGNED, ASSET_PURCHASED_BY_BCFC, OWNERSHIP_TRANSFERRED_TO_BCFC,
         SALE_TO_CUSTOMER, (personal only: DISBURSED), COMPLETED. BCFC always owns the asset before selling it (Shari'a).
-        Accepting a COMPLETED application again returns it unchanged. Only the customer who applied can accept (others get 404).
+        Home, Ijara: OFFER_ACCEPTED, CONTRACT_SIGNED, ASSET_PURCHASED_BY_BCFC, LEASE_STARTED, then stops; OWNERSHIP_TRANSFERRED_TO_CUSTOMER
+        (after the final rental) and COMPLETED stay steps to come. BCFC always owns the home before leasing it.
+        Home, conventional: OFFER_ACCEPTED, CONTRACT_SIGNED, then VALUATION_CONFIRMED, DISBURSED, COMPLETED only once this customer
+        has a CAPTURED valuation_fee payment for the property (until then `nextAction` is PAY_VALUATION_FEE).
+        Accepting an accepted application again continues from where it stopped; a COMPLETED one is returned unchanged.
+        Only the customer who applied can accept (others get 404).
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
       responses:
-        '200': {description: OK (status COMPLETED), content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/FinanceApplication'}}}}}}
+        '200': {description: 'OK (COMPLETED, or the last step it could reach: LEASE_STARTED for Ijara, CONTRACT_SIGNED for conventional home finance without a valuation)', content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/FinanceApplication'}}}}}}
         '404': {$ref: '#/components/responses/Error'}
         '409': {description: NOT_APPROVED (only APPROVED offers can be accepted) or INVALID_TRANSITION, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /life-events:
@@ -713,6 +726,31 @@ paths:
       responses:
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/VirtualCard'}}}}}}
         '404': {$ref: '#/components/responses/Error'}
+  /payments/price:
+    get:
+      summary: The server amount for a server-priced payment. Checkout pages show and pay it; POST /payments refuses any other amount
+      parameters:
+        - {name: purpose, in: query, required: true, schema: {enum: [reservation_deposit, valuation_fee]}}
+        - {name: reference, in: query, required: true, schema: {type: string}, description: 'Vehicle id (reservation_deposit) or property id for sale (valuation_fee)'}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      purpose: {enum: [reservation_deposit, valuation_fee]}
+                      reference: {type: string}
+                      amountFils: {type: integer}
+                      currency: {const: BHD}
+                      pendingApproval: {const: true, description: ⚠️ Placeholder amount pending business sign-off}
+        '400': {description: 'INVALID_REQUEST (missing reference)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: 'UNKNOWN_REFERENCE (no such vehicle, or no such property for sale)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {description: 'NOT_SERVER_PRICED (other purposes: premiums and settlements are priced by their quotes)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
 components:
   parameters:
     SellerId:
@@ -901,7 +939,7 @@ components:
         virtualCard: {$ref: '#/components/schemas/VirtualCard'}
         reason: {enum: [BELOW_MIN_SALARY, NO_DBR_HEADROOM], description: DECLINED only}
     ApplicationStatus:
-      enum: [DRAFT, SUBMITTED, APPROVED, REFERRED, DECLINED, OFFER_ACCEPTED, CONTRACT_SIGNED, ASSET_PURCHASED_BY_BCFC, OWNERSHIP_TRANSFERRED_TO_BCFC, SALE_TO_CUSTOMER, DISBURSED, COMPLETED]
+      enum: [DRAFT, SUBMITTED, APPROVED, REFERRED, DECLINED, OFFER_ACCEPTED, CONTRACT_SIGNED, ASSET_PURCHASED_BY_BCFC, OWNERSHIP_TRANSFERRED_TO_BCFC, SALE_TO_CUSTOMER, VALUATION_CONFIRMED, LEASE_STARTED, OWNERSHIP_TRANSFERRED_TO_CUSTOMER, DISBURSED, COMPLETED]
     Decision:
       type: object
       description: ⚠️ Placeholder credit policy (sandbox) until BCFC Credit Risk rules and CRB data are integrated.
@@ -921,10 +959,10 @@ components:
       properties:
         id: {type: string}
         customerId: {type: string}
-        productLine: {enum: [vehicle, personal]}
-        structure: {enum: [conventional, murabaha]}
+        productLine: {enum: [vehicle, personal, home]}
+        structure: {enum: [conventional, murabaha, ijara]}
         quote: {$ref: '#/components/schemas/FinanceQuote'}
-        reference: {type: string, description: 'Vehicle id for cars, "personal" for personal finance'}
+        reference: {type: string, description: 'Vehicle id for cars, property id for home finance, "personal" for personal finance'}
         applicant:
           type: object
           properties:
@@ -950,6 +988,15 @@ components:
               at: {type: string, format: date-time, description: Absent for steps still to come}
               done: {type: boolean}
               murabaha: {type: boolean, description: Part of the Murabaha buy / own / sell sequence}
+              ijara: {type: boolean, description: 'Part of the Ijara Muntahia Bittamleek sequence (BCFC buys, leases, then ownership passes after the final rental)'}
+        nextAction:
+          type: object
+          description: 'What the customer must do before fulfilment continues (absent when nothing). Conventional home finance at CONTRACT_SIGNED: pay the valuation fee (amount from GET /payments/price), then accept again.'
+          properties:
+            type: {const: PAY_VALUATION_FEE}
+            purpose: {const: valuation_fee}
+            reference: {type: string, description: The property id}
+        valuationPaymentId: {type: string, description: 'Conventional home finance: the captured valuation-fee payment that confirmed the valuation'}
         idempotencyKey: {type: string}
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}

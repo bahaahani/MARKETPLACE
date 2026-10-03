@@ -827,5 +827,23 @@
   "noCardsYet": "No cards yet. Apply in minutes from Cards.",
   "cardStatusFrozen": "Frozen",
   "cardStatusClosed": "Closed",
-  "sessionSandboxNote": "Sandbox: your profile is kept for this session only, until eKey login is live."
+  "sessionSandboxNote": "Sandbox: your profile is kept for this session only, until eKey login is live.",
+  "homeApplyFinance": "Apply for home finance",
+  "homeStatusValuationConfirmed": "TRESCO valuation of the property confirmed",
+  "homeStatusLeaseStarted": "Lease starts: you live in the home and pay monthly rentals",
+  "homeStatusOwnershipToCustomer": "Ownership transfers to you after the final rental",
+  "homeIjaraSequenceNote": "Shari'a requirement: BCFC must own the home before leasing it to you, and ownership passes to you only after the final rental.",
+  "homeValuationPending": "Next step: TRESCO values the property before BCFC pays the seller. Pay the valuation fee to continue.",
+  "homePayValuation": "Pay valuation fee · {amount}",
+  "@homePayValuation": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "homeValuationPaid": "Valuation fee received. Continue to confirm the valuation and pay the seller.",
+  "homeContinue": "Continue",
+  "homeLeaseActive": "Your Ijara lease is active. The home becomes yours after the final rental.",
+  "bindServerAmount": "Amount set by BCFC for this request"
 }

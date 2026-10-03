@@ -41,7 +41,7 @@ export const RATE_CARDS: Record<ProductLine, RateCard> = {
   home: {
     conventionalAprPct: 6.0,
     murabahaFlatPct: 3.25,
-    ijaraProfitPct: 6.0, // Ijara Muntahia Bittamleek (coming soon)
+    ijaraProfitPct: 6.0, // Ijara Muntahia Bittamleek (home finance applications)
     minTenureMonths: 60,
     maxTenureMonths: 300,
     minDownPaymentPct: 20,

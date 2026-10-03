@@ -90,9 +90,19 @@ class KeyValueRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(children: [
-          Expanded(child: Text(label, style: const TextStyle(color: SahelColors.textMuted, fontSize: 12))),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-        ]),
+        // Large amounts (home finance) in a narrow column shrink instead of overflowing.
+        child: LayoutBuilder(
+          builder: (context, c) => Row(children: [
+            Expanded(child: Text(label, style: const TextStyle(color: SahelColors.textMuted, fontSize: 12))),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: c.maxWidth * 0.7),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerEnd,
+                child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+              ),
+            ),
+          ]),
+        ),
       );
 }

@@ -114,6 +114,7 @@ class _PersonalFinanceBodyState extends ConsumerState<_PersonalFinanceBody> {
                         structure: _selected,
                         tenureMonths: _tenure,
                         vehicleId: null,
+                        propertyId: null,
                         downPaymentFils: null,
                         amountFils: _amount,
                       )

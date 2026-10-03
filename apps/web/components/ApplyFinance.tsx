@@ -3,7 +3,7 @@
 import { createContext, useContext, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ORIGINATION_STRUCTURES, type FinanceStructure, type OriginationStructure } from '@sahel/domain';
-import { t, type AppLocale } from '@sahel/i18n';
+import { t, type AppLocale, type MessageKey } from '@sahel/i18n';
 
 /** What the finance calculator currently shows, so "Apply for finance" applies for exactly that. */
 export interface FinanceSelection {
@@ -27,13 +27,24 @@ export function useSetFinanceSelection() {
 
 export type ApplicationBody =
   | { productLine: 'vehicle'; structure: OriginationStructure; vehicleId: string; downPaymentFils: number; tenureMonths: number }
-  | { productLine: 'personal'; structure: OriginationStructure; amountFils: number; tenureMonths: number };
+  | { productLine: 'personal'; structure: OriginationStructure; amountFils: number; tenureMonths: number }
+  | { productLine: 'home'; structure: OriginationStructure; propertyId: string; downPaymentFils: number; tenureMonths: number };
 
 /**
  * Submits POST /api/v1/applications (the same API the Flutter app uses) and opens the application page.
  * One idempotency key per set of terms, so a double click never creates two applications.
  */
-export function ApplyButton({ locale, body, className = 'btn btn-primary' }: { locale: AppLocale; body: ApplicationBody | null; className?: string }) {
+export function ApplyButton({
+  locale,
+  body,
+  className = 'btn btn-primary',
+  label = 'applyFinance',
+}: {
+  locale: AppLocale;
+  body: ApplicationBody | null;
+  className?: string;
+  label?: MessageKey;
+}) {
   const router = useRouter();
   const [state, setState] = useState<'idle' | 'busy' | 'error'>('idle');
   const termsKey = JSON.stringify(body);
@@ -59,7 +70,7 @@ export function ApplyButton({ locale, body, className = 'btn btn-primary' }: { l
   return (
     <>
       <button type="button" className={className} onClick={apply} disabled={!body || state === 'busy'} data-testid="apply-finance">
-        {t(locale, 'applyFinance')}
+        {t(locale, label)}
       </button>
       {state === 'error' && <p className="w-full text-sm text-danger">{t(locale, 'errorGeneric')}</p>}
     </>
@@ -75,4 +86,9 @@ export function CarApplyButton({ locale, vehicleId }: { locale: AppLocale; vehic
       ? { productLine: 'vehicle', structure, vehicleId, downPaymentFils: selection.downPaymentFils, tenureMonths: selection.tenureMonths }
       : null;
   return <ApplyButton locale={locale} body={body} className="btn btn-ghost" />;
+}
+
+/** The calculator's current selection (null until it has published one, or outside a FinanceSelectionProvider). */
+export function useFinanceSelection(): FinanceSelection | null {
+  return useContext(SelectionContext)?.selection ?? null;
 }

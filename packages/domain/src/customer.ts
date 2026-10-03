@@ -1,5 +1,5 @@
 import { demoCustomer, type CustomerOverview } from './account';
-import type { CustomerFinancials } from './affordability';
+import { preApprove, type CustomerFinancials } from './affordability';
 import { cardOffers, type CardOffer } from './cards';
 import type { EKeyIdentity, OnboardingPreApproval } from './onboarding';
 
@@ -22,6 +22,11 @@ export interface CustomerProfile {
     result: OnboardingPreApproval;
     completedAt: string;
   };
+  /**
+   * Contracts this customer has settled early (⚠️ sandbox: recorded by SandboxContractSettings, set on the profile by
+   * the session with withSettledContracts). Their installments no longer count as existing obligations.
+   */
+  settledContractIds?: string[];
 }
 
 /** API representation of the customer (GET /api/v1/me). */
@@ -56,11 +61,34 @@ export function withOnboarding(
   };
 }
 
-/** Salary and obligations every decision uses: the customer's own after onboarding, otherwise the demo customer's. */
+/** The profile with the contracts this customer has settled (so obligations, pre-approval and decisions exclude them). */
+export function withSettledContracts(profile: CustomerProfile, contractIds: readonly string[]): CustomerProfile {
+  if (!contractIds.length && !profile.settledContractIds) return profile;
+  return { ...profile, settledContractIds: [...contractIds] };
+}
+
+/**
+ * Monthly installments of the customer's settled contracts. ⚠️ Sandbox: the contracts are the demo account's, and a
+ * self-declared obligations figure (onboarding) is assumed to include them, so it is reduced by the same amount.
+ */
+function settledInstallmentsFils(profile: CustomerProfile, demo: CustomerOverview): number {
+  const settled = profile.settledContractIds ?? [];
+  return demo.contracts.filter((c) => settled.includes(c.id)).reduce((s, c) => s + c.quote.monthlyFils, 0);
+}
+
+/**
+ * Salary and obligations every decision uses: the customer's own after onboarding, otherwise the demo customer's.
+ * Settled contracts no longer count: their installments are taken off the obligations (never below zero).
+ */
 export function customerFinancials(profile: CustomerProfile, today: Date = new Date()): CustomerFinancials {
-  if (profile.onboarding) return { ...profile.onboarding.financials };
   const demo = demoCustomer(today);
-  return { monthlySalaryFils: demo.monthlySalaryFils, existingObligationsFils: demo.existingObligationsFils };
+  const base = profile.onboarding
+    ? profile.onboarding.financials
+    : { monthlySalaryFils: demo.monthlySalaryFils, existingObligationsFils: demo.existingObligationsFils };
+  return {
+    monthlySalaryFils: base.monthlySalaryFils,
+    existingObligationsFils: Math.max(0, base.existingObligationsFils - settledInstallmentsFils(profile, demo)),
+  };
 }
 
 /**
@@ -77,15 +105,20 @@ export function customerOverview(profile: CustomerProfile, today: Date = new Dat
     ...(profile.identity ? { cprMasked: profile.identity.cprMasked } : {}),
   };
   const done = profile.onboarding;
-  if (!done) return base;
-  return {
-    ...base,
-    name: profile.identity?.name ?? demo.name,
-    monthlySalaryFils: done.financials.monthlySalaryFils,
-    existingObligationsFils: done.financials.existingObligationsFils,
-    preApproval: done.result.preApproval,
-    onboarded: true,
-  };
+  const view: CustomerView = done
+    ? {
+        ...base,
+        name: profile.identity?.name ?? demo.name,
+        monthlySalaryFils: done.financials.monthlySalaryFils,
+        existingObligationsFils: done.financials.existingObligationsFils,
+        preApproval: done.result.preApproval,
+        onboarded: true,
+      }
+    : base;
+  if (settledInstallmentsFils(profile, demo) === 0) return view;
+  // A settled contract frees DBR headroom: obligations and the pre-approval are recomputed without it.
+  const financials = customerFinancials(profile, today);
+  return { ...view, existingObligationsFils: financials.existingObligationsFils, preApproval: preApprove(financials, today) };
 }
 
 /** Every card product with this customer's eligibility and offered limit. */
