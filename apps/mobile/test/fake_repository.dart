@@ -10,6 +10,7 @@ dynamic fixture(String name) => (jsonDecode(File('test/fixtures/$name.json').rea
 
 class FakeSahelRepository implements SahelRepository {
   final payments = <String, int>{};
+  int shares = 0;
 
   @override
   Future<List<Vehicle>> vehicles({String? query, String? condition, int? maxMonthlyFils}) async {
@@ -53,6 +54,18 @@ class FakeSahelRepository implements SahelRepository {
 
   @override
   Future<CustomerOverview> me() async => CustomerOverview.fromJson(fixture('me') as Json);
+
+  @override
+  Future<PreApprovalShare> sharePreApproval() async {
+    shares++;
+    // Recorded shape, with a fresh expiry so the countdown is live.
+    final recorded = PreApprovalShare.fromJson(fixture('preapproval_token') as Json);
+    return PreApprovalShare(
+      token: recorded.token,
+      expiresAt: DateTime.now().add(Duration(seconds: recorded.ttlSeconds)),
+      ttlSeconds: recorded.ttlSeconds,
+    );
+  }
 
   @override
   Future<Payment> pay({

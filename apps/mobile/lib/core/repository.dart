@@ -17,6 +17,7 @@ abstract interface class SahelRepository {
   });
   Future<List<MotorQuote>> motorQuotes({required int vehicleValueFils, required bool comprehensive, required bool takafulOnly});
   Future<CustomerOverview> me();
+  Future<PreApprovalShare> sharePreApproval();
   Future<Payment> pay({
     required int amountFils,
     required PaymentMethod method,
@@ -79,6 +80,10 @@ class ApiSahelRepository implements SahelRepository {
 
   @override
   Future<CustomerOverview> me() async => CustomerOverview.fromJson(await _api.get('/me') as Json);
+
+  @override
+  Future<PreApprovalShare> sharePreApproval() async =>
+      PreApprovalShare.fromJson(await _api.post('/me/preapproval-token', const {}) as Json);
 
   @override
   Future<Payment> pay({

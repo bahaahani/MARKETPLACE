@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { demoCustomer } from '@sahel/domain';
 import { t, type MessageKey } from '@sahel/i18n';
+import { SharePreApproval } from '@/components/SharePreApproval';
 import { resolveLocale, translator } from '@/lib/i18n';
 
 // Personalized (customer data and due dates), so render per request.
@@ -77,6 +78,9 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
             </ul>
           </article>
         ))}
+        <div className="mt-6">
+          <SharePreApproval locale={tr.locale} />
+        </div>
       </section>
     </div>
   );

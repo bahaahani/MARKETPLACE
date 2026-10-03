@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sahel/app.dart';
 import 'package:sahel/core/providers.dart';
+import 'package:sahel/features/account/account_screen.dart';
 import 'package:sahel/features/cars/car_detail_screen.dart';
 
 import 'fake_repository.dart';
@@ -71,5 +72,31 @@ void main() {
   testWidgets('invalid checkout link shows an error instead of crashing', (tester) async {
     await pumpApp(tester, location: '/checkout?amount=-1');
     expect(find.text('Something went wrong. Please try again.'), findsOneWidget);
+  });
+
+  testWidgets('share pre-approval with a dealer shows a code, QR and countdown', (tester) async {
+    final repo = await pumpApp(tester, location: '/account');
+    final list = find.descendant(of: find.byType(AccountScreen), matching: find.byType(Scrollable)).first;
+    final button = find.byKey(const Key('share-preapproval-button'));
+    await tester.scrollUntilVisible(button, 200, scrollable: list);
+    // Bring it clear of the bottom navigation bar.
+    await tester.drag(list, const Offset(0, -300));
+    await tester.pumpAndSettle();
+    expect(find.text('Share my pre-approval with a dealer'), findsOneWidget);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    expect(repo.shares, 1);
+    expect(find.byKey(const Key('share-token')), findsOneWidget);
+    expect(find.text('7KQ2-M9XD'), findsOneWidget);
+    expect(find.byKey(const Key('share-qr')), findsOneWidget);
+    expect(find.textContaining(RegExp(r'^Expires in 1[45]:\d\d$')), findsOneWidget);
+    // The button is replaced by the code while it is valid.
+    expect(button, findsNothing);
+  });
+
+  test('countdown formats minutes and seconds', () {
+    expect(formatCountdown(const Duration(minutes: 15)), '15:00');
+    expect(formatCountdown(const Duration(seconds: 61, milliseconds: 200)), '1:02');
+    expect(formatCountdown(const Duration(seconds: -5)), '0:00');
   });
 }

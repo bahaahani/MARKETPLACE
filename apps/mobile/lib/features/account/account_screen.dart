@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/format.dart';
 import '../../core/models.dart';
@@ -48,11 +51,124 @@ class AccountScreen extends ConsumerWidget {
                   ]),
                 ),
               ),
+            const SizedBox(height: SahelSpace.lg),
+            const SharePreApprovalCard(),
           ]),
         ),
       ),
     );
   }
+}
+
+/// "Share my pre-approval with a dealer": a short-lived code and QR the showroom scans (J7).
+/// The dealer only sees first name, car finance limit and max monthly.
+class SharePreApprovalCard extends ConsumerStatefulWidget {
+  const SharePreApprovalCard({super.key});
+
+  @override
+  ConsumerState<SharePreApprovalCard> createState() => _SharePreApprovalCardState();
+}
+
+class _SharePreApprovalCardState extends ConsumerState<SharePreApprovalCard> {
+  PreApprovalShare? _share;
+  bool _busy = false;
+  bool _error = false;
+  Timer? _ticker;
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _create() async {
+    setState(() {
+      _busy = true;
+      _error = false;
+    });
+    try {
+      final share = await ref.read(repositoryProvider).sharePreApproval();
+      if (!mounted) return;
+      _ticker?.cancel();
+      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+      setState(() => _share = share);
+    } catch (_) {
+      if (mounted) setState(() => _error = true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final share = _share;
+    final remaining = share?.expiresAt.difference(DateTime.now());
+    final expired = remaining != null && remaining <= Duration.zero;
+    if (expired) _ticker?.cancel();
+    return Card(
+      key: const Key('share-preapproval'),
+      child: Padding(
+        padding: const EdgeInsets.all(SahelSpace.md),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(l.dealerShareTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: SahelSpace.xs),
+          Text(l.dealerShareHint, style: const TextStyle(color: SahelColors.textMuted, fontSize: 13)),
+          if (share != null && !expired) ...[
+            const SizedBox(height: SahelSpace.md),
+            Text(l.dealerShareCode, textAlign: TextAlign.center),
+            const SizedBox(height: SahelSpace.sm),
+            Center(
+              child: Semantics(
+                label: l.dealerQrAlt(share.token),
+                child: QrImageView(key: const Key('share-qr'), data: share.token, size: 200, backgroundColor: SahelColors.surface),
+              ),
+            ),
+            Directionality(
+              textDirection: TextDirection.ltr,
+              child: Text(
+                share.token,
+                key: const Key('share-token'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, letterSpacing: 4, fontFamily: 'monospace'),
+              ),
+            ),
+            Text(
+              l.dealerShareExpiresIn(formatCountdown(remaining!)),
+              key: const Key('share-countdown'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: SahelColors.textMuted),
+            ),
+          ],
+          if (expired) ...[
+            const SizedBox(height: SahelSpace.sm),
+            Text(l.dealerShareExpired, style: const TextStyle(color: SahelColors.danger)),
+          ],
+          if (_error) ...[
+            const SizedBox(height: SahelSpace.sm),
+            Text(l.errorGeneric, style: const TextStyle(color: SahelColors.danger)),
+          ],
+          if (share == null || expired) ...[
+            const SizedBox(height: SahelSpace.md),
+            FilledButton.icon(
+              key: const Key('share-preapproval-button'),
+              onPressed: _busy ? null : _create,
+              icon: const Icon(Icons.qr_code_2),
+              label: Text(expired ? l.dealerShareAgain : l.dealerShareButton),
+            ),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+/// "m:ss" with Latin digits, same as the web countdown.
+String formatCountdown(Duration d) {
+  final s = d.isNegative ? 0 : (d.inMilliseconds / 1000).ceil();
+  return '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
 }
 
 class _ContractCard extends StatelessWidget {

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { LOCALES, t, type AppLocale } from '@sahel/i18n';
 import { Header } from '@/components/Header';
 import { resolveLocale, translator } from '@/lib/i18n';
@@ -36,6 +37,10 @@ export default async function LocaleLayout({ children, params }: { children: Rea
         <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">{children}</main>
         <footer className="border-t border-border py-6 text-center text-xs text-text-muted">
           Bahrain Commercial Facilities Company B.S.C. · {tr.t('sandboxNotice')}
+          <span className="mx-2" aria-hidden>·</span>
+          <Link href={`/${locale}/dealer`} className="underline hover:text-text" data-testid="footer-dealer-link">
+            {tr.t('dealerPortalLink')}
+          </Link>
         </footer>
       </body>
     </html>

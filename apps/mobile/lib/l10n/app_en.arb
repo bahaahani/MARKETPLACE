@@ -245,5 +245,135 @@
   "sandboxNotice": "Sandbox: no real money moves.",
   "done": "Done",
   "errorGeneric": "Something went wrong. Please try again.",
-  "retry": "Retry"
+  "retry": "Retry",
+  "dealerPortalLink": "Dealer & broker portal",
+  "dealerPortalTitle": "Dealer portal",
+  "dealerChooseTitle": "Choose your dealership",
+  "dealerChooseSubtitle": "⚠️ Sandbox sign-in: no password needed. Production uses BCFC partner sign-in with staff roles.",
+  "dealerSellerGroup": "BCFC Group",
+  "dealerSellerPartner": "Partner",
+  "dealerOpen": "Open portal",
+  "dealerSwitch": "Switch dealership",
+  "dealerNavDashboard": "Dashboard",
+  "dealerNavShowroom": "Showroom",
+  "dealerSandboxBanner": "⚠️ Sandbox portal: demo stock and leads, no real customer data.",
+  "dealerKpiStock": "Vehicles in stock",
+  "dealerKpiAvgPrice": "Average price",
+  "dealerKpiNewUsed": "New / used",
+  "dealerKpiNewUsedValue": "{newCount} / {usedCount}",
+  "@dealerKpiNewUsedValue": {
+    "placeholders": {
+      "newCount": {
+        "type": "String"
+      },
+      "usedCount": {
+        "type": "String"
+      }
+    }
+  },
+  "dealerKpiOpenLeads": "Open leads",
+  "dealerKpiWon": "Won",
+  "dealerInventoryTitle": "Inventory",
+  "dealerInventoryNote": "Monthly from {down}% down over {months} months.",
+  "@dealerInventoryNote": {
+    "placeholders": {
+      "down": {
+        "type": "String"
+      },
+      "months": {
+        "type": "String"
+      }
+    }
+  },
+  "dealerColVehicle": "Vehicle",
+  "dealerColCondition": "Condition",
+  "dealerColMonthlyConventional": "Monthly · conventional",
+  "dealerColMonthlyIslamic": "Monthly · Murabaha",
+  "dealerLeadsTitle": "Leads",
+  "dealerLeadsEmpty": "No leads",
+  "dealerStatusNew": "New",
+  "dealerStatusContacted": "Contacted",
+  "dealerStatusTestDrive": "Test drive",
+  "dealerStatusOfferSent": "Offer sent",
+  "dealerStatusWon": "Won",
+  "dealerStatusLost": "Lost",
+  "dealerSourceReserved": "Reserved online",
+  "dealerSourceApplied": "Applied for finance",
+  "dealerSourceViewed": "Viewed listing",
+  "dealerLeadPreApproved": "Pre-approved",
+  "dealerMoveTo": "Move {name} to {status}",
+  "@dealerMoveTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "dealerShowroomTitle": "Showroom: instant financing",
+  "dealerTokenLabel": "Customer's pre-approval code",
+  "dealerTokenPlaceholder": "e.g. ABCD-1234",
+  "dealerRedeem": "Check pre-approval",
+  "dealerScanNote": "⚠️ In production the portal scans the customer's QR code with the device camera. In the sandbox, type the code shown in their app.",
+  "dealerTokenNotFound": "Code not recognised. Ask the customer to share again.",
+  "dealerTokenExpired": "This code has expired. Ask the customer to share again.",
+  "dealerCustomerPreApproved": "{name} is pre-approved",
+  "@dealerCustomerPreApproved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dealerVehicleLimit": "Car finance up to",
+  "dealerMaxMonthly": "Max monthly installment",
+  "dealerValidUntil": "Pre-approval valid until {date}",
+  "@dealerValidUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "dealerTokenExpiresAt": "Code expires at {time}",
+  "@dealerTokenExpiresAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dealerSharedOnly": "Shared with the customer's consent: first name and limits only. No salary, CPR or obligations.",
+  "dealerBuildOffer": "Build an offer",
+  "dealerSelectVehicle": "Vehicle",
+  "dealerWithinLimit": "Within pre-approval",
+  "dealerOverLimit": "Over pre-approval",
+  "dealerOverFinance": "Financed amount is above the limit",
+  "dealerOverMonthly": "Monthly is above the maximum",
+  "dealerOfferNote": "⚠️ Sandbox: in production the offer goes to the customer's app to accept.",
+  "dealerNextCustomer": "Next customer",
+  "dealerShareTitle": "Shopping at a showroom?",
+  "dealerShareButton": "Share my pre-approval with a dealer",
+  "dealerShareHint": "The dealer sees only your first name, car finance limit and max monthly. Never your salary or CPR.",
+  "dealerShareCode": "Show this code to the dealer",
+  "dealerShareExpiresIn": "Expires in {time}",
+  "@dealerShareExpiresIn": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dealerShareExpired": "This code has expired.",
+  "dealerShareAgain": "Create a new code",
+  "dealerQrAlt": "QR code for {token}",
+  "@dealerQrAlt": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  }
 }

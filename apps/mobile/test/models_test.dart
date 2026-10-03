@@ -16,6 +16,9 @@ void main() {
       final me = CustomerOverview.fromJson(fixture('me') as Json);
       expect(me.contracts, hasLength(2));
       expect(me.preApproval.limits.map((l) => l.productLine), ['vehicle', 'personal', 'home']);
+      final share = PreApprovalShare.fromJson(fixture('preapproval_token') as Json);
+      expect(share.token, matches(RegExp(r'^[0-9A-Z]{4}-[0-9A-Z]{4}$')));
+      expect(share.ttlSeconds, 900);
     });
 
     test('finance comparison has conventional and murabaha for vehicles', () {

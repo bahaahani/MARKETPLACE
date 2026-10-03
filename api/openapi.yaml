@@ -163,7 +163,184 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
       responses:
         '200': { description: OK (status CAPTURED) }
+  /me/preapproval-token:
+    post:
+      summary: Share my pre-approval with a dealer. Returns a short-lived (15 min), random, opaque token to show as text or QR.
+      description: |
+        The dealer redeems the token for first name, vehicle limit, max monthly and validity only
+        (never salary, CPR or obligations). Demo customer until eKey login exists.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { type: object, properties: { data: { $ref: '#/components/schemas/PreApprovalShare' } } }
+        '422': { description: NO_PREAPPROVAL (no vehicle headroom to share), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /dealer/preapproval/redeem:
+    post:
+      summary: "Dealer portal: redeem a customer's pre-approval token for the minimal summary"
+      description: ⚠️ Sandbox has no staff login; production requires a partner-SSO bearer token whose seller matches `sellerId`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sellerId, token]
+              properties:
+                sellerId: { type: string, description: 'nmc, tac or demo-dealer' }
+                token: { type: string, description: Case-insensitive; spaces and dashes are ignored }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object, properties: { data: { $ref: '#/components/schemas/SharedPreApproval' } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { description: TOKEN_NOT_FOUND or UNKNOWN_DEALER, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '410': { description: TOKEN_EXPIRED, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /dealer/{sellerId}/inventory:
+    get:
+      summary: "Dealer portal: the dealer's vehicles with monthly prices (conventional and Murabaha) and stock stats"
+      parameters: [{ $ref: '#/components/parameters/SellerId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      seller: { type: object }
+                      items:
+                        type: array
+                        items:
+                          allOf:
+                            - { $ref: '#/components/schemas/VehicleListing' }
+                            - { type: object, properties: { fromMonthlyMurabahaFils: { type: integer } } }
+                      stats:
+                        type: object
+                        properties:
+                          count: { type: integer }
+                          newCount: { type: integer }
+                          usedCount: { type: integer }
+                          avgPriceFils: { type: integer }
+                          totalValueFils: { type: integer }
+        '404': { $ref: '#/components/responses/Error' }
+  /dealer/{sellerId}/leads:
+    get:
+      summary: "Dealer portal: leads (customers who reserved, applied for, or viewed a car), newest first, with pipeline counts"
+      parameters: [{ $ref: '#/components/parameters/SellerId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/Lead' } }
+                      total: { type: integer }
+                      stats:
+                        type: object
+                        properties:
+                          total: { type: integer }
+                          open: { type: integer }
+                          won: { type: integer }
+                          lost: { type: integer }
+                          byStatus: { type: object, additionalProperties: { type: integer } }
+        '404': { $ref: '#/components/responses/Error' }
+  /dealer/{sellerId}/leads/{leadId}:
+    parameters:
+      - { $ref: '#/components/parameters/SellerId' }
+      - { name: leadId, in: path, required: true, schema: { type: string } }
+    get:
+      summary: "Dealer portal: one lead"
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/Lead' } } } } } }
+        '404': { $ref: '#/components/responses/Error' }
+    patch:
+      summary: "Dealer portal: move a lead along NEW → CONTACTED → TEST_DRIVE → OFFER_SENT → WON / LOST"
+      description: Allowed moves are NEW→CONTACTED|LOST, CONTACTED→TEST_DRIVE|OFFER_SENT|LOST, TEST_DRIVE→OFFER_SENT|LOST, OFFER_SENT→WON|LOST. WON and LOST are final.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: '#/components/schemas/LeadStatus' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/Lead' } } } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { description: LEAD_NOT_FOUND (also for another dealer's lead), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: INVALID_TRANSITION, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /dealer/offers:
+    post:
+      summary: "Dealer portal: price a car for a customer who shared their pre-approval, every structure side by side, checked against the shared limit"
+      description: |
+        The token is re-checked on every call, so an expired share cannot be priced.
+        A quote is within the limit when financedFils <= vehicleLimitFils and monthlyFils <= maxMonthlyFils.
+        ⚠️ Sandbox: the offer is not yet pushed to the customer's app.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sellerId, token, vehicleId, downPaymentFils, tenureMonths]
+              properties:
+                sellerId: { type: string }
+                token: { type: string }
+                vehicleId: { type: string, description: Must be in this dealer's inventory }
+                downPaymentFils: { type: integer, minimum: 0 }
+                tenureMonths: { type: integer }
+                structures: { type: array, items: { $ref: '#/components/schemas/FinanceStructure' }, description: Defaults to every structure offered for vehicles }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      sellerId: { type: string }
+                      vehicle: { $ref: '#/components/schemas/VehicleListing' }
+                      customer: { $ref: '#/components/schemas/SharedPreApproval' }
+                      quotes:
+                        type: array
+                        items:
+                          allOf:
+                            - { $ref: '#/components/schemas/FinanceQuote' }
+                            - type: object
+                              properties:
+                                withinFinanceLimit: { type: boolean }
+                                withinMonthlyLimit: { type: boolean }
+                                withinLimit: { type: boolean }
+                      withinLimit: { type: boolean, description: At least one structure fits }
+                      createdAt: { type: string, format: date-time }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { description: TOKEN_NOT_FOUND, VEHICLE_NOT_FOUND or UNKNOWN_DEALER, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '410': { description: TOKEN_EXPIRED, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '422': { description: VEHICLE_NOT_IN_INVENTORY or a quote rule (DOWN_PAYMENT_TOO_LOW, TENURE_OUT_OF_RANGE, ...), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
 components:
+  parameters:
+    SellerId:
+      name: sellerId
+      in: path
+      required: true
+      description: Dealer (nmc, tac, demo-dealer). ⚠️ Sandbox has no staff login.
+      schema: { type: string }
   responses:
     Error:
       description: Error
@@ -238,3 +415,33 @@ components:
         minDownPaymentFils: { type: integer }
         maxDownPaymentFils: { type: integer }
         structures: { type: array, items: { $ref: '#/components/schemas/FinanceStructure' } }
+    PreApprovalShare:
+      type: object
+      properties:
+        token: { type: string, description: 'Random and opaque, formatted XXXX-XXXX (Crockford base32)' }
+        expiresAt: { type: string, format: date-time }
+        ttlSeconds: { type: integer }
+    SharedPreApproval:
+      type: object
+      description: Everything a dealer learns from a token (data minimization; no salary, CPR or obligations).
+      properties:
+        firstName: { $ref: '#/components/schemas/Localized' }
+        vehicleLimitFils: { type: integer }
+        maxMonthlyFils: { type: integer }
+        validUntil: { type: string, format: date, description: Pre-approval validity }
+        tokenExpiresAt: { type: string, format: date-time }
+    LeadStatus:
+      enum: [NEW, CONTACTED, TEST_DRIVE, OFFER_SENT, WON, LOST]
+    Lead:
+      type: object
+      properties:
+        id: { type: string }
+        sellerId: { type: string }
+        vehicleId: { type: string }
+        vehicleTitle: { type: string }
+        customerName: { $ref: '#/components/schemas/Localized' }
+        source: { enum: [reserved, applied, viewed] }
+        status: { $ref: '#/components/schemas/LeadStatus' }
+        preApproved: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
