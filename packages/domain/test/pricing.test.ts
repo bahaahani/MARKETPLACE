@@ -79,6 +79,26 @@ describe('quoteFinance', () => {
     expect(() => quoteFinance({ ...base, structure: 'conventional', assetPriceFils: 10.5 })).toThrow(/integer/);
   });
 
+  it('rejects amounts outside the safe integer range (e.g. 1e300 from the API)', () => {
+    expect(() => quoteFinance({ ...base, structure: 'conventional', assetPriceFils: 1e300, downPaymentFils: 1e299 })).toThrow(QuoteError);
+    expect(() => quoteFinance({ ...base, structure: 'murabaha', assetPriceFils: Number.MAX_SAFE_INTEGER + 1 })).toThrow(/integer/);
+  });
+
+  it('Murabaha never produces a zero or negative final installment', () => {
+    const tiny = { productLine: 'personal' as const, structure: 'murabaha' as const, downPaymentFils: 0, tenureMonths: 12 };
+    // BHD 0.001 over 12 months used to give a final installment of -10 fils.
+    expect(() => quoteFinance({ ...tiny, assetPriceFils: 1 })).toThrow(QuoteError);
+    expect(() => quoteFinance({ ...tiny, assetPriceFils: 51, tenureMonths: 60 })).toThrow(/too small/);
+    for (const assetPriceFils of [bhd(500), bhd(3_333.333), bhd(50_000)]) {
+      for (const tenureMonths of [6, 7, 13, 60]) {
+        const q = quoteFinance({ ...tiny, assetPriceFils, tenureMonths });
+        expect(q.finalInstallmentFils).toBeGreaterThan(0);
+        expect(q.finalInstallmentFils).toBeLessThanOrEqual(q.monthlyFils);
+        expect(q.monthlyFils * (tenureMonths - 1) + q.finalInstallmentFils).toBe(q.salePriceFils);
+      }
+    }
+  });
+
   it('compareStructures returns one quote per offered structure', () => {
     const qs = compareStructures(base);
     expect(qs.map((q) => q.structure)).toEqual(['conventional', 'murabaha']);

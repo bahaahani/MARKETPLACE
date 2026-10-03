@@ -98,10 +98,10 @@ export interface EmploymentInput extends CustomerFinancials {
 }
 
 export function validateEmployment(e: EmploymentInput): void {
-  if (!Number.isInteger(e.monthlySalaryFils) || e.monthlySalaryFils <= 0) {
+  if (!Number.isSafeInteger(e.monthlySalaryFils) || e.monthlySalaryFils <= 0) {
     throw new OnboardingError('INVALID_SALARY', 'monthlySalaryFils must be a positive integer (fils)');
   }
-  if (!Number.isInteger(e.existingObligationsFils) || e.existingObligationsFils < 0) {
+  if (!Number.isSafeInteger(e.existingObligationsFils) || e.existingObligationsFils < 0) {
     throw new OnboardingError('INVALID_OBLIGATIONS', 'existingObligationsFils must be an integer of 0 or more (fils)');
   }
 }

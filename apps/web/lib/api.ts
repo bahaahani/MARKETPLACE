@@ -6,6 +6,7 @@ import {
   LeadStore,
   OnboardingError,
   OriginationError,
+  PaymentTransitionError,
   PaymentValidationError,
   PreApprovalTokenStore,
   QuoteError,
@@ -49,6 +50,7 @@ export function handleError(e: unknown) {
   if (isError<QuoteError>(e, QuoteError, 'QuoteError')) return problem(422, e.code, e.message);
   if (isError<DealerError>(e, DealerError, 'DealerError')) return problem(DEALER_STATUS[e.code] ?? 422, e.code, e.message);
   if (isError(e, PaymentValidationError, 'PaymentValidationError')) return problem(422, 'PAYMENT_INVALID', e.message);
+  if (isError(e, PaymentTransitionError, 'PaymentTransitionError')) return problem(409, 'INVALID_TRANSITION', e.message);
   if (isError<OnboardingError>(e, OnboardingError, 'OnboardingError')) return problem(422, e.code, e.message);
   if (isError<CardApplicationError>(e, CardApplicationError, 'CardApplicationError')) {
     return problem(e.code === 'CARD_NOT_FOUND' ? 404 : 422, e.code, e.message);
@@ -60,6 +62,18 @@ export function handleError(e: unknown) {
   if (e instanceof SyntaxError) return problem(400, 'BAD_JSON', 'request body must be valid JSON');
   console.error(e);
   return problem(500, 'INTERNAL', 'unexpected error');
+}
+
+/**
+ * Reads a JSON request body that must be an object. `null`, arrays and other JSON values are rejected like
+ * malformed JSON (400 BAD_JSON) instead of failing later with a TypeError (500).
+ */
+export async function jsonBody<T extends object>(req: Request, opts: { optional?: boolean } = {}): Promise<T> {
+  const text = await req.text();
+  if (opts.optional && !text.trim()) return {} as T;
+  const body: unknown = JSON.parse(text);
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) throw new SyntaxError('request body must be a JSON object');
+  return body as T;
 }
 
 function isError<T extends Error>(e: unknown, cls: abstract new (...args: never[]) => T, name: string): e is T {

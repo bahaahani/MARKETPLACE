@@ -1,5 +1,5 @@
 import { buildPreApproval, grantConsent } from '@sahel/domain';
-import { handleError, ok } from '@/lib/api';
+import { handleError, jsonBody, ok } from '@/lib/api';
 
 interface Body {
   monthlySalaryFils?: number;
@@ -16,7 +16,7 @@ interface Body {
  */
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as Body;
+    const body = await jsonBody<Body>(req);
     const scopes = Array.isArray(body.consentScopes) ? body.consentScopes.filter((s): s is string => typeof s === 'string') : [];
     const consent = scopes.length ? grantConsent(scopes) : undefined;
     const result = buildPreApproval(

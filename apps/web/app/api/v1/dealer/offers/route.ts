@@ -1,5 +1,5 @@
 import { buildShowroomOffer, type FinanceStructure } from '@sahel/domain';
-import { dealerSession, handleError, ok, preApprovalTokens, problem } from '@/lib/api';
+import { dealerSession, handleError, jsonBody, ok, preApprovalTokens, problem } from '@/lib/api';
 
 /**
  * POST /api/v1/dealer/offers { sellerId, token, vehicleId, downPaymentFils, tenureMonths, structures? }
@@ -9,19 +9,22 @@ import { dealerSession, handleError, ok, preApprovalTokens, problem } from '@/li
  */
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as {
+    const body = await jsonBody<{
       sellerId?: string;
       token?: string;
       vehicleId?: string;
       downPaymentFils?: number;
       tenureMonths?: number;
       structures?: FinanceStructure[];
-    };
+    }>(req);
     if (!body.sellerId || typeof body.token !== 'string' || !body.vehicleId) {
       return problem(400, 'BAD_REQUEST', 'sellerId, token and vehicleId are required');
     }
     if (typeof body.downPaymentFils !== 'number' || typeof body.tenureMonths !== 'number') {
       return problem(400, 'BAD_REQUEST', 'downPaymentFils and tenureMonths are required numbers');
+    }
+    if (body.structures !== undefined && (!Array.isArray(body.structures) || !body.structures.every((x) => typeof x === 'string'))) {
+      return problem(400, 'BAD_REQUEST', 'structures must be an array of finance structures');
     }
     dealerSession(req, body.sellerId);
     const customer = preApprovalTokens.redeem(body.token);

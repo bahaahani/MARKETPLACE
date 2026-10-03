@@ -1,5 +1,5 @@
 import { compareStructures, financeLimits, quoteFinance, type FinanceStructure, type ProductLine } from '@sahel/domain';
-import { handleError, ok, problem } from '@/lib/api';
+import { handleError, jsonBody, ok, problem } from '@/lib/api';
 
 const LINES: ProductLine[] = ['vehicle', 'personal', 'home'];
 
@@ -10,13 +10,13 @@ const LINES: ProductLine[] = ['vehicle', 'personal', 'home'];
  */
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as {
+    const body = await jsonBody<{
       productLine?: ProductLine;
       assetPriceFils?: number;
       downPaymentFils?: number;
       tenureMonths?: number;
       structure?: FinanceStructure;
-    };
+    }>(req);
     if (!body.productLine || !LINES.includes(body.productLine)) return problem(400, 'BAD_REQUEST', 'productLine is required');
     if (typeof body.assetPriceFils !== 'number' || typeof body.tenureMonths !== 'number') {
       return problem(400, 'BAD_REQUEST', 'assetPriceFils and tenureMonths are required numbers');

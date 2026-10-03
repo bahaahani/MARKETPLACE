@@ -143,6 +143,31 @@ describe('application state machine', () => {
     expect(() => assertTransition('murabaha', from, to)).toThrow(ApplicationTransitionError);
   });
 
+  it('Murabaha after the sale: personal (commodity) must disburse, vehicle completes on the sale', () => {
+    expect(allowedTransitions('murabaha', 'SALE_TO_CUSTOMER', 'personal')).toEqual(['DISBURSED']);
+    expect(allowedTransitions('murabaha', 'SALE_TO_CUSTOMER', 'vehicle')).toEqual(['COMPLETED']);
+    expect(() => assertTransition('murabaha', 'SALE_TO_CUSTOMER', 'COMPLETED', 'personal')).toThrow(ApplicationTransitionError);
+    expect(() => assertTransition('murabaha', 'SALE_TO_CUSTOMER', 'DISBURSED', 'vehicle')).toThrow(ApplicationTransitionError);
+  });
+
+  it('the service will not skip the cash payout of a personal Murabaha', () => {
+    const svc = new SandboxOriginationService(fixedClock());
+    const personal: ApplicationRequest = {
+      ...crv,
+      productLine: 'personal',
+      assetPriceFils: bhd(3_000),
+      downPaymentFils: 0,
+      tenureMonths: 36,
+      reference: 'personal',
+      idempotencyKey: 'key-personal-skip',
+    };
+    const { id, status } = svc.apply(personal, applicant, 'demo-customer');
+    expect(status).toBe('APPROVED');
+    for (const s of ['OFFER_ACCEPTED', 'CONTRACT_SIGNED', ...MURABAHA_STEPS] as const) svc.advance(id, s);
+    expect(() => svc.advance(id, 'COMPLETED')).toThrow(ApplicationTransitionError);
+    expect(svc.advance(id, 'DISBURSED').status).toBe('DISBURSED');
+  });
+
   it('cannot accept an offer that was not approved', () => {
     expect(() => assertTransition('conventional', 'DECLINED', 'OFFER_ACCEPTED')).toThrow(/DECLINED to OFFER_ACCEPTED/);
     expect(() => assertTransition('conventional', 'REFERRED', 'OFFER_ACCEPTED')).toThrow(ApplicationTransitionError);
@@ -213,6 +238,8 @@ describe('SandboxOriginationService', () => {
   it('validates requests and quote terms', () => {
     const svc = new SandboxOriginationService(fixedClock());
     expect(() => svc.apply({ ...crv, idempotencyKey: 'short' }, applicant, 'c')).toThrow(OriginationError);
+    // A non-string key (e.g. a JSON number) used to slip past the length check.
+    expect(() => svc.apply({ ...crv, idempotencyKey: 123456789 as never }, applicant, 'c')).toThrow(OriginationError);
     expect(() => svc.apply({ ...crv, structure: 'ijara' as never, idempotencyKey: 'key-ijara-1' }, applicant, 'c')).toThrow(OriginationError);
     expect(() => svc.apply({ ...crv, tenureMonths: 120, idempotencyKey: 'key-tenure-1' }, applicant, 'c')).toThrow(QuoteError);
     expect(() =>

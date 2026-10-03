@@ -27,7 +27,7 @@ export function Header({ locale }: { locale: AppLocale }) {
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand text-sm text-white">S</span>
           {t(locale, 'appName')}
         </Link>
-        <nav className="hidden flex-1 items-center gap-1 md:flex" aria-label="Main">
+        <nav className="hidden flex-1 items-center gap-1 md:flex" aria-label={t(locale, 'navMain')}>
           {NAV.map((n) => {
             const active = n.href === '' ? rest === '' : rest.startsWith(n.href);
             return (
@@ -45,7 +45,7 @@ export function Header({ locale }: { locale: AppLocale }) {
           {t(locale, 'languageSwitch')}
         </Link>
       </div>
-      <nav className="flex gap-1 overflow-x-auto px-3 pb-2 md:hidden" aria-label="Main mobile">
+      <nav className="flex gap-1 overflow-x-auto px-3 pb-2 md:hidden" aria-label={t(locale, 'navMain')}>
         {NAV.map((n) => (
           <Link key={n.key} href={`/${locale}${n.href}`} className="whitespace-nowrap rounded-full border border-border px-3 py-1 text-xs">
             {t(locale, n.key)}

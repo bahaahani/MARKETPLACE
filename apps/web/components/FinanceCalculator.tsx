@@ -3,13 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { compareStructures, financeLimits, formatBhd, LISTING_DEFAULTS, type FinanceQuote, type FinanceStructure, type ProductLine } from '@sahel/domain';
 import { t, type AppLocale, type MessageKey } from '@sahel/i18n';
+import { STRUCTURE_LABEL } from '@/lib/labels';
 import { useSetFinanceSelection } from './ApplyFinance';
-
-const STRUCTURE_LABEL: Record<FinanceStructure, MessageKey> = {
-  conventional: 'structureConventional',
-  murabaha: 'structureMurabaha',
-  ijara: 'structureIjara',
-};
 
 /**
  * Islamic / conventional side-by-side calculator. Runs the same @sahel/domain pricing engine

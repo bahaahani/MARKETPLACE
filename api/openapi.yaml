@@ -155,7 +155,8 @@ paths:
                 purpose: {enum: [reservation_deposit, installment, insurance_premium, early_settlement, valuation_fee]}
                 reference: {type: string}
       responses:
-        '201': {description: Created (status INITIATED, with nextAction): null}
+        '201': {description: 'Created (status INITIATED, with nextAction)'}
+        '400': {description: 'Missing Idempotency-Key, or a body that is not a JSON object', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '422': {$ref: '#/components/responses/Error'}
   /payments/{id}/confirm:
     post:
@@ -163,6 +164,8 @@ paths:
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
       responses:
         '200': {description: OK (status CAPTURED)}
+        '409': {description: 'INVALID_TRANSITION (the payment can no longer be captured, e.g. FAILED or VOIDED)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {description: 'PAYMENT_INVALID (unknown payment id)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /me/preapproval-token:
     post:
       summary: Share my pre-approval with a dealer. Returns a short-lived (15 min), random, opaque token to show as text or QR.
@@ -330,9 +333,9 @@ paths:
                       withinLimit: {type: boolean, description: At least one structure fits}
                       createdAt: {type: string, format: date-time}
         '400': {$ref: '#/components/responses/Error'}
-        '404': {description: TOKEN_NOT_FOUND, VEHICLE_NOT_FOUND or UNKNOWN_DEALER: null, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: 'TOKEN_NOT_FOUND, VEHICLE_NOT_FOUND or UNKNOWN_DEALER', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '410': {description: TOKEN_EXPIRED, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
-        '422': {description: VEHICLE_NOT_IN_INVENTORY or a quote rule (DOWN_PAYMENT_TOO_LOW, TENURE_OUT_OF_RANGE: null, '...)': null, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {description: 'VEHICLE_NOT_IN_INVENTORY or a quote rule (DOWN_PAYMENT_TOO_LOW, TENURE_OUT_OF_RANGE, STRUCTURE_NOT_OFFERED, ...)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /onboarding/ekey:
     post:
       summary: "Log in with eKey (SANDBOX, simulated): any valid 9-digit CPR returns a fictional verified identity. Only the masked CPR is returned"
@@ -392,6 +395,7 @@ paths:
                 requestedLimitFils: {type: integer, minimum: 1, description: Capped at the pre-approved card limit}
       responses:
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/CardApplication'}}}}}}
+        '400': {$ref: '#/components/responses/Error'}
         '404':
           description: CARD_NOT_FOUND
           content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
@@ -532,7 +536,7 @@ components:
         area: {$ref: '#/components/schemas/Localized'}
         type: {type: string}
         purpose: {enum: [sale, rent]}
-        priceFils: {type: integer, description: Sale price, or monthly rent when purpose is rent: null}
+        priceFils: {type: integer, description: 'Sale price, or monthly rent when purpose is rent'}
         bedrooms: {type: integer}
         bathrooms: {type: integer}
         sizeSqm: {type: integer}
@@ -550,7 +554,7 @@ components:
         costOfFinanceFils: {type: integer, description: Interest (conventional) or profit (Islamic)}
         ratePct: {type: number}
         rateBasis: {enum: [apr, flat, profit]}
-        aprPct: {type: number, description: APR computed from cash flows, comparable across structures: null}
+        aprPct: {type: number, description: 'APR computed from cash flows, comparable across structures'}
         salePriceFils: {type: integer, description: Murabaha only}
     FinanceLimits:
       type: object

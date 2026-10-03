@@ -1,5 +1,5 @@
 import { demoCustomer, validateEmployment, type CustomerFinancials } from '@sahel/domain';
-import { cardIssuer, handleError, ok } from '@/lib/api';
+import { cardIssuer, handleError, jsonBody, ok, problem } from '@/lib/api';
 
 interface Body {
   monthlySalaryFils?: number;
@@ -16,15 +16,18 @@ interface Body {
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params;
-    const text = await req.text();
-    const body = (text ? JSON.parse(text) : {}) as Body;
+    const body = await jsonBody<Body>(req, { optional: true });
+    const requested = body.requestedLimitFils;
+    if (requested !== undefined && (!Number.isSafeInteger(requested) || requested <= 0)) {
+      return problem(400, 'BAD_REQUEST', 'requestedLimitFils must be a positive integer');
+    }
     const me = demoCustomer();
     const financials: CustomerFinancials = {
       monthlySalaryFils: body.monthlySalaryFils ?? me.monthlySalaryFils,
       existingObligationsFils: body.existingObligationsFils ?? me.existingObligationsFils,
     };
     validateEmployment(financials);
-    return ok(cardIssuer.apply(id, financials, { requestedLimitFils: body.requestedLimitFils }));
+    return ok(cardIssuer.apply(id, financials, { requestedLimitFils: requested }));
   } catch (e) {
     return handleError(e);
   }

@@ -8,7 +8,7 @@ import {
   type OriginationProductLine,
   type OriginationStructure,
 } from '@sahel/domain';
-import { handleError, ok, originations, problem } from '@/lib/api';
+import { handleError, jsonBody, ok, originations, problem } from '@/lib/api';
 
 /** GET /api/v1/applications: the demo customer's finance applications, newest first. */
 export function GET() {
@@ -24,7 +24,7 @@ export function GET() {
  */
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as {
+    const body = await jsonBody<{
       productLine?: OriginationProductLine;
       structure?: OriginationStructure;
       vehicleId?: string;
@@ -32,9 +32,9 @@ export async function POST(req: Request) {
       downPaymentFils?: number;
       tenureMonths?: number;
       idempotencyKey?: string;
-    };
+    }>(req);
     const idempotencyKey = req.headers.get('Idempotency-Key') ?? body.idempotencyKey;
-    if (!idempotencyKey) return problem(400, 'BAD_REQUEST', 'Idempotency-Key is required');
+    if (!idempotencyKey || typeof idempotencyKey !== 'string') return problem(400, 'BAD_REQUEST', 'Idempotency-Key is required');
     if (!body.productLine || !ORIGINATION_PRODUCT_LINES.includes(body.productLine)) {
       return problem(400, 'BAD_REQUEST', 'productLine must be vehicle or personal');
     }
@@ -45,7 +45,8 @@ export async function POST(req: Request) {
 
     let request: ApplicationRequest;
     if (body.productLine === 'vehicle') {
-      const v = body.vehicleId ? findVehicle(body.vehicleId) : undefined;
+      if (typeof body.vehicleId !== 'string' || !body.vehicleId) return problem(400, 'BAD_REQUEST', 'vehicleId is required for vehicle finance');
+      const v = findVehicle(body.vehicleId);
       if (!v) return problem(404, 'NOT_FOUND', 'vehicleId must be a vehicle in the catalog');
       request = {
         productLine: 'vehicle',

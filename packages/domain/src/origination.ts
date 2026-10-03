@@ -84,12 +84,29 @@ export class ApplicationTransitionError extends Error {
   }
 }
 
-export function allowedTransitions(structure: OriginationStructure, status: ApplicationStatus): ApplicationStatus[] {
-  return TRANSITIONS[structure][status] ?? [];
+/**
+ * Without `productLine`, the union over product lines. With it, Murabaha after SALE_TO_CUSTOMER is exact:
+ * commodity (personal) Murabaha must pay out the cash (DISBURSED); vehicle Murabaha completes on the sale.
+ */
+export function allowedTransitions(
+  structure: OriginationStructure,
+  status: ApplicationStatus,
+  productLine?: OriginationProductLine,
+): ApplicationStatus[] {
+  const next = TRANSITIONS[structure][status] ?? [];
+  if (structure === 'murabaha' && status === 'SALE_TO_CUSTOMER' && productLine) {
+    return next.filter((s) => s === (productLine === 'personal' ? 'DISBURSED' : 'COMPLETED'));
+  }
+  return next;
 }
 
-export function assertTransition(structure: OriginationStructure, from: ApplicationStatus, to: ApplicationStatus): void {
-  if (!allowedTransitions(structure, from).includes(to)) throw new ApplicationTransitionError(from, to, structure);
+export function assertTransition(
+  structure: OriginationStructure,
+  from: ApplicationStatus,
+  to: ApplicationStatus,
+  productLine?: OriginationProductLine,
+): void {
+  if (!allowedTransitions(structure, from, productLine).includes(to)) throw new ApplicationTransitionError(from, to, structure);
 }
 
 /** Steps after an approved offer is accepted, in order, for this product and structure. */
@@ -227,10 +244,10 @@ export interface ApplicationRequest {
 export function validateApplicationRequest(req: ApplicationRequest): void {
   if (!ORIGINATION_PRODUCT_LINES.includes(req.productLine)) throw new OriginationError('INVALID_REQUEST', 'productLine must be vehicle or personal');
   if (!ORIGINATION_STRUCTURES.includes(req.structure)) throw new OriginationError('INVALID_REQUEST', 'structure must be conventional or murabaha');
-  if (!req.idempotencyKey || req.idempotencyKey.length < 8) {
+  if (typeof req.idempotencyKey !== 'string' || req.idempotencyKey.length < 8) {
     throw new OriginationError('INVALID_REQUEST', 'idempotencyKey is required (min 8 chars)');
   }
-  if (!req.reference) throw new OriginationError('INVALID_REQUEST', 'reference is required');
+  if (typeof req.reference !== 'string' || !req.reference) throw new OriginationError('INVALID_REQUEST', 'reference is required');
   if (req.productLine === 'personal' && req.assetPriceFils < MIN_PERSONAL_FINANCE_FILS) {
     throw new OriginationError('INVALID_REQUEST', `personal finance starts at ${MIN_PERSONAL_FINANCE_FILS} fils`);
   }
@@ -284,7 +301,7 @@ export class SandboxOriginationService {
   /** Move to `to`, enforcing the state machine and recording a timeline event. */
   advance(id: string, to: ApplicationStatus): FinanceApplication {
     const app = this.require(id);
-    assertTransition(app.structure, app.status, to);
+    assertTransition(app.structure, app.status, to, app.productLine);
     const at = this.clock().toISOString();
     const updated: FinanceApplication = { ...app, status: to, timeline: [...app.timeline, { status: to, at }], updatedAt: at };
     this.byId.set(id, updated);

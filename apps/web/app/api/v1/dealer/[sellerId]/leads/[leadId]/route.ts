@@ -1,5 +1,5 @@
 import { isLeadStatus } from '@sahel/domain';
-import { dealerSession, handleError, leads, ok, problem } from '@/lib/api';
+import { dealerSession, handleError, jsonBody, leads, ok, problem } from '@/lib/api';
 
 type Ctx = { params: Promise<{ sellerId: string; leadId: string }> };
 
@@ -19,7 +19,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   try {
     const { sellerId, leadId } = await ctx.params;
     dealerSession(req, sellerId);
-    const body = (await req.json()) as { status?: unknown };
+    const body = await jsonBody<{ status?: unknown }>(req);
     if (!isLeadStatus(body.status)) {
       return problem(400, 'BAD_REQUEST', 'status must be one of NEW, CONTACTED, TEST_DRIVE, OFFER_SENT, WON, LOST');
     }

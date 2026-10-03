@@ -11,6 +11,8 @@ export const PAYMENT_METHODS: PaymentMethod[] = ['benefitpay', 'apple_pay', 'goo
 
 export type PaymentPurpose = 'reservation_deposit' | 'installment' | 'insurance_premium' | 'early_settlement' | 'valuation_fee';
 
+export const PAYMENT_PURPOSES: PaymentPurpose[] = ['reservation_deposit', 'installment', 'insurance_premium', 'early_settlement', 'valuation_fee'];
+
 export type PaymentStatus = 'INITIATED' | 'AUTHORIZED' | 'CAPTURED' | 'FAILED' | 'VOIDED' | 'REFUNDED';
 
 export type PaymentEvent = 'authorize' | 'capture' | 'fail' | 'void' | 'refund';
@@ -69,14 +71,15 @@ export class PaymentValidationError extends Error {
 }
 
 export function validatePaymentRequest(req: PaymentRequest): void {
-  if (!Number.isInteger(req.amountFils) || req.amountFils <= 0) {
+  if (!Number.isSafeInteger(req.amountFils) || req.amountFils <= 0) {
     throw new PaymentValidationError('amountFils must be a positive integer');
   }
   if (!PAYMENT_METHODS.includes(req.method)) throw new PaymentValidationError(`unsupported method ${req.method}`);
-  if (!req.idempotencyKey || req.idempotencyKey.length < 8) {
+  if (!PAYMENT_PURPOSES.includes(req.purpose)) throw new PaymentValidationError(`unsupported purpose ${req.purpose}`);
+  if (typeof req.idempotencyKey !== 'string' || req.idempotencyKey.length < 8) {
     throw new PaymentValidationError('idempotencyKey is required (min 8 chars)');
   }
-  if (!req.reference) throw new PaymentValidationError('reference is required');
+  if (typeof req.reference !== 'string' || !req.reference) throw new PaymentValidationError('reference is required');
 }
 
 function nextActionFor(method: PaymentMethod): Payment['nextAction'] {

@@ -9,6 +9,8 @@ import {
   PROPERTIES,
   preApprove,
   quoteFinance,
+  PaymentTransitionError,
+  PaymentValidationError,
   SandboxPaymentGateway,
   searchProperties,
   searchVehicles,
@@ -114,5 +116,23 @@ describe('payments', () => {
     expect(a.nextAction).toBe('benefitpay_qr');
     expect((await gw.confirm(a.id)).status).toBe('CAPTURED');
     await expect(gw.createCharge({ ...req, amountFils: 0, idempotencyKey: 'zzz99999' })).rejects.toThrow();
+  });
+  it('rejects unknown purposes, non-string references and keys, and unsafe amounts', async () => {
+    const gw = new SandboxPaymentGateway();
+    const req = { amountFils: bhd(100), method: 'card' as const, purpose: 'installment' as const, reference: 'c-1001-15', idempotencyKey: 'key-valid-1' };
+    await expect(gw.createCharge({ ...req, purpose: 'bogus' as never })).rejects.toThrow(PaymentValidationError);
+    await expect(gw.createCharge({ ...req, reference: { id: 1 } as never })).rejects.toThrow(PaymentValidationError);
+    await expect(gw.createCharge({ ...req, idempotencyKey: 123456789 as never })).rejects.toThrow(PaymentValidationError);
+    await expect(gw.createCharge({ ...req, amountFils: 1e20 })).rejects.toThrow(PaymentValidationError);
+    expect((await gw.createCharge(req)).status).toBe('INITIATED');
+  });
+  it('a refused transition is a named PaymentTransitionError (the API maps it to 409)', () => {
+    try {
+      transition('FAILED', 'capture');
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toBeInstanceOf(PaymentTransitionError);
+      expect((e as Error).name).toBe('PaymentTransitionError');
+    }
   });
 });

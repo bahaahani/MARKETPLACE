@@ -71,6 +71,10 @@ describe('employment validation', () => {
     expect(codeOf(() => validateEmployment({ monthlySalaryFils: bhd(1_000), existingObligationsFils: -1 }))).toBe('INVALID_OBLIGATIONS');
     expect(codeOf(() => validateEmployment({ monthlySalaryFils: bhd(1_000), existingObligationsFils: 0.5 }))).toBe('INVALID_OBLIGATIONS');
   });
+  it('rejects amounts outside the safe integer range', () => {
+    expect(codeOf(() => validateEmployment({ monthlySalaryFils: 1e300, existingObligationsFils: 0 }))).toBe('INVALID_SALARY');
+    expect(codeOf(() => validateEmployment({ monthlySalaryFils: bhd(1_000), existingObligationsFils: 2 ** 60 }))).toBe('INVALID_OBLIGATIONS');
+  });
 });
 
 describe('parseBhdInput', () => {

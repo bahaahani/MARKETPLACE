@@ -382,7 +382,8 @@ export function buildShowroomOffer(customer: SharedPreApproval, input: ShowroomO
   if (vehicle.seller.id !== input.sellerId) {
     throw new DealerError('VEHICLE_NOT_IN_INVENTORY', `vehicle ${input.vehicleId} is not sold by ${input.sellerId}`);
   }
-  const structures = input.structures?.length ? input.structures : RATE_CARDS.vehicle.structures;
+  // One column per structure, even if the request repeats one.
+  const structures = input.structures?.length ? [...new Set(input.structures)] : RATE_CARDS.vehicle.structures;
   const quotes = structures.map((structure): OfferQuote => {
     const q = quoteFinance({
       productLine: 'vehicle',

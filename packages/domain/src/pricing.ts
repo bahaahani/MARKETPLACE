@@ -113,7 +113,7 @@ export function quoteFinance(input: FinanceQuoteInput): FinanceQuote {
   const { productLine, structure, assetPriceFils, downPaymentFils, tenureMonths } = input;
   const card = RATE_CARDS[productLine];
 
-  if (!Number.isInteger(assetPriceFils) || !Number.isInteger(downPaymentFils) || assetPriceFils <= 0 || downPaymentFils < 0) {
+  if (!Number.isSafeInteger(assetPriceFils) || !Number.isSafeInteger(downPaymentFils) || assetPriceFils <= 0 || downPaymentFils < 0) {
     throw new QuoteError('INVALID_AMOUNT', 'amounts must be non-negative integer fils');
   }
   if (!card.structures.includes(structure)) {
@@ -142,6 +142,10 @@ export function quoteFinance(input: FinanceQuoteInput): FinanceQuote {
     const salePriceFils = financedFils + profitFils;
     const monthlyFils = Math.ceil(salePriceFils / tenureMonths);
     const finalInstallmentFils = salePriceFils - monthlyFils * (tenureMonths - 1);
+    // Tiny amounts over long tenures would leave a zero or negative last installment.
+    if (finalInstallmentFils <= 0) {
+      throw new QuoteError('INVALID_AMOUNT', 'financed amount is too small for this tenure');
+    }
     return {
       productLine,
       structure,

@@ -231,6 +231,12 @@ describe('showroom offer', () => {
     expect(offer.withinLimit).toBe(false);
   });
 
+  it('quotes each structure once even if the request repeats it', () => {
+    const input = { sellerId: 'nmc', vehicleId: 'v-honda-crv-2026', downPaymentFils: bhd(3_000), tenureMonths: 60 };
+    const offer = buildShowroomOffer(shared, { ...input, structures: ['murabaha', 'murabaha'] }, NOW);
+    expect(offer.quotes.map((q) => q.structure)).toEqual(['murabaha']);
+  });
+
   it("only offers the dealer's own vehicles", () => {
     const input = { sellerId: 'nmc', downPaymentFils: bhd(2_000), tenureMonths: 48 };
     expect(code(() => buildShowroomOffer(shared, { ...input, vehicleId: 'v-honda-accord-2023' }))).toBe('VEHICLE_NOT_IN_INVENTORY');

@@ -377,6 +377,7 @@
     }
   },
   "navOnboarding": "Get pre-approved",
+  "navMain": "Main menu",
   "onboardingTitle": "Check what you can afford",
   "onboardingIntro": "Log in with eKey, tell us your salary and see your limits in about 3 minutes.",
   "onboardingStart": "Start now",

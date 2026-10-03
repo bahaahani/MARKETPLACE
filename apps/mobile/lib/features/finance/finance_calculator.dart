@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -27,7 +29,12 @@ class FinanceCalculator extends ConsumerStatefulWidget {
 class _FinanceCalculatorState extends ConsumerState<FinanceCalculator> {
   // Listing defaults (same as LISTING_DEFAULTS in @sahel/domain).
   late final int _step = widget.productLine == 'home' ? 1000000 : 100000;
-  late int _down = _roundToStep(widget.assetPriceFils * 20 ~/ 100);
+  late final int _defaultDown = (widget.assetPriceFils * 20 + 99) ~/ 100;
+  // Rounding the default down could go below the minimum down payment (e.g. home, where the minimum is
+  // also 20%), which the API rejects. Start from a value that is always valid, then settle on the web's
+  // default once the API has returned the limits.
+  late int _down = max(_roundToStep(_defaultDown), _defaultDown);
+  bool _downSettled = false;
   late int _tenure = widget.productLine == 'home' ? 240 : 60;
   late FinanceQuery _query = _currentQuery();
   FinanceStructure? _selected;
@@ -56,6 +63,18 @@ class _FinanceCalculatorState extends ConsumerState<FinanceCalculator> {
     final result = ref.watch(financeQuotesProvider(_query));
     final data = result.value ?? _last;
     if (result.hasValue) _last = result.value;
+    if (data != null && !_downSettled) {
+      _downSettled = true;
+      // Same default as the web calculator: the rounded listing default, never below the minimum.
+      final settled = max(data.limits.minDownPaymentFils, _roundToStep(_defaultDown));
+      if (settled != _down) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _down = settled;
+          _commit();
+        });
+      }
+    }
     if (data != null && !_published) {
       _published = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -108,7 +127,8 @@ class _FinanceCalculatorState extends ConsumerState<FinanceCalculator> {
     final maxDown = limits.maxDownPaymentFils ~/ _step * _step;
     final down = _down.clamp(minDown, maxDown);
     return Column(children: [
-      _labeled(l.downPayment, context.money(down, decimals: 0)),
+      // The label shows what is quoted; the slider thumb can only sit on a step.
+      _labeled(l.downPayment, context.money(_down, decimals: 0)),
       Slider(
         key: const Key('down-payment'),
         min: minDown.toDouble(),

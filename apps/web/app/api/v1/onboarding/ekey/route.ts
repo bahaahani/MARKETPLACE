@@ -1,5 +1,5 @@
 import { simulateEKeyLogin } from '@sahel/domain';
-import { handleError, ok } from '@/lib/api';
+import { handleError, jsonBody, ok } from '@/lib/api';
 
 /**
  * POST /api/v1/onboarding/ekey: "Log in with eKey".
@@ -8,7 +8,7 @@ import { handleError, ok } from '@/lib/api';
  */
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as { cpr?: unknown };
+    const body = await jsonBody<{ cpr?: unknown }>(req);
     return ok(simulateEKeyLogin(typeof body.cpr === 'string' ? body.cpr : ''));
   } catch (e) {
     return handleError(e);

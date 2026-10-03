@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { applicationView, demoCustomer } from '@sahel/domain';
-import { t, type MessageKey } from '@sahel/i18n';
+import { t } from '@sahel/i18n';
 import { ApplicationRow } from '@/components/Application';
 import { SharePreApproval } from '@/components/SharePreApproval';
 import { originations } from '@/lib/api';
+import { STRUCTURE_LABEL } from '@/lib/labels';
 import { resolveLocale, translator } from '@/lib/i18n';
 
 // Personalized (customer data and due dates), so render per request.
@@ -13,8 +14,6 @@ export const dynamic = 'force-dynamic';
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   return { title: t(resolveLocale((await params).locale), 'navAccount') };
 }
-
-const STRUCTURE: Record<string, MessageKey> = { conventional: 'structureConventional', murabaha: 'structureMurabaha', ijara: 'structureIjara' };
 
 export default async function AccountPage({ params }: { params: Promise<{ locale: string }> }) {
   const tr = translator(resolveLocale((await params).locale));
@@ -43,7 +42,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <h2 className="font-semibold">{c.title[tr.locale]}</h2>
-                  <p className={`text-xs font-semibold ${c.structure === 'conventional' ? 'text-brand' : 'text-islamic'}`}>{tr.t(STRUCTURE[c.structure]!)}</p>
+                  <p className={`text-xs font-semibold ${c.structure === 'conventional' ? 'text-brand' : 'text-islamic'}`}>{tr.t(STRUCTURE_LABEL[c.structure])}</p>
                 </div>
                 <span className={`rounded-full px-2 py-0.5 text-xs ${c.autopay ? 'bg-islamic-soft text-islamic' : 'bg-background text-text-muted'}`}>
                   {tr.t(c.autopay ? 'autopayOn' : 'autopayOff')}
