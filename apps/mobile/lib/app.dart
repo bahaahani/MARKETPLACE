@@ -10,6 +10,8 @@ import 'features/cards/cards_screen.dart';
 import 'features/cars/car_detail_screen.dart';
 import 'features/cars/cars_screen.dart';
 import 'features/checkout/checkout_screen.dart';
+import 'features/finance/application_screen.dart';
+import 'features/finance/personal_finance_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/insurance/insurance_screen.dart';
 import 'features/property/property_detail_screen.dart';
@@ -46,6 +48,8 @@ GoRouter buildRouter({String initialLocation = '/'}) => GoRouter(
         ),
         GoRoute(path: '/insurance', builder: (_, _) => const InsuranceScreen()),
         GoRoute(path: '/checkout', builder: (_, s) => CheckoutScreen.fromQuery(s.uri.queryParameters)),
+        GoRoute(path: '/finance/personal', builder: (_, _) => const PersonalFinanceScreen()),
+        GoRoute(path: '/applications/:id', builder: (_, s) => ApplicationScreen(id: s.pathParameters['id']!)),
       ],
     );
 

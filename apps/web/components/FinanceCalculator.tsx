@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { compareStructures, financeLimits, formatBhd, LISTING_DEFAULTS, type FinanceQuote, type FinanceStructure, type ProductLine } from '@sahel/domain';
 import { t, type AppLocale, type MessageKey } from '@sahel/i18n';
+import { useSetFinanceSelection } from './ApplyFinance';
 
 const STRUCTURE_LABEL: Record<FinanceStructure, MessageKey> = {
   conventional: 'structureConventional',
@@ -28,6 +29,12 @@ export function FinanceCalculator({ locale, productLine, assetPriceFils }: { loc
     () => compareStructures({ productLine, assetPriceFils, downPaymentFils: down, tenureMonths: tenure }),
     [productLine, assetPriceFils, down, tenure],
   );
+
+  // Publish the selection so "Apply for finance" applies for exactly what is shown.
+  const publish = useSetFinanceSelection();
+  useEffect(() => {
+    publish?.({ structure: selected, downPaymentFils: down, tenureMonths: tenure });
+  }, [publish, selected, down, tenure]);
 
   const tr = (k: MessageKey, v?: Record<string, string | number>) => t(locale, k, v);
   const money = (f: number, d: 0 | 3 = 3) => formatBhd(f, locale, { decimals: d });
@@ -80,7 +87,7 @@ export function FinanceCalculator({ locale, productLine, assetPriceFils }: { loc
   );
 }
 
-function QuoteColumn({
+export function QuoteColumn({
   q,
   active,
   onSelect,

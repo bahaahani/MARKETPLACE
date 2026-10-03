@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { demoCustomer } from '@sahel/domain';
+import { applicationView, demoCustomer } from '@sahel/domain';
 import { t, type MessageKey } from '@sahel/i18n';
+import { ApplicationRow } from '@/components/Application';
+import { originations } from '@/lib/api';
 import { resolveLocale, translator } from '@/lib/i18n';
 
 // Personalized (customer data and due dates), so render per request.
@@ -16,8 +18,19 @@ const STRUCTURE: Record<string, MessageKey> = { conventional: 'structureConventi
 export default async function AccountPage({ params }: { params: Promise<{ locale: string }> }) {
   const tr = translator(resolveLocale((await params).locale));
   const me = demoCustomer();
+  const applications = originations.list(me.customerId).map(applicationView);
   return (
     <div className="grid gap-6 lg:grid-cols-2">
+      {applications.length > 0 && (
+        <section aria-labelledby="apps" className="lg:col-span-2">
+          <h2 id="apps" className="mb-3 text-2xl font-bold">{tr.t('myApplications')}</h2>
+          <div className="grid gap-3 md:grid-cols-2">
+            {applications.map((a) => (
+              <ApplicationRow key={a.id} app={a} tr={tr} />
+            ))}
+          </div>
+        </section>
+      )}
       <section aria-labelledby="inst">
         <div className="mb-3 flex items-baseline justify-between">
           <h1 id="inst" className="text-2xl font-bold">{tr.t('myInstallments')}</h1>

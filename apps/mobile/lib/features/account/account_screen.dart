@@ -8,6 +8,7 @@ import '../../core/providers.dart';
 import '../../core/theme/tokens.g.dart';
 import '../../widgets/common.dart';
 import '../checkout/checkout_screen.dart';
+import '../finance/application_screen.dart';
 
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
@@ -21,8 +22,18 @@ class AccountScreen extends ConsumerWidget {
         value: ref.watch(meProvider),
         onRetry: () => ref.invalidate(meProvider),
         data: (me) => RefreshIndicator(
-          onRefresh: () async => ref.invalidate(meProvider),
+          onRefresh: () async {
+            ref.invalidate(meProvider);
+            ref.invalidate(applicationsProvider);
+          },
           child: ListView(padding: const EdgeInsets.all(SahelSpace.md), children: [
+            ...switch (ref.watch(applicationsProvider)) {
+              AsyncData(:final value) when value.isNotEmpty => [
+                  SectionHeader(l.myApplications),
+                  for (final a in value) _ApplicationTile(a),
+                ],
+              _ => const <Widget>[],
+            },
             SectionHeader(l.myInstallments, action: '★ ${l.rewardsPoints(context.number(me.rewardsPoints))}'),
             for (final c in me.contracts) ...[_ContractCard(c), const SizedBox(height: SahelSpace.sm)],
             SectionHeader(l.myGarage),
@@ -117,4 +128,22 @@ class _Stat extends StatelessWidget {
         Text(label, style: const TextStyle(color: SahelColors.textMuted, fontSize: 12)),
         Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
       ]);
+}
+
+class _ApplicationTile extends StatelessWidget {
+  const _ApplicationTile(this.a);
+  final FinanceApplication a;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return Card(
+      child: ListTile(
+        key: Key('application-${a.id}'),
+        title: Text(a.productLine == 'personal' ? l.personalFinanceTitle : l.preApprovalVehicle),
+        subtitle: Text('${structureLabel(l, a.structure)} · ${statusLabel(l, a.status)}'),
+        trailing: TextButton(onPressed: () => context.push('/applications/${a.id}'), child: Text(l.viewApplication)),
+      ),
+    );
+  }
 }

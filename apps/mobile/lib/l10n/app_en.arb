@@ -245,5 +245,82 @@
   "sandboxNotice": "Sandbox: no real money moves.",
   "done": "Done",
   "errorGeneric": "Something went wrong. Please try again.",
-  "retry": "Retry"
+  "retry": "Retry",
+  "applyConsent": "By applying, you agree to a credit bureau check. Sandbox: no real check is made.",
+  "applicationTitle": "Finance application",
+  "applicationReference": "Application {id}",
+  "@applicationReference": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "decisionApproved": "Approved",
+  "decisionReferred": "Referred for review",
+  "decisionDeclined": "Declined",
+  "decisionApprovedBody": "Good news: your application is approved. Review your offer below.",
+  "decisionReferredBody": "A credit officer will review your application and update you here.",
+  "decisionDeclinedBody": "We can't offer this finance right now.",
+  "decisionReasons": "Why",
+  "reasonOk": "The monthly payment fits within your borrowing room and your pre-approved limit.",
+  "reasonDbrExceeded": "The monthly payment of {monthly} is more than the {max} you can add under the {cap}% debt-burden limit.",
+  "@reasonDbrExceeded": {
+    "placeholders": {
+      "monthly": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      },
+      "cap": {
+        "type": "String"
+      }
+    }
+  },
+  "reasonAmountAbovePreapproval": "The amount financed, {amount}, is above your pre-approved limit of {limit}.",
+  "@reasonAmountAbovePreapproval": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "reasonHighDbrUtilisation": "The monthly payment of {monthly} uses most of the {max} you can still add each month, so a person will check it.",
+  "@reasonHighDbrUtilisation": {
+    "placeholders": {
+      "monthly": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "tryLowerAmount": "Try a bigger down payment, a longer tenure or a lower amount.",
+  "yourOffer": "Your offer",
+  "acceptAndSign": "Accept & e-sign (sandbox)",
+  "applicationProgress": "Progress",
+  "stepUpcoming": "Upcoming",
+  "statusDraft": "Application started",
+  "statusSubmitted": "Application submitted",
+  "statusApproved": "Approved",
+  "statusReferred": "Referred for review",
+  "statusDeclined": "Declined",
+  "statusOfferAccepted": "Offer accepted",
+  "statusContractSigned": "Contract e-signed",
+  "statusAssetPurchased": "BCFC buys the asset from the seller",
+  "statusOwnershipTransferred": "BCFC takes ownership of the asset",
+  "statusSaleToCustomer": "BCFC sells the asset to you at the Murabaha sale price",
+  "statusDisbursed": "Funds paid out",
+  "statusCompleted": "Completed",
+  "murabahaSequenceNote": "Shari'a requirement: BCFC must own the asset before selling it to you, so these steps always happen in this order.",
+  "personalFinanceTitle": "Personal finance",
+  "personalFinanceSubtitle": "For anything you need, Islamic or conventional.",
+  "financeAmount": "Amount",
+  "myApplications": "My applications",
+  "viewApplication": "View"
 }

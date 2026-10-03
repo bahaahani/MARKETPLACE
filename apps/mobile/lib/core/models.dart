@@ -168,6 +168,8 @@ enum FinanceStructure { conventional, murabaha, ijara }
 class FinanceQuote {
   const FinanceQuote({
     required this.structure,
+    this.assetPriceFils = 0,
+    this.downPaymentFils = 0,
     required this.financedFils,
     required this.tenureMonths,
     required this.monthlyFils,
@@ -180,6 +182,8 @@ class FinanceQuote {
   });
 
   final FinanceStructure structure;
+  final int assetPriceFils;
+  final int downPaymentFils;
   final int financedFils;
   final int tenureMonths;
   final int monthlyFils;
@@ -194,6 +198,8 @@ class FinanceQuote {
 
   factory FinanceQuote.fromJson(Json j) => FinanceQuote(
         structure: FinanceStructure.values.byName(j['structure'] as String),
+        assetPriceFils: j['assetPriceFils'] as int? ?? 0,
+        downPaymentFils: j['downPaymentFils'] as int? ?? 0,
         financedFils: j['financedFils'] as int,
         tenureMonths: j['tenureMonths'] as int,
         monthlyFils: j['monthlyFils'] as int,
@@ -404,4 +410,90 @@ class Payment {
 
   factory Payment.fromJson(Json j) =>
       Payment(id: j['id'] as String, status: j['status'] as String, amountFils: j['amountFils'] as int);
+}
+
+/// Credit decision on a finance application. Rules run server-side (packages/domain/src/origination.ts).
+class ApplicationDecision {
+  const ApplicationDecision({
+    required this.outcome,
+    required this.reasons,
+    required this.monthlyFils,
+    required this.maxMonthlyFils,
+    required this.dbrCapPct,
+    required this.preApprovedLimitFils,
+  });
+
+  /// APPROVED, REFERRED or DECLINED
+  final String outcome;
+
+  /// OK, DBR_EXCEEDED, AMOUNT_ABOVE_PREAPPROVAL, HIGH_DBR_UTILISATION
+  final List<String> reasons;
+  final int monthlyFils;
+  final int maxMonthlyFils;
+  final num dbrCapPct;
+  final int preApprovedLimitFils;
+
+  factory ApplicationDecision.fromJson(Json j) => ApplicationDecision(
+        outcome: j['outcome'] as String,
+        reasons: [for (final r in j['reasons'] as List) r as String],
+        monthlyFils: j['monthlyFils'] as int,
+        maxMonthlyFils: j['maxMonthlyFils'] as int,
+        dbrCapPct: j['dbrCapPct'] as num,
+        preApprovedLimitFils: j['preApprovedLimitFils'] as int,
+      );
+}
+
+/// One timeline step, in the order the API returns them (done steps first, then steps to come).
+class ApplicationStep {
+  const ApplicationStep({required this.status, required this.done, required this.murabaha, this.at});
+  final String status;
+  final bool done;
+
+  /// Part of the Murabaha sequence: BCFC buys, owns, then sells the asset.
+  final bool murabaha;
+  final DateTime? at;
+
+  factory ApplicationStep.fromJson(Json j) => ApplicationStep(
+        status: j['status'] as String,
+        done: j['done'] as bool,
+        murabaha: j['murabaha'] as bool,
+        at: j['at'] == null ? null : DateTime.parse(j['at'] as String),
+      );
+}
+
+class FinanceApplication {
+  const FinanceApplication({
+    required this.id,
+    required this.productLine,
+    required this.structure,
+    required this.quote,
+    required this.reference,
+    required this.status,
+    required this.steps,
+    this.decision,
+  });
+
+  final String id;
+  final String productLine;
+  final FinanceStructure structure;
+  final FinanceQuote quote;
+
+  /// Vehicle id for cars, "personal" for personal finance
+  final String reference;
+  final String status;
+  final List<ApplicationStep> steps;
+  final ApplicationDecision? decision;
+
+  bool get canAccept => status == 'APPROVED';
+
+  factory FinanceApplication.fromJson(Json j) => FinanceApplication(
+        id: j['id'] as String,
+        productLine: j['productLine'] as String,
+        structure: FinanceStructure.values.byName(j['structure'] as String),
+        quote: FinanceQuote.fromJson(j['quote'] as Json),
+        reference: j['reference'] as String,
+        status: j['status'] as String,
+        steps: [for (final s in j['steps'] as List) ApplicationStep.fromJson(s as Json)],
+        decision: j['decision'] == null ? null : ApplicationDecision.fromJson(j['decision'] as Json),
+      );
 }

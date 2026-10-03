@@ -7,12 +7,18 @@ import '../../core/providers.dart';
 import '../../core/theme/tokens.g.dart';
 import '../../widgets/common.dart';
 
+/// What the calculator currently shows, so "Apply for finance" applies for exactly that.
+typedef FinanceSelection = ({FinanceStructure structure, int downPaymentFils, int tenureMonths});
+
 /// Islamic / conventional side-by-side calculator. Figures come from POST /api/v1/quotes/finance,
 /// the same pricing engine the web calculator runs, so both channels always agree.
 class FinanceCalculator extends ConsumerStatefulWidget {
-  const FinanceCalculator({super.key, required this.productLine, required this.assetPriceFils});
+  const FinanceCalculator({super.key, required this.productLine, required this.assetPriceFils, this.onChanged});
   final String productLine;
   final int assetPriceFils;
+
+  /// Called with the current selection once quotes load, and whenever the customer changes it.
+  final ValueChanged<FinanceSelection>? onChanged;
 
   @override
   ConsumerState<FinanceCalculator> createState() => _FinanceCalculatorState();
@@ -26,13 +32,23 @@ class _FinanceCalculatorState extends ConsumerState<FinanceCalculator> {
   late FinanceQuery _query = _currentQuery();
   FinanceStructure? _selected;
   FinanceComparison? _last;
+  bool _published = false;
 
   int _roundToStep(int v) => (v / _step).round() * _step;
 
   FinanceQuery _currentQuery() =>
       (productLine: widget.productLine, assetPriceFils: widget.assetPriceFils, downPaymentFils: _down, tenureMonths: _tenure);
 
-  void _commit() => setState(() => _query = _currentQuery());
+  void _commit() {
+    setState(() => _query = _currentQuery());
+    _publish();
+  }
+
+  void _publish() {
+    final structure = _selected ?? _last?.quotes.last.structure;
+    if (structure == null) return;
+    widget.onChanged?.call((structure: structure, downPaymentFils: _down, tenureMonths: _tenure));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +56,12 @@ class _FinanceCalculatorState extends ConsumerState<FinanceCalculator> {
     final result = ref.watch(financeQuotesProvider(_query));
     final data = result.value ?? _last;
     if (result.hasValue) _last = result.value;
+    if (data != null && !_published) {
+      _published = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _publish();
+      });
+    }
 
     return Card(
       key: const Key('finance-calculator'),
@@ -60,10 +82,13 @@ class _FinanceCalculatorState extends ConsumerState<FinanceCalculator> {
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsetsDirectional.only(end: 6),
-                      child: _QuoteColumn(
+                      child: QuoteColumn(
                         q: q,
                         active: q.structure == (_selected ?? data.quotes.last.structure),
-                        onTap: () => setState(() => _selected = q.structure),
+                        onTap: () {
+                          setState(() => _selected = q.structure);
+                          _publish();
+                        },
                       ),
                     ),
                   ),
@@ -112,8 +137,9 @@ class _FinanceCalculatorState extends ConsumerState<FinanceCalculator> {
       );
 }
 
-class _QuoteColumn extends StatelessWidget {
-  const _QuoteColumn({required this.q, required this.active, required this.onTap});
+/// One structure's quote, selectable. Shared with the personal finance screen.
+class QuoteColumn extends StatelessWidget {
+  const QuoteColumn({super.key, required this.q, required this.active, required this.onTap});
   final FinanceQuote q;
   final bool active;
   final VoidCallback onTap;

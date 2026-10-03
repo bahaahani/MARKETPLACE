@@ -163,6 +163,70 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
       responses:
         '200': { description: OK (status CAPTURED) }
+  /applications:
+    get:
+      summary: The demo customer's finance applications, newest first (sandbox store, in memory)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/FinanceApplication' } }
+                      total: { type: integer }
+    post:
+      summary: |
+        Apply for vehicle or personal finance (sandbox). Creates, submits and decides immediately against the
+        demo customer's financials. The vehicle price comes from the catalog, never from the client.
+        A repeated Idempotency-Key returns the original application.
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 8 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productLine, structure, tenureMonths]
+              properties:
+                productLine: { enum: [vehicle, personal] }
+                structure: { enum: [conventional, murabaha] }
+                tenureMonths: { type: integer }
+                vehicleId: { type: string, description: Required for vehicle }
+                downPaymentFils: { type: integer, minimum: 0, default: 0, description: Vehicle only }
+                amountFils: { type: integer, minimum: 500000, description: Required for personal }
+      responses:
+        '201': { description: Created and decided, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/FinanceApplication' } } } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { description: Unknown vehicleId, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '422':
+          description: Invalid terms (INVALID_REQUEST, or a quote rule such as TENURE_OUT_OF_RANGE, DOWN_PAYMENT_TOO_LOW)
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /applications/{id}:
+    get:
+      summary: Application status, decision, offer and timeline
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/FinanceApplication' } } } } } }
+        '404': { $ref: '#/components/responses/Error' }
+  /applications/{id}/accept:
+    post:
+      summary: |
+        Accept the offer and e-sign (sandbox). Then runs fulfilment to the end, recording each step in the timeline.
+        Conventional: OFFER_ACCEPTED, CONTRACT_SIGNED, DISBURSED, COMPLETED.
+        Murabaha: OFFER_ACCEPTED, CONTRACT_SIGNED, ASSET_PURCHASED_BY_BCFC, OWNERSHIP_TRANSFERRED_TO_BCFC,
+        SALE_TO_CUSTOMER, (personal only: DISBURSED), COMPLETED. BCFC always owns the asset before selling it (Shari'a).
+        Accepting a COMPLETED application again returns it unchanged.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK (status COMPLETED), content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/FinanceApplication' } } } } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { description: NOT_APPROVED (only APPROVED offers can be accepted) or INVALID_TRANSITION, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
 components:
   responses:
     Error:
@@ -238,3 +302,56 @@ components:
         minDownPaymentFils: { type: integer }
         maxDownPaymentFils: { type: integer }
         structures: { type: array, items: { $ref: '#/components/schemas/FinanceStructure' } }
+    ApplicationStatus:
+      enum: [DRAFT, SUBMITTED, APPROVED, REFERRED, DECLINED, OFFER_ACCEPTED, CONTRACT_SIGNED, ASSET_PURCHASED_BY_BCFC, OWNERSHIP_TRANSFERRED_TO_BCFC, SALE_TO_CUSTOMER, DISBURSED, COMPLETED]
+    Decision:
+      type: object
+      description: ⚠️ Placeholder credit policy (sandbox) until BCFC Credit Risk rules and CRB data are integrated.
+      properties:
+        outcome: { enum: [APPROVED, REFERRED, DECLINED] }
+        reasons:
+          type: array
+          description: OK, or every failing rule (most severe first). DBR_EXCEEDED declines; AMOUNT_ABOVE_PREAPPROVAL and HIGH_DBR_UTILISATION refer to a credit officer.
+          items: { enum: [OK, DBR_EXCEEDED, AMOUNT_ABOVE_PREAPPROVAL, HIGH_DBR_UTILISATION] }
+        monthlyFils: { type: integer, description: New installment applied for }
+        maxMonthlyFils: { type: integer, description: Headroom under the DBR cap before this application }
+        dbrCapPct: { type: number }
+        dbrAfterPct: { type: [number, 'null'] }
+        preApprovedLimitFils: { type: integer }
+    FinanceApplication:
+      type: object
+      properties:
+        id: { type: string }
+        customerId: { type: string }
+        productLine: { enum: [vehicle, personal] }
+        structure: { enum: [conventional, murabaha] }
+        quote: { $ref: '#/components/schemas/FinanceQuote' }
+        reference: { type: string, description: 'Vehicle id for cars, "personal" for personal finance' }
+        applicant:
+          type: object
+          properties:
+            monthlySalaryFils: { type: integer }
+            existingObligationsFils: { type: integer }
+        status: { $ref: '#/components/schemas/ApplicationStatus' }
+        decision: { $ref: '#/components/schemas/Decision' }
+        timeline:
+          type: array
+          description: What happened, oldest first
+          items:
+            type: object
+            properties:
+              status: { $ref: '#/components/schemas/ApplicationStatus' }
+              at: { type: string, format: date-time }
+        steps:
+          type: array
+          description: Timeline to render (done steps with timestamps, then steps still to come). Clients render it as-is.
+          items:
+            type: object
+            properties:
+              status: { $ref: '#/components/schemas/ApplicationStatus' }
+              at: { type: string, format: date-time, description: Absent for steps still to come }
+              done: { type: boolean }
+              murabaha: { type: boolean, description: Part of the Murabaha buy / own / sell sequence }
+        idempotencyKey: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }

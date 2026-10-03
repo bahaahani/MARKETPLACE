@@ -28,12 +28,24 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
         <h1 className="mt-1 text-2xl font-bold md:text-3xl">{tr.t('preApprovedTitle')}</h1>
         <p className="text-sm opacity-80">{tr.t('preApprovedSubtitle', { date: tr.date(pa.validUntil) })}</p>
         <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          {pa.limits.map((l) => (
-            <div key={l.productLine} className="rounded-xl bg-white/10 p-4">
-              <p className="text-xs opacity-80">{tr.t(LIMIT_LABEL[l.productLine])}</p>
-              <p className="text-lg font-bold">{tr.t('upTo', { amount: tr.money(l.maxFinanceFils, 0) })}</p>
-            </div>
-          ))}
+          {pa.limits.map((l) => {
+            const tile = (
+              <>
+                <p className="text-xs opacity-80">{tr.t(LIMIT_LABEL[l.productLine])}</p>
+                <p className="text-lg font-bold">{tr.t('upTo', { amount: tr.money(l.maxFinanceFils, 0) })}</p>
+              </>
+            );
+            // Personal finance has no listing to start from, so its tile is the entry point.
+            return l.productLine === 'personal' ? (
+              <Link key={l.productLine} href={`/${tr.locale}/finance/personal`} className="rounded-xl bg-white/10 p-4 hover:bg-white/20" data-testid="personal-finance-link">
+                {tile}
+              </Link>
+            ) : (
+              <div key={l.productLine} className="rounded-xl bg-white/10 p-4">
+                {tile}
+              </div>
+            );
+          })}
           <div className="rounded-xl bg-white/10 p-4">
             <p className="text-xs opacity-80">{tr.t('preApprovalCard')}</p>
             <p className="text-lg font-bold">{tr.money(pa.cardLimitFils, 0)}</p>
