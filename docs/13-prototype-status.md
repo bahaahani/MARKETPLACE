@@ -26,7 +26,7 @@
 | Credit officer review of referred applications | – | ❌ | ➖ | ❌ | – | Referred applications stay referred |
 | Life-event bundles | – | ✅ | ✅ | ✅ `/life-events`, `/life-events/{id}/bundle` | Domain, Playwright, Flutter | Placeholder amounts and premiums; some items "coming soon" |
 | My installments, garage, rewards balance (account) | J5 | ✅ | ✅ | ✅ `/me` | Playwright, Flutter | Demo contracts for every customer until core lending is integrated |
-| Early settlement quote and "settle now" | – | ✅ | ✅ | ✅ `/me/contracts/{id}/settlement-quote` | Domain, Playwright, Flutter | Paying goes through checkout but does **not** close the demo contract |
+| Early settlement quote and "settle now" | – | ✅ | ✅ | ✅ `/me/contracts/{id}/settlement-quote` | Domain, Playwright, Flutter | Paying the exact quote through checkout marks the contract settled (per customer); wrong amount → 422, repeat → 409 `ALREADY_SETTLED`. Settled contracts don't yet reduce obligations for pre-approval/DBR |
 | Autopay on / off | J5 | ✅ | ✅ | ✅ `PATCH /me/contracts/{id}` | Playwright, Flutter | A stored flag; nothing is charged on a schedule |
 | Motor insurance comparison and purchase | – | ✅ | ✅ | ✅ `/insurance/motor-quotes`, `/policies/*` | Domain, Playwright, Flutter | |
 | Travel insurance comparison and purchase | – | ✅ | ✅ | ✅ `/insurance/travel-quotes`, `/policies/*` | Domain, Playwright, Flutter | |
@@ -91,7 +91,7 @@ Each item is marked ⚠️ in the code. None of these values may go live without
 | **Identity** | Real auth: eKey 2.0 federation (OIDC), our own OIDC provider, device binding, step-up for money movement; passkeys on web; secure token storage on mobile | Replace `lib/session.ts` and the mobile session header. See [06](06-architecture.md), [12](12-web-platform.md) |
 | **Partner auth** | Dealer / broker staff login (partner SSO), roles, per-dealer data access | `DealerAuthProvider` is the plug-in point in `apps/web/lib/api.ts` |
 | **Persistence** | A database (Aurora PostgreSQL) for sessions, applications, cards, policies, payments, leads; migrations; backups | Every store is in memory today |
-| **Payments** | Tap server integration and verified webhooks; **refunds and reconciliation**, including **captured premium payments that never bind to a policy** (quote expired, insurer refused, mismatch); voids; settlement payments that actually close contracts; scheduled autopay charges; server-side amount binding for every purpose | See [05](05-payments.md) |
+| **Payments** | Tap server integration and verified webhooks; **refunds and reconciliation**, including **captured premium payments that never bind to a policy** (quote expired, insurer refused, mismatch); voids; settlement payments that close contracts in core lending (the prototype only marks them settled in memory); settled contracts reducing obligations in DBR; scheduled autopay charges; server-side amount binding for every purpose | See [05](05-payments.md) |
 | **Credit data** | CRB pull under consent, Open Banking (AISP) income and obligations, salary verification | Obligations are self-declared today |
 | **Decisioning** | Real decision engine and credit policy; credit officer queue for referred applications | |
 | **Core lending** | Contracts, schedules, settlement figures, and autopay from the core lending system; real fulfilment steps (with evidence) for the Murabaha sequence; disbursement | Accept runs all steps instantly today |
