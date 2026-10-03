@@ -24,6 +24,23 @@ abstract interface class SahelRepository {
     required String reference,
     required String idempotencyKey,
   });
+
+  /// ⚠️ Sandbox eKey login: returns a fictional verified identity for a 9-digit CPR.
+  Future<EKeyIdentity> ekeyLogin(String cpr);
+
+  /// Live pre-approval; throws ApiException(422, CONSENT_REQUIRED) without both consents.
+  Future<OnboardingResult> preApproval({
+    required int monthlySalaryFils,
+    required int existingObligationsFils,
+    required String employer,
+    required List<String> consentScopes,
+  });
+
+  /// ⚠️ Sandbox instant card decision; approved applications carry a masked virtual card.
+  Future<CardApplication> applyForCard(String cardId);
+
+  /// Virtual cards issued in this sandbox session.
+  Future<List<VirtualCard>> myCards();
 }
 
 class ApiSahelRepository implements SahelRepository {
@@ -97,4 +114,29 @@ class ApiSahelRepository implements SahelRepository {
     ) as Json);
     return Payment.fromJson(await _api.post('/payments/${created.id}/confirm', const {}) as Json);
   }
+
+  @override
+  Future<EKeyIdentity> ekeyLogin(String cpr) async =>
+      EKeyIdentity.fromJson(await _api.post('/onboarding/ekey', {'cpr': cpr}) as Json);
+
+  @override
+  Future<OnboardingResult> preApproval({
+    required int monthlySalaryFils,
+    required int existingObligationsFils,
+    required String employer,
+    required List<String> consentScopes,
+  }) async =>
+      OnboardingResult.fromJson(await _api.post('/onboarding/pre-approval', {
+        'monthlySalaryFils': monthlySalaryFils,
+        'existingObligationsFils': existingObligationsFils,
+        'employer': employer,
+        'consentScopes': consentScopes,
+      }) as Json);
+
+  @override
+  Future<CardApplication> applyForCard(String cardId) async =>
+      CardApplication.fromJson(await _api.post('/cards/${Uri.encodeComponent(cardId)}/apply', const {}) as Json);
+
+  @override
+  Future<List<VirtualCard>> myCards() async => [for (final j in _items(await _api.get('/me/cards'))) VirtualCard.fromJson(j as Json)];
 }

@@ -1,4 +1,11 @@
-import { PaymentValidationError, QuoteError, SandboxPaymentGateway } from '@sahel/domain';
+import {
+  CardApplicationError,
+  OnboardingError,
+  PaymentValidationError,
+  QuoteError,
+  SandboxCardIssuer,
+  SandboxPaymentGateway,
+} from '@sahel/domain';
 import { NextResponse } from 'next/server';
 
 /**
@@ -17,6 +24,8 @@ export function problem(status: number, code: string, message: string) {
 export function handleError(e: unknown) {
   if (e instanceof QuoteError) return problem(422, e.code, e.message);
   if (e instanceof PaymentValidationError) return problem(422, 'PAYMENT_INVALID', e.message);
+  if (e instanceof OnboardingError) return problem(422, e.code, e.message);
+  if (e instanceof CardApplicationError) return problem(e.code === 'CARD_NOT_FOUND' ? 404 : 422, e.code, e.message);
   if (e instanceof SyntaxError) return problem(400, 'BAD_JSON', 'request body must be valid JSON');
   console.error(e);
   return problem(500, 'INTERNAL', 'unexpected error');
@@ -28,6 +37,8 @@ export function intParam(v: string | null): number | undefined {
   return Number.isInteger(n) ? n : undefined;
 }
 
-const g = globalThis as unknown as { __sahelPayments?: SandboxPaymentGateway };
+const g = globalThis as unknown as { __sahelPayments?: SandboxPaymentGateway; __sahelCards?: SandboxCardIssuer };
 /** Sandbox payments, standing in for the Tap server integration. */
 export const payments = (g.__sahelPayments ??= new SandboxPaymentGateway());
+/** ⚠️ Sandbox card issuer: virtual cards issued in this server session (no processor, no real PAN). */
+export const cardIssuer = (g.__sahelCards ??= new SandboxCardIssuer());

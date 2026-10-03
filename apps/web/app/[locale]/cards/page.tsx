@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { CARDS, demoCustomer } from '@sahel/domain';
 import { t } from '@sahel/i18n';
+import { CardArt } from '@/components/CardArt';
 import { resolveLocale, translator } from '@/lib/i18n';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
@@ -19,16 +21,7 @@ export default async function CardsPage({ params }: { params: Promise<{ locale: 
           const eligible = salary >= c.minSalaryFils;
           return (
             <article key={c.id} className="card overflow-hidden" data-testid="card-product">
-              <div className="flex aspect-[1.586] flex-col justify-between p-5 text-white" style={{ background: `linear-gradient(135deg, ${c.gradient[0]}, ${c.gradient[1]})` }}>
-                <span className="text-sm font-semibold tracking-wide">IMTIAZ</span>
-                <div className="flex items-end justify-between">
-                  <span className="text-xs opacity-80">{c.tier.toUpperCase()}</span>
-                  <span aria-label="Mastercard" className="flex">
-                    <span className="h-6 w-6 rounded-full bg-[#eb001b]" />
-                    <span className="-ms-2 h-6 w-6 rounded-full bg-[#f79e1b] opacity-90" />
-                  </span>
-                </div>
-              </div>
+              <CardArt gradient={c.gradient} tier={c.tier} />
               <div className="space-y-2 p-4">
                 <h2 className="font-semibold">{c.name[tr.locale]}</h2>
                 <ul className="list-inside list-disc text-sm text-text-muted">
@@ -42,9 +35,15 @@ export default async function CardsPage({ params }: { params: Promise<{ locale: 
                   <dt className="text-text-muted">{tr.t('minSalary')}</dt>
                   <dd className="text-end font-semibold">{c.minSalaryFils === 0 ? '—' : tr.money(c.minSalaryFils, 0)}</dd>
                 </dl>
-                <button type="button" className="btn btn-primary w-full" disabled={!eligible}>
-                  {tr.t('applyInstantly')}
-                </button>
+                {eligible ? (
+                  <Link href={`/${tr.locale}/cards/${c.id}/apply`} className="btn btn-primary w-full" data-testid={`apply-${c.id}`}>
+                    {tr.t('applyInstantly')}
+                  </Link>
+                ) : (
+                  <button type="button" className="btn btn-primary w-full" disabled>
+                    {tr.t('applyInstantly')}
+                  </button>
+                )}
               </div>
             </article>
           );

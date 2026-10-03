@@ -6,12 +6,14 @@ import 'package:go_router/go_router.dart';
 import 'core/providers.dart';
 import 'core/theme/theme.dart';
 import 'features/account/account_screen.dart';
+import 'features/cards/card_apply_screen.dart';
 import 'features/cards/cards_screen.dart';
 import 'features/cars/car_detail_screen.dart';
 import 'features/cars/cars_screen.dart';
 import 'features/checkout/checkout_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/insurance/insurance_screen.dart';
+import 'features/onboarding/onboarding_screen.dart';
 import 'features/property/property_detail_screen.dart';
 import 'features/property/property_screen.dart';
 import 'features/shell/app_shell.dart';
@@ -40,11 +42,18 @@ GoRouter buildRouter({String initialLocation = '/'}) => GoRouter(
                 routes: [GoRoute(path: ':id', builder: (_, s) => PropertyDetailScreen(id: s.pathParameters['id']!))],
               ),
             ]),
-            StatefulShellBranch(routes: [GoRoute(path: '/cards', builder: (_, _) => const CardsScreen())]),
+            StatefulShellBranch(routes: [
+              GoRoute(
+                path: '/cards',
+                builder: (_, _) => const CardsScreen(),
+                routes: [GoRoute(path: ':id/apply', builder: (_, s) => CardApplyScreen(cardId: s.pathParameters['id']!))],
+              ),
+            ]),
             StatefulShellBranch(routes: [GoRoute(path: '/account', builder: (_, _) => const AccountScreen())]),
           ],
         ),
         GoRoute(path: '/insurance', builder: (_, _) => const InsuranceScreen()),
+        GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
         GoRoute(path: '/checkout', builder: (_, s) => CheckoutScreen.fromQuery(s.uri.queryParameters)),
       ],
     );

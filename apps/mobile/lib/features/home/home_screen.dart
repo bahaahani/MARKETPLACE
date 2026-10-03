@@ -75,6 +75,17 @@ class _HomeBody extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: SahelSpace.md),
+        Card(
+          key: const Key('onboarding-cta'),
+          child: ListTile(
+            leading: const CircleAvatar(backgroundColor: SahelColors.brandSoft, child: Icon(Icons.verified_outlined, color: SahelColors.brand)),
+            title: Text(l.onboardingTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(l.onboardingIntro),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/onboarding'),
+          ),
+        ),
+        const SizedBox(height: SahelSpace.sm),
         Row(children: [
           Expanded(child: OutlinedButton.icon(onPressed: () => context.push('/insurance'), icon: const Icon(Icons.shield_outlined), label: Text(l.navInsurance))),
           const SizedBox(width: SahelSpace.sm),

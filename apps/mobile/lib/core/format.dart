@@ -12,6 +12,16 @@ String formatBhd(int fils, String languageCode, {int decimals = 3}) {
   return languageCode == 'ar' ? '$n د.ب.' : 'BHD $n';
 }
 
+/// Same as parseBhdInput() in @sahel/domain: "1,400.5" → 1400500 fils, without floats.
+/// Returns null for anything that is not a non-negative amount with at most 3 decimals.
+int? parseBhdInput(String text) {
+  final m = RegExp(r'^(\d+)(?:\.(\d{1,3}))?$').firstMatch(text.trim().replaceAll(',', ''));
+  if (m == null) return null;
+  final whole = int.tryParse(m.group(1)!);
+  if (whole == null) return null;
+  return whole * 1000 + int.parse((m.group(2) ?? '').padRight(3, '0'));
+}
+
 extension Fmt on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);
   String get lang => Localizations.localeOf(this).languageCode;

@@ -11,6 +11,7 @@ const NAV: { href: string; key: MessageKey }[] = [
   { href: '/cards', key: 'navCards' },
   { href: '/insurance', key: 'navInsurance' },
   { href: '/account', key: 'navAccount' },
+  { href: '/onboarding', key: 'navOnboarding' },
 ];
 
 export function Header({ locale }: { locale: AppLocale }) {

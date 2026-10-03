@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/theme/tokens.g.dart';
 import '../../widgets/common.dart';
+import 'card_face.dart';
 
 class CardsScreen extends ConsumerWidget {
   const CardsScreen({super.key});
@@ -32,8 +34,6 @@ class CardsScreen extends ConsumerWidget {
   }
 }
 
-Color _hex(String h) => Color(int.parse('FF${h.substring(1)}', radix: 16));
-
 class _CardTile extends StatelessWidget {
   const _CardTile({required this.card, required this.eligible});
   final CardProduct card;
@@ -45,22 +45,7 @@ class _CardTile extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AspectRatio(
-          aspectRatio: 1.586,
-          child: Container(
-            padding: const EdgeInsets.all(SahelSpace.lg),
-            decoration: BoxDecoration(gradient: LinearGradient(colors: [_hex(card.gradient[0]), _hex(card.gradient[1])])),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('IMTIAZ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, letterSpacing: 1)),
-              Row(children: [
-                Text(card.tier.toUpperCase(), style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                const Spacer(),
-                const CircleAvatar(radius: 12, backgroundColor: Color(0xFFEB001B)),
-                Transform.translate(offset: const Offset(-8, 0), child: const CircleAvatar(radius: 12, backgroundColor: Color(0xE6F79E1B))),
-              ]),
-            ]),
-          ),
-        ),
+        CardFace(gradient: card.gradient, tier: card.tier),
         Padding(
           padding: const EdgeInsets.all(SahelSpace.md),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -70,7 +55,11 @@ class _CardTile extends StatelessWidget {
             KeyValueRow(l.annualFee, card.annualFeeFils == 0 ? l.free : context.money(card.annualFeeFils, decimals: 0)),
             KeyValueRow(l.minSalary, card.minSalaryFils == 0 ? '—' : context.money(card.minSalaryFils, decimals: 0)),
             const SizedBox(height: SahelSpace.sm),
-            FilledButton(onPressed: eligible ? () {} : null, child: Text(l.applyInstantly)),
+            FilledButton(
+              key: Key('apply-${card.id}'),
+              onPressed: eligible ? () => context.go('/cards/${card.id}/apply') : null,
+              child: Text(l.applyInstantly),
+            ),
           ]),
         ),
       ]),
