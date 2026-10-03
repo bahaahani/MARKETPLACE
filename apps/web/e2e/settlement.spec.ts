@@ -24,6 +24,71 @@ test('Murabaha early settlement: Ibra\' rebate, savings, settle through the sand
   await expect(page.getByText(bhd(q.settlementAmountFils)).first()).toBeVisible();
   await page.getByTestId('pay').click();
   await expect(page.getByTestId('payment-success')).toContainText('Early settlement: Honda CR-V');
+
+  // The contract is now settled for this customer: nothing outstanding, no pay / settle / autopay controls.
+  await page.getByRole('link', { name: 'Done' }).click();
+  await expect(page).toHaveURL(/\/en\/account/);
+  const settled = page.getByTestId('contract').filter({ has: page.getByTestId('contract-settled-c-1001') });
+  await expect(settled).toContainText('Settled on');
+  await expect(settled).toContainText(bhd(0));
+  await expect(page.getByTestId('settlement-c-1001')).toHaveCount(0);
+  await expect(page.getByTestId('autopay-c-1001')).toHaveCount(0);
+  await expect(settled.getByRole('link', { name: 'Pay now' })).toHaveCount(0);
+  const me = (await (await page.request.get('/api/v1/me')).json()).data;
+  const c = me.contracts.find((x: { id: string }) => x.id === 'c-1001');
+  expect(c.outstandingFils).toBe(0);
+  expect(c.settlement.amountFils).toBe(q.settlementAmountFils);
+  expect(c.nextInstallment).toBeUndefined();
+  expect((await page.request.get('/api/v1/me/contracts/c-1001/settlement-quote')).status()).toBe(409);
+  // The other contract is still outstanding.
+  expect(me.contracts.find((x: { id: string }) => x.id === 'c-1002').settlement).toBeUndefined();
+});
+
+test('early settlement API: only a captured payment of the quoted amount settles; a wrong amount changes nothing', async ({ playwright }) => {
+  const api = await playwright.request.newContext({ baseURL: test.info().project.use.baseURL });
+  try {
+    const q = (await (await api.get('/api/v1/me/contracts/c-1002/settlement-quote')).json()).data;
+    const pay = async (amountFils: number) =>
+      (await (await api.post('/api/v1/payments', {
+        data: { amountFils, method: 'card', purpose: 'early_settlement', reference: q.payment.reference },
+        headers: { 'Idempotency-Key': `e2e-settle-${amountFils}-${Date.now()}` },
+      })).json()).data.id as string;
+    const outstanding = async () => (await (await api.get('/api/v1/me')).json()).data.contracts.find((c: { id: string }) => c.id === 'c-1002');
+
+    const wrong = await pay(q.settlementAmountFils - 1);
+    const mismatch = await api.post(`/api/v1/payments/${wrong}/confirm`);
+    expect(mismatch.status()).toBe(422);
+    const err = (await mismatch.json()).error;
+    expect(err.code).toBe('AMOUNT_MISMATCH');
+    expect(err.message).toContain(String(q.settlementAmountFils));
+    expect((await outstanding()).settlement).toBeUndefined();
+    expect((await outstanding()).outstandingFils).toBeGreaterThan(0);
+
+    // Another customer cannot confirm (or settle with) this customer's payment.
+    const right = await pay(q.settlementAmountFils);
+    const other = await playwright.request.newContext({ baseURL: test.info().project.use.baseURL });
+    const stolen = await other.post(`/api/v1/payments/${right}/confirm`);
+    expect(stolen.status()).toBe(404);
+    expect((await stolen.json()).error.code).toBe('PAYMENT_NOT_FOUND');
+    expect((await (await other.get('/api/v1/me')).json()).data.contracts.every((c: { settlement?: unknown }) => !c.settlement)).toBe(true);
+    await other.dispose();
+    expect((await outstanding()).settlement).toBeUndefined();
+
+    const ok = await api.post(`/api/v1/payments/${right}/confirm`);
+    expect(ok.status()).toBe(200);
+    expect((await ok.json()).data.status).toBe('CAPTURED');
+    const c = await outstanding();
+    expect(c.settlement.paymentId).toBe(right);
+    expect(c.outstandingFils).toBe(0);
+    // Idempotent; a second settlement payment and autopay changes are rejected.
+    expect((await api.post(`/api/v1/payments/${right}/confirm`)).status()).toBe(200);
+    const again = await api.post(`/api/v1/payments/${await pay(q.settlementAmountFils)}/confirm`);
+    expect(again.status()).toBe(409);
+    expect((await again.json()).error.code).toBe('ALREADY_SETTLED');
+    expect((await api.patch('/api/v1/me/contracts/c-1002', { data: { autopay: true } })).status()).toBe(409);
+  } finally {
+    await api.dispose();
+  }
 });
 
 test('conventional early settlement shows remaining principal and the placeholder fee', async ({ page, request }) => {

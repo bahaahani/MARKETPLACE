@@ -1,5 +1,7 @@
 import type { Fils } from './money';
-import type { Contract, CustomerOverview } from './account';
+import type { Contract, ContractSettlement, CustomerOverview } from './account';
+import type { Payment } from './payments';
+import { addDaysIso, bahrainToday } from './insurance-common';
 import type { FinanceQuote } from './pricing';
 import type { FinanceStructure } from './types';
 
@@ -58,9 +60,29 @@ export interface SettlementQuote {
   payment: { purpose: 'early_settlement'; amountFils: Fils; reference: string };
 }
 
+export type SettlementErrorCode =
+  | 'CONTRACT_NOT_FOUND'
+  | 'NOTHING_TO_SETTLE'
+  | 'INVALID_REQUEST'
+  | 'ALREADY_SETTLED'
+  | 'PAYMENT_MISMATCH'
+  | 'PAYMENT_NOT_CAPTURED'
+  | 'AMOUNT_MISMATCH';
+
+/** Suggested HTTP status for each settlement error. */
+export const SETTLEMENT_ERROR_STATUS: Record<SettlementErrorCode, number> = {
+  CONTRACT_NOT_FOUND: 404,
+  NOTHING_TO_SETTLE: 409,
+  INVALID_REQUEST: 422,
+  ALREADY_SETTLED: 409,
+  PAYMENT_MISMATCH: 422,
+  PAYMENT_NOT_CAPTURED: 409,
+  AMOUNT_MISMATCH: 422,
+};
+
 export class SettlementError extends Error {
   constructor(
-    public readonly code: 'CONTRACT_NOT_FOUND' | 'NOTHING_TO_SETTLE' | 'INVALID_REQUEST',
+    public readonly code: SettlementErrorCode,
     message: string,
   ) {
     super(message);
@@ -112,6 +134,7 @@ function remainingScheduled(quote: FinanceQuote, paid: number): Fils {
 /** Early-settlement quote for a contract, as of its last paid installment. */
 export function settlementQuote(contract: Contract, today: Date = new Date()): SettlementQuote {
   const { quote, installmentsPaid: paid } = contract;
+  if (contract.settlement) throw new SettlementError('ALREADY_SETTLED', `contract ${contract.id} is already settled`);
   if (!Number.isSafeInteger(quote.financedFils) || !Number.isSafeInteger(quote.monthlyFils) || !Number.isInteger(paid) || paid < 0) {
     throw new SettlementError('INVALID_REQUEST', 'contract amounts must be integer fils');
   }
@@ -147,9 +170,8 @@ export function settlementQuote(contract: Contract, today: Date = new Date()): S
     basis = 'remaining-principal';
   }
   const settlementAmountFils = lines.reduce((s, l) => s + l.amountFils, 0);
-  const validUntil = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + SETTLEMENT_QUOTE_VALID_DAYS))
-    .toISOString()
-    .slice(0, 10);
+  // Counted from today's Bahrain date (UTC+3), like every other customer-facing date.
+  const validUntil = addDaysIso(bahrainToday(today), SETTLEMENT_QUOTE_VALID_DAYS);
   return {
     contractId: contract.id,
     structure: contract.structure,
@@ -162,8 +184,13 @@ export function settlementQuote(contract: Contract, today: Date = new Date()): S
     basis,
     pendingApproval: true,
     validUntil,
-    payment: { purpose: 'early_settlement', amountFils: settlementAmountFils, reference: `${contract.id}-settle` },
+    payment: { purpose: 'early_settlement', amountFils: settlementAmountFils, reference: settlementReference(contract.id) },
   };
+}
+
+/** The payment reference that settles a contract (`{contractId}-settle`). */
+export function settlementReference(contractId: string): string {
+  return `${contractId}-settle`;
 }
 
 export function findContract(customer: CustomerOverview, id: string): Contract {
@@ -173,25 +200,80 @@ export function findContract(customer: CustomerOverview, id: string): Contract {
 }
 
 /**
- * ⚠️ Sandbox contract settings (autopay), in memory, standing in for the core lending system and the
- * Tap recurring agreement. Production: turning autopay on needs a saved card / BenefitPay / direct-debit mandate.
+ * ⚠️ Sandbox contract settings (autopay) and early settlements, in memory, standing in for the core lending system
+ * and the Tap recurring agreement. Production: turning autopay on needs a saved card / BenefitPay / direct-debit
+ * mandate, and core lending closes the contract after the verified Tap webhook.
  */
 export class SandboxContractSettings {
   private readonly autopay = new Map<string, boolean>();
+  private readonly settled = new Map<string, ContractSettlement>();
 
   setAutopay(customer: CustomerOverview, contractId: string, autopay: unknown): Contract {
     if (typeof autopay !== 'boolean') throw new SettlementError('INVALID_REQUEST', 'autopay must be a boolean');
-    findContract(customer, contractId);
+    const c = findContract(this.apply(customer), contractId);
+    if (c.settlement) throw new SettlementError('ALREADY_SETTLED', `contract ${contractId} is already settled`);
     this.autopay.set(`${customer.customerId}:${contractId}`, autopay);
     return findContract(this.apply(customer), contractId);
   }
 
-  /** The customer overview with this customer's settings applied (keyed by customerId, so per session customer). */
+  /**
+   * Checks an `early_settlement` payment of this customer before it is captured, so a wrong payment captures nothing:
+   * its reference names one of the customer's contracts (`{id}-settle`, CONTRACT_NOT_FOUND), the contract is not
+   * settled by another payment (ALREADY_SETTLED), and the amount equals the current settlement quote to the fils
+   * (AMOUNT_MISMATCH). Returns the contract (already settled by this same payment when confirming again).
+   * The caller must only pass payments it read for this customer (the gateway is scoped by owner).
+   */
+  verifySettlementPayment(customer: CustomerOverview, payment: Payment, today: Date = new Date()): Contract {
+    if (payment.purpose !== 'early_settlement') throw new SettlementError('PAYMENT_MISMATCH', `payment ${payment.id} is not an early settlement`);
+    const contract = this.apply(customer).contracts.find((c) => settlementReference(c.id) === payment.reference);
+    if (!contract) throw new SettlementError('CONTRACT_NOT_FOUND', `no contract to settle for reference ${payment.reference}`);
+    if (contract.settlement) {
+      if (contract.settlement.paymentId === payment.id) return contract;
+      throw new SettlementError('ALREADY_SETTLED', `contract ${contract.id} is already settled`);
+    }
+    const quote = settlementQuote(contract, today);
+    if (payment.amountFils !== quote.settlementAmountFils) {
+      throw new SettlementError(
+        'AMOUNT_MISMATCH',
+        `payment amount ${payment.amountFils} does not match the settlement amount ${quote.settlementAmountFils} fils for ${contract.id}`,
+      );
+    }
+    return contract;
+  }
+
+  /**
+   * Marks the contract settled for this customer once its settlement payment is CAPTURED (rules as in
+   * verifySettlementPayment). Repeating it with the same payment returns the same settled contract.
+   */
+  settle(customer: CustomerOverview, payment: Payment, now: Date = new Date()): Contract {
+    const contract = this.verifySettlementPayment(customer, payment, now);
+    if (contract.settlement) return contract;
+    if (payment.status !== 'CAPTURED') throw new SettlementError('PAYMENT_NOT_CAPTURED', `payment ${payment.id} is ${payment.status}, not CAPTURED`);
+    this.settled.set(`${customer.customerId}:${contract.id}`, {
+      paymentId: payment.id,
+      amountFils: payment.amountFils,
+      settledAt: now.toISOString(),
+      settledOn: bahrainToday(now),
+    });
+    return findContract(this.apply(customer), contract.id);
+  }
+
+  /**
+   * The customer overview with this customer's settings applied (keyed by customerId, so per session customer).
+   * A settled contract has nothing outstanding, no next installment and no autopay.
+   */
   apply<C extends CustomerOverview>(customer: C): C {
     return {
       ...customer,
       contracts: customer.contracts.map((c) => {
-        const a = this.autopay.get(`${customer.customerId}:${c.id}`);
+        const key = `${customer.customerId}:${c.id}`;
+        const settlement = this.settled.get(key);
+        if (settlement) {
+          const closed: Contract = { ...c, outstandingFils: 0, autopay: false, settlement: { ...settlement } };
+          delete closed.nextInstallment;
+          return closed;
+        }
+        const a = this.autopay.get(key);
         return a === undefined ? c : { ...c, autopay: a };
       }),
     };

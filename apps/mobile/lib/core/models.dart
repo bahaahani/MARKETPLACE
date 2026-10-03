@@ -323,6 +323,7 @@ class Contract {
     required this.outstandingFils,
     required this.autopay,
     this.nextInstallment,
+    this.settlement,
   });
 
   final String id;
@@ -332,6 +333,9 @@ class Contract {
   final bool autopay;
   final Installment? nextInstallment;
 
+  /// Set by the API once a captured early-settlement payment closed the contract.
+  final ContractSettlement? settlement;
+
   factory Contract.fromJson(Json j) => Contract(
         id: j['id'] as String,
         title: Localized.fromJson(j['title'] as Json),
@@ -339,6 +343,23 @@ class Contract {
         outstandingFils: j['outstandingFils'] as int,
         autopay: j['autopay'] as bool,
         nextInstallment: j['nextInstallment'] == null ? null : Installment.fromJson(j['nextInstallment'] as Json),
+        settlement: j['settlement'] == null ? null : ContractSettlement.fromJson(j['settlement'] as Json),
+      );
+}
+
+class ContractSettlement {
+  const ContractSettlement({required this.paymentId, required this.amountFils, required this.settledOn});
+
+  final String paymentId;
+  final int amountFils;
+
+  /// Bahrain calendar date, from the API.
+  final DateTime settledOn;
+
+  factory ContractSettlement.fromJson(Json j) => ContractSettlement(
+        paymentId: j['paymentId'] as String,
+        amountFils: j['amountFils'] as int,
+        settledOn: DateTime.parse(j['settledOn'] as String),
       );
 }
 

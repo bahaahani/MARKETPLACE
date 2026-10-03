@@ -134,6 +134,31 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('payment-success')), findsOneWidget);
     expect(repo.payments.values.single, q.settlementAmountFils);
+
+    // Back on "My installments", the contract shows as settled (from GET /me): nothing to pay, settle or automate.
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    final settled = find.byKey(const Key('contract-settled-c-1001'));
+    await scrollTo<AccountScreen>(tester, settled);
+    expect(find.textContaining('Settled on'), findsOneWidget);
+    final card = find.byKey(const Key('contract-c-1001'));
+    expect(find.descendant(of: card, matching: find.text(formatBhd(0, 'en'))), findsOneWidget);
+    expect(find.byKey(const Key('pay-c-1001')), findsNothing);
+    expect(find.byKey(const Key('settlement-c-1001')), findsNothing);
+    expect(find.byKey(const Key('autopay-c-1001')), findsNothing);
+    // The other contract is still outstanding.
+    expect(find.byKey(const Key('contract-settled-c-1002')), findsNothing);
+  });
+
+  test('API contract: a settled contract parses with its settlement', () {
+    final me = CustomerOverview.fromJson(fixture('me_settled') as Json);
+    final c = me.contracts.firstWhere((c) => c.id == 'c-1001');
+    expect(c.settlement, isNotNull);
+    expect(c.settlement!.amountFils, settlement('settlement_c1001').settlementAmountFils);
+    expect(c.outstandingFils, 0);
+    expect(c.nextInstallment, isNull);
+    expect(c.autopay, isFalse);
+    expect(me.contracts.firstWhere((c) => c.id == 'c-1002').settlement, isNull);
   });
 
   testWidgets('autopay toggle calls the API and refreshes the contract', (tester) async {

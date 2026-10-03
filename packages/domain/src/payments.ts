@@ -70,6 +70,14 @@ export class PaymentValidationError extends Error {
   }
 }
 
+/** Unknown payment id, or another customer's payment (which reads as unknown). */
+export class PaymentNotFoundError extends Error {
+  constructor(paymentId: string) {
+    super(`unknown payment ${paymentId}`);
+    this.name = 'PaymentNotFoundError';
+  }
+}
+
 export function validatePaymentRequest(req: PaymentRequest): void {
   if (!Number.isSafeInteger(req.amountFils) || req.amountFils <= 0) {
     throw new PaymentValidationError('amountFils must be a positive integer');
@@ -133,7 +141,7 @@ export class SandboxPaymentGateway implements PaymentGateway {
     const p = this.byId.get(paymentId);
     const owner = this.owners.get(paymentId);
     // Another customer's payment reads as unknown.
-    if (!p || (ownerId !== undefined && owner !== undefined && owner !== ownerId)) throw new PaymentValidationError(`unknown payment ${paymentId}`);
+    if (!p || (ownerId !== undefined && owner !== undefined && owner !== ownerId)) throw new PaymentNotFoundError(paymentId);
     if (p.status === 'CAPTURED') return p;
     const updated = { ...p, status: transition(p.status, 'capture'), nextAction: 'none' as const };
     this.byId.set(paymentId, updated);

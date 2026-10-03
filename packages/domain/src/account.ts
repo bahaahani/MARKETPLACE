@@ -38,6 +38,17 @@ export interface Contract {
   nextInstallment?: Installment;
   installmentsPaid: number;
   autopay: boolean;
+  /** Set once the contract was closed by a captured early-settlement payment (⚠️ sandbox) */
+  settlement?: ContractSettlement;
+}
+
+export interface ContractSettlement {
+  paymentId: string;
+  amountFils: Fils;
+  /** ISO timestamp */
+  settledAt: string;
+  /** Bahrain calendar date of settledAt (YYYY-MM-DD), for display */
+  settledOn: string;
 }
 
 export interface GarageVehicle {

@@ -14,6 +14,9 @@ dynamic fixture(String name) => (jsonDecode(File('test/fixtures/$name.json').rea
 
 class FakeSahelRepository implements SahelRepository {
   final payments = <String, int>{};
+
+  /// Contracts closed by an early-settlement payment.
+  final settled = <String>{};
   int shares = 0;
 
   /// Every application request, as sent (idempotency key included).
@@ -67,9 +70,14 @@ class FakeSahelRepository implements SahelRepository {
   @override
   Future<CustomerOverview> me() async {
     final j = fixture(onboarded ? 'me_onboarded' : 'me') as Json;
-    // Apply sandbox autopay changes, like the API does.
+    // Apply sandbox autopay changes and early settlements, like the API does (settled contract recorded from the API).
+    final settledContracts = {for (final c in fixture('me_settled')['contracts'] as List) (c as Json)['id']: c};
     j['contracts'] = [
-      for (final c in j['contracts'] as List) {...c as Json, if (autopay.containsKey(c['id'])) 'autopay': autopay[c['id']]},
+      for (final c in j['contracts'] as List)
+        if (settled.contains(c['id']))
+          settledContracts[c['id']]
+        else
+          {...c as Json, if (autopay.containsKey(c['id'])) 'autopay': autopay[c['id']]},
     ];
     return CustomerOverview.fromJson(j);
   }
@@ -94,6 +102,13 @@ class FakeSahelRepository implements SahelRepository {
     required String reference,
     required String idempotencyKey,
   }) async {
+    if (purpose == 'early_settlement') {
+      // Mirrors the API: only the quoted amount settles (422 AMOUNT_MISMATCH, nothing captured, otherwise).
+      final contractId = reference.replaceFirst(RegExp(r'-settle$'), '');
+      final quote = await settlementQuote(contractId);
+      if (amountFils != quote.settlementAmountFils) throw ApiException(422, 'AMOUNT_MISMATCH', 'amount does not match the settlement quote');
+      settled.add(contractId);
+    }
     payments[idempotencyKey] = amountFils;
     return Payment(id: 'pay_test_${payments.length}', status: 'CAPTURED', amountFils: amountFils);
   }

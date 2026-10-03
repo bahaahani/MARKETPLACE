@@ -211,7 +211,9 @@ test('insurance policies, quotes and policy payments are private to the customer
   expect(policiesB.map((p) => p.policyNumber)).toEqual(['SBX-TRV-25-000000']);
   const steal = await b.request.post('/api/v1/policies/confirm', { data: { paymentId: mine.paymentId, quoteId } });
   expect(steal.status()).toBe(404);
-  expect((await b.request.post(`/api/v1/payments/${mine.paymentId}/confirm`)).status()).toBe(422);
+  const confirmA = await b.request.post(`/api/v1/payments/${mine.paymentId}/confirm`);
+  expect(confirmA.status()).toBe(404);
+  expect((await confirmA.json()).error.code).toBe('PAYMENT_NOT_FOUND');
   const pageB = await b.newPage();
   await pageB.goto('/en/account');
   await expect(pageB.getByTestId('policy')).toHaveCount(1);

@@ -9,6 +9,7 @@ import '../../core/models.dart';
 import '../../core/models/insurance.dart';
 import '../../core/providers.dart';
 import '../../core/theme/tokens.g.dart';
+import '../bundles/bundles_providers.dart';
 import '../insurance/insurance_providers.dart';
 
 /// Sandbox checkout. Production replaces the "pay" step with the Tap Flutter SDKs
@@ -70,6 +71,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           _policyFailed = true;
         }
       }
+      // The API may have changed the customer's contracts (e.g. an early settlement closes one), so reload them.
+      ref.invalidate(meProvider);
+      ref.invalidate(settlementQuoteProvider);
       if (mounted) setState(() => _result = p);
     } catch (_) {
       if (mounted) setState(() => _error = true);

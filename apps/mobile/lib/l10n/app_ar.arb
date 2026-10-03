@@ -312,6 +312,7 @@
   "settlePaymentLabel": "سداد مبكر: {title}",
   "settleAutopay": "الدفع التلقائي",
   "settleAutopayHint": "ادفع كل قسط تلقائياً في تاريخ استحقاقه (تجريبي).",
+  "contractSettled": "تمت التسوية في {date}",
   "insHubSubtitle": "قارن بين شركات التأمين جنباً إلى جنب. تسهيلات للتأمين وسيط، لذا ترى عروضاً من عدة شركات.",
   "insMotorTitle": "تأمين السيارات",
   "insMotorBody": "شامل أو ضد الغير، لسيارتك المسجلة لديك",

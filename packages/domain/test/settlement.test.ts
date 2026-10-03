@@ -4,13 +4,16 @@ import {
   bhd,
   demoCustomer,
   findContract,
+  PaymentNotFoundError,
   quoteFinance,
   remainingPrincipal,
   SandboxContractSettings,
+  SandboxPaymentGateway,
   SettlementError,
   settlementQuote,
   type Contract,
   type FinanceQuote,
+  type Payment,
 } from '../src';
 
 const TODAY = new Date('2026-10-03T09:00:00Z');
@@ -99,6 +102,8 @@ describe('settlement quote', () => {
 
   it('is valid for 7 days', () => {
     expect(settlementQuote(me.contracts[0]!, TODAY).validUntil).toBe('2026-10-10');
+    // Counted from the Bahrain date: at 22:00 UTC it is already 4 October in Bahrain (UTC+3).
+    expect(settlementQuote(me.contracts[0]!, new Date('2026-10-03T22:00:00Z')).validUntil).toBe('2026-10-11');
   });
 });
 
@@ -119,5 +124,67 @@ describe('autopay (sandbox)', () => {
     const store = new SandboxContractSettings();
     expect(() => store.setAutopay(me, 'c-9999', true)).toThrow(/not found/);
     expect(() => store.setAutopay(me, 'c-1001', 'yes')).toThrow(/boolean/);
+  });
+});
+
+describe('early settlement payment closes the contract (sandbox)', () => {
+  const gateway = () => new SandboxPaymentGateway();
+  const code = (f: () => unknown) => {
+    try {
+      f();
+    } catch (e) {
+      return (e as SettlementError).code;
+    }
+    return undefined;
+  };
+  async function settlementPayment(gw: SandboxPaymentGateway, amountFils: number, reference = 'c-1001-settle', capture = true): Promise<Payment> {
+    const p = await gw.createCharge({ amountFils, method: 'card', purpose: 'early_settlement', reference, idempotencyKey: `key-${amountFils}-${reference}` }, me.customerId);
+    return capture ? gw.confirm(p.id, me.customerId) : p;
+  }
+
+  it('a captured payment of the quoted amount settles the contract: nothing outstanding, no next installment, no autopay', async () => {
+    const settings = new SandboxContractSettings();
+    const quote = settlementQuote(findContract(me, 'c-1001'), TODAY);
+    const paid = await settlementPayment(gateway(), quote.settlementAmountFils);
+    const settled = settings.settle(me, paid, TODAY);
+    expect(settled.settlement).toEqual({ paymentId: paid.id, amountFils: quote.settlementAmountFils, settledAt: TODAY.toISOString(), settledOn: '2026-10-03' });
+    expect(settled.outstandingFils).toBe(0);
+    expect(settled.nextInstallment).toBeUndefined();
+    expect(settled.autopay).toBe(false);
+    const view = settings.apply(me);
+    expect(findContract(view, 'c-1001').settlement?.paymentId).toBe(paid.id);
+    // The other contract and other customers are untouched.
+    expect(findContract(view, 'c-1002').settlement).toBeUndefined();
+    expect(findContract(settings.apply({ ...me, customerId: 'someone-else' }), 'c-1001').settlement).toBeUndefined();
+    // Confirming again with the same payment is idempotent; a settled contract has no quote and no autopay.
+    expect(settings.settle(view, paid, TODAY)).toEqual(settled);
+    expect(code(() => settlementQuote(findContract(view, 'c-1001'), TODAY))).toBe('ALREADY_SETTLED');
+    expect(code(() => settings.setAutopay(me, 'c-1001', true))).toBe('ALREADY_SETTLED');
+  });
+
+  it('a mismatched amount, a payment that is not captured or not a settlement, or an unknown contract changes nothing', async () => {
+    const settings = new SandboxContractSettings();
+    const gw = gateway();
+    const amount = settlementQuote(findContract(me, 'c-1002'), TODAY).settlementAmountFils;
+    const wrong = await settlementPayment(gw, amount - 1, 'c-1002-settle', false);
+    expect(code(() => settings.verifySettlementPayment(me, wrong, TODAY))).toBe('AMOUNT_MISMATCH');
+    expect(code(() => settings.settle(me, wrong, TODAY))).toBe('AMOUNT_MISMATCH');
+    const notCaptured = await settlementPayment(gw, amount, 'c-1002-settle', false);
+    expect(settings.verifySettlementPayment(me, notCaptured, TODAY).id).toBe('c-1002');
+    expect(code(() => settings.settle(me, notCaptured, TODAY))).toBe('PAYMENT_NOT_CAPTURED');
+    expect(code(() => settings.settle(me, { ...notCaptured, status: 'CAPTURED', purpose: 'installment' }, TODAY))).toBe('PAYMENT_MISMATCH');
+    expect(code(() => settings.settle(me, { ...notCaptured, status: 'CAPTURED', reference: 'c-404-settle' }, TODAY))).toBe('CONTRACT_NOT_FOUND');
+    expect(code(() => settings.settle(me, { ...notCaptured, status: 'CAPTURED', reference: 'c-1002' }, TODAY))).toBe('CONTRACT_NOT_FOUND');
+    expect(settings.apply(me).contracts.every((c) => !c.settlement)).toBe(true);
+    // Settled by one payment, a second settlement payment is rejected.
+    settings.settle(me, await gw.confirm(notCaptured.id, me.customerId), TODAY);
+    expect(code(() => settings.settle(me, { ...notCaptured, id: 'pay_other', status: 'CAPTURED' }, TODAY))).toBe('ALREADY_SETTLED');
+  });
+
+  it("another customer's or an unknown payment is not found", async () => {
+    const gw = gateway();
+    const p = await settlementPayment(gw, 1_000, 'c-1001-settle', false);
+    await expect(gw.confirm(p.id, 'cus_other')).rejects.toThrow(PaymentNotFoundError);
+    await expect(gw.confirm('pay_nope', me.customerId)).rejects.toThrow(PaymentNotFoundError);
   });
 });

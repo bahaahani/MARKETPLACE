@@ -6,6 +6,7 @@ import {
   LeadStore,
   OnboardingError,
   OriginationError,
+  PaymentNotFoundError,
   PaymentTransitionError,
   PaymentValidationError,
   PreApprovalTokenStore,
@@ -17,7 +18,7 @@ import {
   type DealerAuthProvider,
   type DealerSession,
 } from '@sahel/domain';
-import { LifeEventError, SandboxContractSettings, SettlementError } from '@sahel/domain';
+import { LifeEventError, SandboxContractSettings, SETTLEMENT_ERROR_STATUS, SettlementError } from '@sahel/domain';
 import { NextResponse } from 'next/server';
 
 /**
@@ -50,6 +51,7 @@ export function handleError(e: unknown) {
   // route's bundle, whose copy of the domain error classes is a different constructor.
   if (isError<QuoteError>(e, QuoteError, 'QuoteError')) return problem(422, e.code, e.message);
   if (isError<DealerError>(e, DealerError, 'DealerError')) return problem(DEALER_STATUS[e.code] ?? 422, e.code, e.message);
+  if (isError(e, PaymentNotFoundError, 'PaymentNotFoundError')) return problem(404, 'PAYMENT_NOT_FOUND', e.message);
   if (isError(e, PaymentValidationError, 'PaymentValidationError')) return problem(422, 'PAYMENT_INVALID', e.message);
   if (isError(e, PaymentTransitionError, 'PaymentTransitionError')) return problem(409, 'INVALID_TRANSITION', e.message);
   if (isError<OnboardingError>(e, OnboardingError, 'OnboardingError')) return problem(422, e.code, e.message);
@@ -135,7 +137,7 @@ export function handleBundlesError(e: unknown) {
     return problem(e.code === 'EVENT_NOT_FOUND' ? 404 : 422, e.code, e.message);
   }
   if (isError<SettlementError>(e, SettlementError, 'SettlementError')) {
-    return problem(e.code === 'CONTRACT_NOT_FOUND' ? 404 : e.code === 'NOTHING_TO_SETTLE' ? 409 : 422, e.code, e.message);
+    return problem(SETTLEMENT_ERROR_STATUS[e.code] ?? 422, e.code, e.message);
   }
   return handleError(e);
 }

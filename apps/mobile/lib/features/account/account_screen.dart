@@ -203,6 +203,7 @@ class _ContractCard extends StatelessWidget {
     final l = context.l10n;
     final islamic = c.structure != FinanceStructure.conventional;
     final next = c.nextInstallment;
+    final settled = c.settlement;
     return Card(
       key: Key('contract-${c.id}'),
       child: Padding(
@@ -210,9 +211,13 @@ class _ContractCard extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Text(context.loc(c.title), style: const TextStyle(fontWeight: FontWeight.w600))),
-            Pill(c.autopay ? l.autopayOn : l.autopayOff,
-                color: c.autopay ? SahelColors.islamic : SahelColors.textMuted,
-                background: c.autopay ? SahelColors.islamicSoft : SahelColors.background),
+            if (settled != null)
+              Pill('✓ ${l.contractSettled(context.date(settled.settledOn))}',
+                  key: Key('contract-settled-${c.id}'), color: SahelColors.islamic, background: SahelColors.islamicSoft)
+            else
+              Pill(c.autopay ? l.autopayOn : l.autopayOff,
+                  color: c.autopay ? SahelColors.islamic : SahelColors.textMuted,
+                  background: c.autopay ? SahelColors.islamicSoft : SahelColors.background),
           ]),
           Text(
             switch (c.structure) {
@@ -240,7 +245,8 @@ class _ContractCard extends StatelessWidget {
               child: Text(l.payNow),
             ),
           ],
-          ContractSettlementPanel(c),
+          // A settled contract has nothing left to pay, settle or automate.
+          if (settled == null) ContractSettlementPanel(c),
         ]),
       ),
     );

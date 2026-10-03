@@ -685,6 +685,14 @@
   },
   "settleAutopay": "Autopay",
   "settleAutopayHint": "Pay each installment automatically on its due date (sandbox).",
+  "contractSettled": "Settled on {date}",
+  "@contractSettled": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "insHubSubtitle": "Compare insurers side by side. Tasheelat Insurance is a broker, so you see quotes from several insurers.",
   "insMotorTitle": "Motor insurance",
   "insMotorBody": "Comprehensive or third party, for the car in your garage",

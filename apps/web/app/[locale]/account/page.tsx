@@ -54,7 +54,13 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
                   <h2 className="font-semibold">{c.title[tr.locale]}</h2>
                   <p className={`text-xs font-semibold ${c.structure === 'conventional' ? 'text-brand' : 'text-islamic'}`}>{tr.t(STRUCTURE_LABEL[c.structure])}</p>
                 </div>
-                <AutopayToggle key={String(c.autopay)} locale={tr.locale} contractId={c.id} autopay={c.autopay} />
+                {c.settlement ? (
+                  <span className="rounded-full bg-islamic-soft px-2 py-0.5 text-xs font-semibold text-islamic" data-testid={`contract-settled-${c.id}`}>
+                    ✓ {tr.t('contractSettled', { date: tr.date(c.settlement.settledOn) })}
+                  </span>
+                ) : (
+                  <AutopayToggle key={String(c.autopay)} locale={tr.locale} contractId={c.id} autopay={c.autopay} />
+                )}
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 <div>
@@ -76,7 +82,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
                   {tr.t('payNow')}
                 </Link>
               )}
-              <ContractSettlement c={c} tr={tr} />
+              {!c.settlement && <ContractSettlement c={c} tr={tr} />}
             </article>
           ))}
         </div>

@@ -170,11 +170,17 @@ paths:
   /payments/{id}/confirm:
     post:
       summary: Sandbox stand-in for "customer completed the Tap flow and the webhook verified it". Only the session that created the payment can confirm it.
+      description: |
+        An `early_settlement` payment is checked BEFORE it is captured: its reference must be `{contractId}-settle` for one of
+        the session customer's contracts, and its amount must equal that contract's current settlement quote to the fils.
+        A wrong payment is rejected and stays uncaptured. Once CAPTURED, the contract is settled for this customer
+        (GET /me shows `settlement`, outstandingFils 0 and no next installment). Confirming again returns the same payment.
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
       responses:
         '200': {description: OK (status CAPTURED)}
-        '409': {description: 'INVALID_TRANSITION (the payment can no longer be captured, e.g. FAILED or VOIDED)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
-        '422': {description: 'PAYMENT_INVALID (unknown payment id)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: "PAYMENT_NOT_FOUND (unknown id, or another session's payment); CONTRACT_NOT_FOUND (early settlement for an unknown contract)", content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '409': {description: 'INVALID_TRANSITION (the payment can no longer be captured, e.g. FAILED or VOIDED); ALREADY_SETTLED (the contract was settled by another payment)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {description: 'AMOUNT_MISMATCH (early settlement amount differs from the current quote; nothing is captured)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /me/preapproval-token:
     post:
       summary: Share my pre-approval with a dealer. Returns a short-lived (15 min), random, opaque token to show as text or QR.
@@ -535,6 +541,7 @@ paths:
         '200': {description: The updated contract, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/Contract'}}}}}}
         '400': {description: 'BAD_JSON (body is not a JSON object)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '404': {description: CONTRACT_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '409': {description: ALREADY_SETTLED (a settled contract has no autopay), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '422': {description: 'INVALID_REQUEST (autopay must be a boolean)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /me/contracts/{id}/settlement-quote:
     get:
@@ -547,7 +554,7 @@ paths:
       responses:
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/SettlementQuote'}}}}}}
         '404': {description: CONTRACT_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
-        '409': {description: NOTHING_TO_SETTLE (fully paid), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '409': {description: 'NOTHING_TO_SETTLE (fully paid), ALREADY_SETTLED (settled early)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /insurance/travel-quotes:
     post:
       summary: |
@@ -1005,6 +1012,14 @@ components:
             status: {enum: [paid, due, upcoming, overdue]}
         installmentsPaid: {type: integer}
         autopay: {type: boolean}
+        settlement:
+          type: object
+          description: Present once a captured early-settlement payment closed the contract (⚠️ sandbox, this session only)
+          properties:
+            paymentId: {type: string}
+            amountFils: {type: integer}
+            settledAt: {type: string, format: date-time}
+            settledOn: {type: string, format: date, description: Bahrain calendar date of settledAt}
     SettlementQuote:
       type: object
       properties:
@@ -1139,7 +1154,7 @@ components:
         monthlySalaryFils: {type: integer}
         existingObligationsFils: {type: integer}
         preApproval: {$ref: '#/components/schemas/PreApproval'}
-        contracts: {type: array, items: {type: object}}
+        contracts: {type: array, items: {$ref: '#/components/schemas/Contract'}}
         garage: {type: array, items: {type: object}}
         rewardsPoints: {type: integer}
         onboarded: {type: boolean, description: false while the session is still the demo customer}

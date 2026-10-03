@@ -40,6 +40,9 @@ test.describe('API input validation', () => {
       expect((await res.json()).error.code).toBe('PAYMENT_INVALID');
     }
     expect((await post(base, 'e2e-ok')).status()).toBe(201);
+    const unknown = await request.post('/api/v1/payments/pay_does_not_exist/confirm');
+    expect(unknown.status()).toBe(404);
+    expect((await unknown.json()).error.code).toBe('PAYMENT_NOT_FOUND');
   });
 
   test('quotes and insurance reject huge amounts; Murabaha never quotes a negative final installment', async ({ request }) => {
