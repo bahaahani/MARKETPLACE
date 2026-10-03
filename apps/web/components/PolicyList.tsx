@@ -51,6 +51,11 @@ export function PolicyList({ policies, tr }: { policies: Policy[]; tr: Translato
               <span>{tr.t('insPolicyPeriod', { start: tr.date(p.startDate), end: tr.date(p.endDate) })}</span>
               <span className="font-semibold text-text">{tr.t('insPremiumPaid', { amount: tr.money(p.premiumFils) })}</span>
             </div>
+            {p.line === 'motor' && p.status === 'ACTIVE' && (
+              <Link className="btn btn-ghost mt-3 w-full text-danger" href={`/${tr.locale}/claims/new?policyId=${encodeURIComponent(p.id)}`} data-testid="policy-accident">
+                {tr.t('claimAccidentButton')}
+              </Link>
+            )}
           </article>
         ))}
       </div>

@@ -1,6 +1,7 @@
 // Product rules from GET /api/v1/config (api/openapi.yaml: ClientConfig). The app hard-codes none of these:
 // slider ranges, steps, defaults and the consent period all come from the API (@sahel/domain).
 
+import '../../features/claims/claims_models.dart';
 import '../models.dart';
 
 class CalculatorRules {
@@ -132,6 +133,7 @@ class ClientConfig {
     required this.reservationDepositFils,
     required this.travel,
     required this.home,
+    required this.claims,
   });
 
   final List<String> consentScopes;
@@ -141,6 +143,9 @@ class ClientConfig {
   final int reservationDepositFils;
   final TravelRules travel;
   final HomeRules home;
+
+  /// Motor claim (FNOL) form rules
+  final ClaimRules claims;
 
   factory ClientConfig.fromJson(Json j) {
     final consent = j['consent'] as Json;
@@ -152,6 +157,7 @@ class ClientConfig {
       reservationDepositFils: j['reservationDepositFils'] as int,
       travel: TravelRules.fromJson((j['insurance'] as Json)['travel'] as Json),
       home: HomeRules.fromJson((j['insurance'] as Json)['home'] as Json),
+      claims: ClaimRules.fromJson(j['claims'] as Json),
     );
   }
 }

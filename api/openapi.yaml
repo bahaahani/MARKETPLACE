@@ -920,6 +920,112 @@ paths:
           headers:
             Retry-After: {schema: {type: integer}, description: Seconds to wait}
           content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+  /claims:
+    post:
+      summary: |
+        ⚠️ Sandbox motor claim (First Notice of Loss, J6) for one of the session customer's ACTIVE motor policies.
+        Another customer's policy is 404. The incident must not be in the future, must fall inside the policy period
+        (Bahrain dates, not before the policy was issued) and be at most `claims.maxDaysSinceIncident` days ago.
+        Photos are validated (count, size, JPEG / PNG / WebP by magic bytes) and then DISCARDED: only type and size are
+        kept (no file storage in the sandbox). The damage estimate is a fixed rules table by type and severity, NOT AI.
+        Form limits come from GET /config (`claims`).
+      parameters:
+        - {name: Idempotency-Key, in: header, required: false, schema: {type: string, maxLength: 128}, description: 'Optional; repeating it returns the original claim'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [policyId, incidentAt, location, type, severity, description, thirdPartyInvolved]
+              properties:
+                policyId: {type: string}
+                incidentAt: {type: string, description: 'ISO date-time. With Z or an offset it is an instant; without one it is Bahrain local time (e.g. 2026-10-03T14:30)'}
+                location: {type: string, minLength: 3, maxLength: 200}
+                latitude: {type: number, description: 'Optional; send with longitude'}
+                longitude: {type: number}
+                type: {$ref: '#/components/schemas/ClaimType'}
+                severity: {enum: [minor, moderate, severe]}
+                description: {type: string, minLength: 10, maxLength: 1000}
+                policeReportNumber: {type: string, description: 'Required for theft; 3 to 30 letters, digits, / or -'}
+                thirdPartyInvolved: {type: boolean}
+                photos:
+                  type: array
+                  maxItems: 6
+                  description: 'At least one, except for theft. Each at most 400,000 bytes after client-side compression'
+                  items:
+                    type: object
+                    required: [dataBase64]
+                    properties:
+                      mimeType: {enum: [image/jpeg, image/png, image/webp], description: Optional; must match the bytes}
+                      dataBase64: {type: string, description: 'Base64 bytes, or a data: URL'}
+      responses:
+        '201': {description: Filed (SUBMITTED), content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/Claim'}}}}}}
+        '400': {description: BAD_JSON, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: "POLICY_NOT_FOUND (unknown or another customer's)", content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '413': {description: 'PHOTO_TOO_LARGE, or BODY_TOO_LARGE', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422':
+          description: |
+            INVALID_REQUEST, NOT_MOTOR_POLICY, POLICY_NOT_ACTIVE, NOT_COVERED (third-party cover), INVALID_INCIDENT_TIME,
+            INCIDENT_IN_FUTURE, INCIDENT_OUTSIDE_POLICY, INCIDENT_TOO_OLD, INVALID_LOCATION, INVALID_DESCRIPTION,
+            POLICE_REPORT_REQUIRED, INVALID_POLICE_REPORT, PHOTOS_REQUIRED, TOO_MANY_PHOTOS, PHOTO_INVALID
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+        '429': {description: TOO_MANY_CLAIMS (sandbox cap per customer), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /me/claims:
+    get:
+      summary: The session customer's motor claims, newest first (sandbox store in memory)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: {type: array, items: {$ref: '#/components/schemas/Claim'}}
+                      total: {type: integer}
+  /claims/{id}:
+    get:
+      summary: "One of the session customer's claims: status timeline, estimate, garage options, replacement car. Another customer's claim is 404"
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/Claim'}}}}}}
+        '404': {description: CLAIM_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /claims/{id}/garage:
+    post:
+      summary: |
+        Book one of the claim's `garageOptions` (APPROVED → REPAIR_BOOKED). Agency garages only when the policy has
+        agency repair. A total loss has nothing to repair (409 NO_REPAIR_NEEDED). Another customer's claim is 404.
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, required: [garageId], properties: {garageId: {type: string}}}}}
+      responses:
+        '200': {description: Booked, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/Claim'}}}}}}
+        '400': {description: BAD_JSON, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: CLAIM_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '409': {description: 'INVALID_TRANSITION (not APPROVED), or NO_REPAIR_NEEDED', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {description: 'INVALID_REQUEST, GARAGE_NOT_FOUND, or GARAGE_NOT_ALLOWED (agency garage without agency repair)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /claims/{id}/advance:
+    post:
+      summary: |
+        ⚠️ SANDBOX ONLY, to demo assessment: stands in for the insurer's claims handler. Moves the session customer's
+        claim to `to`, or to the next happy-path status (UNDER_ASSESSMENT, APPROVED, then SETTLED once repaired or for a
+        total loss). Transitions follow the enforced status machine; REPAIR_BOOKED needs POST /claims/{id}/garage.
+        Not part of the production API.
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: false
+        content: {application/json: {schema: {type: object, properties: {to: {$ref: '#/components/schemas/ClaimStatus'}}}}}
+      responses:
+        '200': {description: Moved, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/Claim'}}}}}}
+        '400': {description: BAD_JSON, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: CLAIM_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '409': {description: INVALID_TRANSITION, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {description: INVALID_REQUEST (unknown status), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
 components:
   parameters:
     StaffRoleHeader:
@@ -1415,6 +1521,7 @@ components:
         personalFinance: {$ref: '#/components/schemas/PersonalFinanceRange'}
         reservationDepositFils: {type: integer, description: Deposit to reserve a car}
         insurance: {$ref: '#/components/schemas/InsuranceRules'}
+        claims: {$ref: '#/components/schemas/ClaimRules'}
         sandbox: {const: true}
     InsuranceRules:
       type: object
@@ -1586,3 +1693,119 @@ components:
         href: {type: string, description: 'Locale-free app path, e.g. /checkout?purpose=early_settlement&amount=…, /cars/{id}, /account'}
         kind: {enum: [navigate, payment]}
         requiresConfirmation: {type: boolean}
+    ClaimType:
+      enum: [collision, theft, glass, fire, other]
+    ClaimStatus:
+      enum: [SUBMITTED, UNDER_ASSESSMENT, APPROVED, REJECTED, REPAIR_BOOKED, SETTLED]
+      description: 'SUBMITTED → UNDER_ASSESSMENT → APPROVED | REJECTED; APPROVED → REPAIR_BOOKED → SETTLED; a total loss goes APPROVED → SETTLED'
+    Garage:
+      type: object
+      description: ⚠️ Demo garage (fictional)
+      properties:
+        id: {type: string}
+        name: {$ref: '#/components/schemas/Localized'}
+        area: {$ref: '#/components/schemas/Localized'}
+        agency: {type: boolean, description: Agency workshop; only with agency repair}
+    Claim:
+      type: object
+      description: ⚠️ Sandbox motor claim, as returned by every claims endpoint
+      properties:
+        id: {type: string, description: 'clm_…'}
+        claimNumber: {type: string, description: 'SBX-CLM-YY-NNNNNN (sandbox)'}
+        customerId: {type: string}
+        policyId: {type: string}
+        policyNumber: {type: string}
+        insurerName: {$ref: '#/components/schemas/Localized'}
+        cover: {enum: [comprehensive, third-party]}
+        agencyRepair: {type: boolean}
+        vehicleReference: {type: string, description: Plate from the policy}
+        vehicleValueFils: {type: integer}
+        incidentAt: {type: string, format: date-time, description: UTC instant}
+        incidentDate: {type: string, format: date, description: Bahrain calendar date}
+        location: {type: string}
+        latitude: {type: number}
+        longitude: {type: number}
+        type: {$ref: '#/components/schemas/ClaimType'}
+        severity: {enum: [minor, moderate, severe]}
+        description: {type: string}
+        policeReportNumber: {type: string}
+        thirdPartyInvolved: {type: boolean}
+        photos:
+          type: array
+          description: Metadata only; the images are not stored
+          items:
+            type: object
+            properties:
+              index: {type: integer}
+              mimeType: {enum: [image/jpeg, image/png, image/webp]}
+              bytes: {type: integer}
+        estimate:
+          type: object
+          description: '⚠️ Sandbox rules table by type and severity (NOT AI), capped at the vehicle value'
+          properties:
+            method: {const: SANDBOX_RULES}
+            ai: {const: false}
+            estimateFils: {type: integer}
+            lowFils: {type: integer}
+            highFils: {type: integer}
+            totalLoss: {type: boolean}
+            repairDays: {type: integer}
+        status: {$ref: '#/components/schemas/ClaimStatus'}
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              status: {$ref: '#/components/schemas/ClaimStatus'}
+              at: {type: string, format: date-time}
+        approvedAmountFils: {type: integer, description: Set on approval}
+        garage:
+          type: object
+          properties:
+            garageId: {type: string}
+            name: {$ref: '#/components/schemas/Localized'}
+            area: {$ref: '#/components/schemas/Localized'}
+            agency: {type: boolean}
+            bookedAt: {type: string, format: date-time}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        garageOptions: {type: array, items: {$ref: '#/components/schemas/Garage'}, description: 'Bookable garages (empty unless APPROVED and a repair is needed)'}
+        canBookGarage: {type: boolean}
+        replacementCar:
+          type: object
+          description: 'Information only (no booking): a replacement car from Tasheelat Car Leasing'
+          properties:
+            offered: {type: boolean}
+            provider: {$ref: '#/components/schemas/Localized'}
+            vehicleClass: {$ref: '#/components/schemas/Localized'}
+            days: {type: integer}
+        nextStatuses: {type: array, items: {$ref: '#/components/schemas/ClaimStatus'}, description: 'Where the sandbox advance call may move it'}
+        progress:
+          type: array
+          description: 'Status timeline: steps reached (with time) and the ones still expected on this claim''s path'
+          items:
+            type: object
+            properties:
+              status: {$ref: '#/components/schemas/ClaimStatus'}
+              done: {type: boolean}
+              at: {type: string, format: date-time}
+              current: {type: boolean}
+    ClaimRules:
+      type: object
+      description: Motor claim form rules (POST /claims still validates every request)
+      properties:
+        types: {type: array, items: {$ref: '#/components/schemas/ClaimType'}}
+        severities: {type: array, items: {enum: [minor, moderate, severe]}}
+        minPhotos: {type: object, additionalProperties: {type: integer}, description: By claim type}
+        maxPhotos: {type: integer}
+        maxPhotoBytes: {type: integer}
+        photoMaxDimensionPx: {type: integer, description: 'Apps resize photos to this longer side before upload'}
+        photoMimeTypes: {type: array, items: {type: string}}
+        descriptionMinLength: {type: integer}
+        descriptionMaxLength: {type: integer}
+        locationMinLength: {type: integer}
+        locationMaxLength: {type: integer}
+        policeReportMaxLength: {type: integer}
+        policeReportRequiredFor: {type: array, items: {$ref: '#/components/schemas/ClaimType'}}
+        maxDaysSinceIncident: {type: integer}
+        thirdPartyCoverTypes: {type: array, items: {$ref: '#/components/schemas/ClaimType'}, description: 'Types third-party-only cover accepts (with a third party involved)'}

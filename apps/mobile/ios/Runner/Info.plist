@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Take photos of the damage for your motor claim.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose photos of the damage for your motor claim.</string>
 </dict>
 </plist>

@@ -26,6 +26,7 @@ import {
   type TravelRegion,
   type TravelTier,
 } from './insurance-travel';
+import { claimRules, type ClaimRules } from './claims';
 
 /**
  * Product rules the apps need to build their screens (GET /api/v1/config). The Flutter app has no business
@@ -159,6 +160,8 @@ export interface ClientConfig {
   personalFinance: PersonalFinanceRange;
   reservationDepositFils: Fils;
   insurance: InsuranceRules;
+  /** Motor claim (FNOL) form rules */
+  claims: ClaimRules;
   sandbox: true;
 }
 
@@ -169,6 +172,7 @@ export function clientConfig(preApproval: PreApproval): ClientConfig {
     personalFinance: personalFinanceRange(preApproval),
     reservationDepositFils: RESERVATION_DEPOSIT_FILS,
     insurance: insuranceRules(),
+    claims: claimRules(),
     sandbox: true,
   };
 }

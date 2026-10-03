@@ -25,6 +25,8 @@ import 'l10n/gen/app_localizations.dart';
 import 'core/models/bundles.dart';
 import 'features/bundles/life_events_screen.dart';
 import 'features/assistant/assistant_screen.dart';
+import 'features/claims/claim_detail_screen.dart';
+import 'features/claims/claim_form_screen.dart';
 
 /// Routes mirror the web URLs (minus the /en|/ar prefix), so the same deep link
 /// (e.g. /cars/v-honda-crv-2026 or /checkout?...) opens the same screen on every channel.
@@ -85,6 +87,11 @@ GoRouter buildRouter({String initialLocation = '/'}) => GoRouter(
           ],
         ),
         GoRoute(path: '/assistant', builder: (_, _) => const AssistantScreen()),
+        GoRoute(
+          path: '/claims/new',
+          builder: (_, s) => ClaimFormScreen(policyId: s.uri.queryParameters['policyId'], plate: s.uri.queryParameters['plate']),
+        ),
+        GoRoute(path: '/claims/:id', builder: (_, s) => ClaimDetailScreen(id: s.pathParameters['id']!)),
       ],
     );
 

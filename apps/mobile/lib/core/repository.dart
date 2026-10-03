@@ -4,6 +4,7 @@ import 'models/bundles.dart';
 import 'models/config.dart';
 import 'models/insurance.dart';
 import '../features/assistant/assistant_models.dart';
+import '../features/claims/claims_models.dart';
 
 /// Everything the app needs from the backend. The API implementation calls the same
 /// endpoints as the Next.js web app, so both channels show identical data and pricing.
@@ -109,6 +110,15 @@ abstract interface class SahelRepository {
 
   /// Suhail & Suhaila: one message; the reply's suggested actions are links the customer confirms (⚠️ sandbox).
   Future<AssistantReply> sendAssistantMessage({required String text, required String locale, required AssistantPersona persona});
+
+  /// Motor claims (J6, ⚠️ sandbox): file a claim (First Notice of Loss) on an active motor policy.
+  Future<Claim> fileClaim(ClaimDraft draft, {required String idempotencyKey});
+  Future<List<Claim>> myClaims();
+  Future<Claim> claim(String id);
+  Future<Claim> bookClaimGarage(String claimId, String garageId);
+
+  /// ⚠️ Sandbox only: stands in for the insurer's claims team (next assessment step, or [to]).
+  Future<Claim> advanceClaim(String claimId, {String? to});
 }
 
 class ApiSahelRepository implements SahelRepository {
@@ -316,4 +326,22 @@ class ApiSahelRepository implements SahelRepository {
   @override
   Future<AssistantReply> sendAssistantMessage({required String text, required String locale, required AssistantPersona persona}) async =>
       AssistantReply.fromJson(await _api.post('/assistant/messages', {'text': text, 'locale': locale, 'persona': persona.wire}) as Json);
+
+  @override
+  Future<Claim> fileClaim(ClaimDraft draft, {required String idempotencyKey}) async =>
+      Claim.fromJson(await _api.post('/claims', draft.toJson(), headers: {'Idempotency-Key': idempotencyKey}) as Json);
+
+  @override
+  Future<List<Claim>> myClaims() async => [for (final j in _items(await _api.get('/me/claims'))) Claim.fromJson(j as Json)];
+
+  @override
+  Future<Claim> claim(String id) async => Claim.fromJson(await _api.get('/claims/${Uri.encodeComponent(id)}') as Json);
+
+  @override
+  Future<Claim> bookClaimGarage(String claimId, String garageId) async =>
+      Claim.fromJson(await _api.post('/claims/${Uri.encodeComponent(claimId)}/garage', {'garageId': garageId}) as Json);
+
+  @override
+  Future<Claim> advanceClaim(String claimId, {String? to}) async =>
+      Claim.fromJson(await _api.post('/claims/${Uri.encodeComponent(claimId)}/advance', {'to': ?to}) as Json);
 }
