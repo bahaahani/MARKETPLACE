@@ -7,6 +7,7 @@ import 'package:sahel/core/models/bundles.dart';
 import 'package:sahel/core/models/config.dart';
 import 'package:sahel/core/models/insurance.dart';
 import 'package:sahel/core/repository.dart';
+import 'package:sahel/features/assistant/assistant_models.dart';
 
 /// Recorded responses from the real shared API (apps/web/app/api/v1), refreshed by
 /// re-running the curl commands in test/fixtures/README.md.
@@ -308,4 +309,21 @@ class FakeSahelRepository implements SahelRepository {
 
   @override
   Future<ClientConfig> config() async => ClientConfig.fromJson(fixture(onboarded ? 'config_onboarded' : 'config') as Json);
+
+  /// Assistant messages sent, as (text, locale, persona).
+  final assistantMessages = <(String, String, AssistantPersona)>[];
+
+  /// Recorded replies (test/fixtures/README.md), picked by what the message is about.
+  @override
+  Future<AssistantReply> sendAssistantMessage({required String text, required String locale, required AssistantPersona persona}) async {
+    assistantMessages.add((text, locale, persona));
+    final name = RegExp(r'[\u0600-\u06FF]').hasMatch(text)
+        ? 'assistant_cars_ar'
+        : text.toLowerCase().contains('next installment')
+            ? 'assistant_next_en'
+            : text.toLowerCase().contains('pay it all')
+                ? 'assistant_settle_en'
+                : 'assistant_balance_en';
+    return AssistantReply.fromJson(fixture(name) as Json);
+  }
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { LOCALES, t, type AppLocale } from '@sahel/i18n';
+import { AssistantLauncher } from '@/components/AssistantLauncher';
 import { Header } from '@/components/Header';
 import { resolveLocale, translator } from '@/lib/i18n';
 import '../globals.css';
@@ -46,6 +47,7 @@ export default async function LocaleLayout({ children, params }: { children: Rea
             {tr.t('boLink')}
           </Link>
         </footer>
+        <AssistantLauncher locale={locale} />
       </body>
     </html>
   );
