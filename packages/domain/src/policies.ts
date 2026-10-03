@@ -195,10 +195,18 @@ export class SandboxPolicyStore {
   private readonly quotes = new Map<string, PolicyQuote>();
   private readonly policies = new Map<string, Omit<Policy, 'status'>>();
   private readonly byPayment = new Map<string, string>();
+  private readonly seeded = new Set<string>();
   private seq = 0;
   private issued = 0;
 
-  constructor(private readonly clock: () => Date = () => new Date()) {}
+  /**
+   * @param history policies a customer already has before buying anything (e.g. the demo history), added the
+   *   first time that customer's policies are read or confirmed. Every sandbox session customer gets their own copy.
+   */
+  constructor(
+    private readonly clock: () => Date = () => new Date(),
+    private readonly history?: (customerId: string) => Omit<Policy, 'status'>[],
+  ) {}
 
   /** Price and hold a quote for the customer. Throws InsuranceQuoteError / PolicyError for invalid requests. */
   createQuote(customerId: string, req: PolicyQuoteRequest): PolicyQuote {
@@ -216,8 +224,10 @@ export class SandboxPolicyStore {
     return quote;
   }
 
-  getQuote(id: string): PolicyQuote | undefined {
-    return this.quotes.get(id);
+  /** With `customerId`, only that customer's quote: another customer's id reads as undefined. */
+  getQuote(id: string, customerId?: string): PolicyQuote | undefined {
+    const q = this.quotes.get(id);
+    return q && (customerId === undefined || q.customerId === customerId) ? q : undefined;
   }
 
   /**
@@ -232,7 +242,12 @@ export class SandboxPolicyStore {
   confirm(customerId: string, payment: Payment | undefined, quoteId?: string): Policy {
     if (!payment) throw new PolicyError('PAYMENT_NOT_FOUND', 'unknown payment');
     const existing = this.byPayment.get(payment.id);
-    if (existing) return this.view(this.policies.get(existing)!);
+    if (existing) {
+      const bound = this.policies.get(existing)!;
+      // Another customer's payment reads as unknown.
+      if (bound.customerId !== customerId) throw new PolicyError('PAYMENT_NOT_FOUND', 'unknown payment');
+      return this.view(bound);
+    }
     if (payment.purpose !== 'insurance_premium') throw new PolicyError('PAYMENT_MISMATCH', `payment ${payment.id} is not an insurance premium`);
     if (quoteId !== undefined && quoteId !== payment.reference) {
       throw new PolicyError('PAYMENT_MISMATCH', `payment ${payment.id} is for ${payment.reference}, not ${quoteId}`);
@@ -264,28 +279,40 @@ export class SandboxPolicyStore {
       paymentId: payment.id,
       issuedAt: now.toISOString(),
     };
-    this.policies.set(policy.id, policy);
-    this.byPayment.set(payment.id, policy.id);
+    this.policies.set(policyKey(policy), policy);
+    this.byPayment.set(payment.id, policyKey(policy));
     this.quotes.set(quote.id, { ...quote, policyId: policy.id });
     return this.view(policy);
   }
 
   /** Add a policy issued elsewhere (e.g. the demo history). */
   seed(policy: Omit<Policy, 'status'>): void {
-    this.policies.set(policy.id, policy);
+    this.policies.set(policyKey(policy), policy);
   }
 
   /** Active policies first (soonest to end first), then expired ones (most recent first). */
   list(customerId: string): Policy[] {
+    this.addHistory(customerId);
     const all = [...this.policies.values()].filter((p) => p.customerId === customerId).map((p) => this.view(p));
     return all.sort((a, b) =>
       a.status !== b.status ? (a.status === 'ACTIVE' ? -1 : 1) : a.status === 'ACTIVE' ? a.endDate.localeCompare(b.endDate) : b.endDate.localeCompare(a.endDate),
     );
   }
 
+  private addHistory(customerId: string): void {
+    if (!this.history || this.seeded.has(customerId)) return;
+    this.seeded.add(customerId);
+    for (const p of this.history(customerId)) this.seed(p);
+  }
+
   private view(p: Omit<Policy, 'status'>): Policy {
     return { ...p, status: policyStatus(p.endDate, this.clock()) };
   }
+}
+
+/** Policies are stored per customer: seeded ids (the demo history) repeat across customers. */
+function policyKey(p: Pick<Policy, 'customerId' | 'id'>): string {
+  return `${p.customerId}\u0000${p.id}`;
 }
 
 /**

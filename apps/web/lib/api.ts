@@ -17,7 +17,7 @@ import {
   type DealerAuthProvider,
   type DealerSession,
 } from '@sahel/domain';
-import { demoCustomer, LifeEventError, SandboxContractSettings, SettlementError } from '@sahel/domain';
+import { LifeEventError, SandboxContractSettings, SettlementError } from '@sahel/domain';
 import { NextResponse } from 'next/server';
 
 /**
@@ -123,13 +123,11 @@ export function dealerSession(req: Request, sellerId: string): DealerSession {
 // --- Life events and early settlement / autopay ---
 
 const g2 = globalThis as unknown as { __sahelContractSettings?: SandboxContractSettings };
-/** ⚠️ Sandbox contract settings (autopay), in memory, standing in for the core lending system. */
+/**
+ * ⚠️ Sandbox contract settings (autopay) per customer, in memory, standing in for the core lending system.
+ * Read through customerView() in lib/session.ts, the single "current customer" mechanism.
+ */
 export const contractSettings = (g2.__sahelContractSettings ??= new SandboxContractSettings());
-
-/** The demo customer with this session's contract settings (autopay) applied. Used by /me and the account page. */
-export function currentCustomer() {
-  return contractSettings.apply(demoCustomer());
-}
 
 /** handleError plus the life-event and settlement errors. */
 export function handleBundlesError(e: unknown) {

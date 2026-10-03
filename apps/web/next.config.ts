@@ -21,7 +21,9 @@ const nextConfig: NextConfig = {
         headers: [
           { key: 'Access-Control-Allow-Origin', value: '*' },
           { key: 'Access-Control-Allow-Methods', value: 'GET,POST,PATCH,OPTIONS' },
-          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Idempotency-Key, Authorization' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Idempotency-Key, Authorization, X-Sahel-Session' },
+          // ⚠️ Sandbox customer session for the app (apps/web/lib/session.ts).
+          { key: 'Access-Control-Expose-Headers', value: 'X-Sahel-Session' },
         ],
       },
     ];

@@ -15,7 +15,6 @@ class CardsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
-    final salary = ref.watch(meProvider).value?.monthlySalaryFils ?? 0;
     return Scaffold(
       appBar: AppBar(title: Text(l.cardsTitle), actions: const [LanguageButton()]),
       body: AsyncView(
@@ -27,7 +26,8 @@ class CardsScreen extends ConsumerWidget {
           separatorBuilder: (_, _) => const SizedBox(height: SahelSpace.md),
           itemBuilder: (_, i) => i == 0
               ? Text(l.applyInstantly, style: const TextStyle(color: SahelColors.textMuted))
-              : _CardTile(card: cards[i - 1], eligible: salary >= cards[i - 1].minSalaryFils),
+              // Eligibility is decided by the API for the current customer (same rules as card apply).
+              : _CardTile(card: cards[i - 1]),
         ),
       ),
     );
@@ -35,9 +35,8 @@ class CardsScreen extends ConsumerWidget {
 }
 
 class _CardTile extends StatelessWidget {
-  const _CardTile({required this.card, required this.eligible});
+  const _CardTile({required this.card});
   final CardProduct card;
-  final bool eligible;
 
   @override
   Widget build(BuildContext context) {
@@ -57,9 +56,18 @@ class _CardTile extends StatelessWidget {
             const SizedBox(height: SahelSpace.sm),
             FilledButton(
               key: Key('apply-${card.id}'),
-              onPressed: eligible ? () => context.go('/cards/${card.id}/apply') : null,
+              onPressed: card.eligible ? () => context.go('/cards/${card.id}/apply') : null,
               child: Text(l.applyInstantly),
             ),
+            if (!card.eligible && card.ineligibleReason != null)
+              Padding(
+                padding: const EdgeInsets.only(top: SahelSpace.xs),
+                child: Text(
+                  card.ineligibleReason == 'BELOW_MIN_SALARY' ? l.declineBelowMinSalary : l.declineNoDbrHeadroom,
+                  key: Key('ineligible-${card.id}'),
+                  style: const TextStyle(color: SahelColors.textMuted, fontSize: 12),
+                ),
+              ),
           ]),
         ),
       ]),

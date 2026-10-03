@@ -9,21 +9,28 @@ import 'package:sahel/core/providers.dart';
 
 import 'fake_repository.dart';
 
-/// Applies the API's home-finance rules (20% minimum down payment) and returns the limits the API would,
-/// so the calculator is exercised against what POST /quotes/finance really accepts.
+/// Applies the API's home-finance rules (20% minimum down payment, listing defaults when the down payment and
+/// tenure are left out) and returns the limits the API would, so the calculator is exercised against what
+/// POST /quotes/finance really accepts.
 class _HomeRulesRepository extends FakeSahelRepository {
+  /// Down payments as sent (null: left to the API's default).
+  final sent = <int?>[];
   final downPayments = <int>[];
 
   @override
   Future<FinanceComparison> financeQuotes({
     required String productLine,
     required int assetPriceFils,
-    required int downPaymentFils,
-    required int tenureMonths,
+    int? downPaymentFils,
+    int? tenureMonths,
   }) async {
-    downPayments.add(downPaymentFils);
+    sent.add(downPaymentFils);
     final minDown = (assetPriceFils * 20 + 99) ~/ 100;
-    if (downPaymentFils < minDown) throw ApiException(422, 'DOWN_PAYMENT_TOO_LOW', 'down payment must be at least 20%');
+    // Same default as the API: 20% rounded to the BHD 1,000 step, never below the minimum.
+    final defaultDown = [minDown, (assetPriceFils * 20 / 100 / 1000000).round() * 1000000].reduce((a, b) => a > b ? a : b);
+    final down = downPaymentFils ?? defaultDown;
+    downPayments.add(down);
+    if (down < minDown) throw ApiException(422, 'DOWN_PAYMENT_TOO_LOW', 'down payment must be at least 20%');
     final recorded = fixture('quotes_crv') as Json;
     return FinanceComparison.fromJson({
       'quotes': recorded['quotes'],
@@ -33,6 +40,10 @@ class _HomeRulesRepository extends FakeSahelRepository {
         'minDownPaymentFils': minDown,
         'maxDownPaymentFils': assetPriceFils * 9 ~/ 10,
         'structures': ['conventional', 'ijara'],
+        'downPaymentStepFils': 1000000,
+        'tenureStepMonths': 12,
+        'defaultDownPaymentFils': defaultDown,
+        'defaultTenureMonths': 240,
       },
     });
   }
@@ -50,6 +61,8 @@ void main() {
     ));
     await tester.pumpAndSettle();
     // 20% of BHD 72,000 is BHD 14,400; rounding to BHD 1,000 steps used to send BHD 14,000 (rejected by the API).
+    // The app no longer computes the default: its first request leaves it to the API.
+    expect(repo.sent.first, isNull);
     expect(repo.downPayments, isNotEmpty);
     expect(repo.downPayments.every((d) => d >= 14400000), isTrue, reason: '${repo.downPayments}');
     expect(repo.downPayments.last, 14400000); // same default as the web calculator

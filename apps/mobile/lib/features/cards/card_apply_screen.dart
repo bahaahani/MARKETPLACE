@@ -32,6 +32,7 @@ class _CardApplyScreenState extends ConsumerState<CardApplyScreen> {
     });
     try {
       final r = await ref.read(repositoryProvider).applyForCard(widget.cardId);
+      if (r.approved) ref.invalidate(myCardsProvider);
       if (mounted) setState(() => _result = r);
     } catch (_) {
       if (mounted) setState(() => _error = true);
@@ -64,14 +65,13 @@ class _CardApplyScreenState extends ConsumerState<CardApplyScreen> {
 
   List<Widget> _confirm(CardProduct card) {
     final l = context.l10n;
-    final me = ref.watch(meProvider).value;
     return [
       ClipRRect(borderRadius: BorderRadius.circular(SahelRadius.lg), child: CardFace(gradient: card.gradient, tier: card.tier)),
       const SizedBox(height: SahelSpace.md),
-      // The eligibility check comes from the pre-approval the API already computed.
+      // The eligibility check and the offered limit come from the API (GET /cards), for this customer.
       KeyValueRow(
         l.yourPreApprovedLimit,
-        card.tier == 'prepaid' ? l.prepaidNoLimit : (me == null ? '…' : context.money(me.preApproval.cardLimitFils, decimals: 0)),
+        card.tier == 'prepaid' ? l.prepaidNoLimit : context.money(card.offeredLimitFils, decimals: 0),
         key: const Key('offered-limit'),
       ),
       KeyValueRow(l.annualFee, card.annualFeeFils == 0 ? l.free : context.money(card.annualFeeFils, decimals: 0)),

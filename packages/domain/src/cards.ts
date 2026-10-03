@@ -1,6 +1,6 @@
 import type { Fils } from './money';
 import { preApprove, type CustomerFinancials } from './affordability';
-import { findCard } from './catalog';
+import { CARDS, findCard } from './catalog';
 import type { CreditCardProduct, Localized } from './types';
 
 /**
@@ -78,6 +78,37 @@ export function offeredCardLimit(card: CreditCardProduct, f: CustomerFinancials,
   return preApprove(f, now).cardLimitFils;
 }
 
+export type CardEligibility =
+  | { eligible: true; offeredLimitFils: Fils }
+  | { eligible: false; reason: CardDeclineReason; offeredLimitFils: Fils };
+
+/**
+ * Would an instant application for this card be approved for these financials? Same rules as applyForCard,
+ * so the "Apply" button on web and mobile is enabled exactly when the API would approve.
+ */
+export function cardEligibility(card: CreditCardProduct, f: CustomerFinancials, now: Date = new Date()): CardEligibility {
+  if (f.monthlySalaryFils < card.minSalaryFils) return { eligible: false, reason: 'BELOW_MIN_SALARY', offeredLimitFils: 0 };
+  const offeredLimitFils = offeredCardLimit(card, f, now);
+  if (card.tier !== 'prepaid' && offeredLimitFils <= 0) return { eligible: false, reason: 'NO_DBR_HEADROOM', offeredLimitFils: 0 };
+  return { eligible: true, offeredLimitFils };
+}
+
+/** A card product plus the current customer's eligibility (GET /api/v1/cards). */
+export type CardOffer = CreditCardProduct & {
+  eligible: boolean;
+  /** Why an instant application would be declined; null when eligible */
+  ineligibleReason: CardDeclineReason | null;
+  /** Limit the card would be issued with (0 for prepaid or when not eligible) */
+  offeredLimitFils: Fils;
+};
+
+export function cardOffers(f: CustomerFinancials, now: Date = new Date()): CardOffer[] {
+  return CARDS.map((card) => {
+    const e = cardEligibility(card, f, now);
+    return { ...card, eligible: e.eligible, ineligibleReason: e.eligible ? null : e.reason, offeredLimitFils: e.offeredLimitFils };
+  });
+}
+
 /**
  * Decides an instant card application and, when approved, issues a sandbox virtual card.
  * Rules: salary must meet the card's minimum; credit cards need DBR headroom (pre-approved card limit > 0);
@@ -88,9 +119,9 @@ export function applyForCard(cardId: string, f: CustomerFinancials, opts: ApplyO
   const card = findCard(cardId);
   if (!card) throw new CardApplicationError('CARD_NOT_FOUND', `card ${cardId} not found`);
   const now = opts.now ?? new Date();
-  if (f.monthlySalaryFils < card.minSalaryFils) return { decision: 'DECLINED', cardId, reason: 'BELOW_MIN_SALARY' };
-  const offered = offeredCardLimit(card, f, now);
-  if (card.tier !== 'prepaid' && offered <= 0) return { decision: 'DECLINED', cardId, reason: 'NO_DBR_HEADROOM' };
+  const check = cardEligibility(card, f, now);
+  if (!check.eligible) return { decision: 'DECLINED', cardId, reason: check.reason };
+  const offered = check.offeredLimitFils;
   const requested = opts.requestedLimitFils;
   const limitFils = requested !== undefined && Number.isInteger(requested) && requested > 0 ? Math.min(requested, offered) : offered;
   const last4 = opts.last4 ?? String(Math.floor(Math.random() * 10_000)).padStart(4, '0');
@@ -113,21 +144,28 @@ export function applyForCard(cardId: string, f: CustomerFinancials, opts: ApplyO
 }
 
 /**
- * In-memory sandbox issuer for the prototype: keeps the virtual cards issued in this session.
- * Applying again for a card that is already active returns the same card.
+ * In-memory sandbox issuer for the prototype: keeps the virtual cards issued in this server session,
+ * per customer. A customer only ever sees their own cards. Applying again for a card that is already
+ * active returns the same card.
  */
 export class SandboxCardIssuer {
-  private readonly cards: VirtualCard[] = [];
+  private readonly cards: { customerId: string; card: VirtualCard }[] = [];
 
-  apply(cardId: string, f: CustomerFinancials, opts: ApplyOptions = {}): CardApplication {
-    const existing = this.cards.find((c) => c.cardId === cardId && c.status === 'ACTIVE');
+  apply(customerId: string, cardId: string, f: CustomerFinancials, opts: ApplyOptions = {}): CardApplication {
+    const existing = this.list(customerId).find((c) => c.cardId === cardId && c.status === 'ACTIVE');
     if (existing) return { decision: 'APPROVED', cardId, limitFils: existing.limitFils, virtualCard: existing };
     const result = applyForCard(cardId, f, opts);
-    if (result.decision === 'APPROVED') this.cards.push(result.virtualCard);
+    if (result.decision === 'APPROVED') this.cards.push({ customerId, card: result.virtualCard });
     return result;
   }
 
-  list(): VirtualCard[] {
-    return [...this.cards];
+  /** This customer's cards, oldest first. */
+  list(customerId: string): VirtualCard[] {
+    return this.cards.filter((c) => c.customerId === customerId).map((c) => c.card);
+  }
+
+  /** One of this customer's cards; undefined for another customer's card. */
+  get(customerId: string, id: string): VirtualCard | undefined {
+    return this.list(customerId).find((c) => c.id === id);
   }
 }

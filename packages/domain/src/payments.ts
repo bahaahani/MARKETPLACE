@@ -102,11 +102,17 @@ function nextActionFor(method: PaymentMethod): Payment['nextAction'] {
 export class SandboxPaymentGateway implements PaymentGateway {
   private readonly byId = new Map<string, Payment>();
   private readonly byKey = new Map<string, string>();
+  private readonly owners = new Map<string, string>();
   private seq = 0;
 
-  async createCharge(req: PaymentRequest): Promise<Payment> {
+  /**
+   * With `ownerId` (the sandbox customer session), idempotency keys are scoped to that owner and only the
+   * owner can confirm the payment.
+   */
+  async createCharge(req: PaymentRequest, ownerId?: string): Promise<Payment> {
     validatePaymentRequest(req);
-    const existing = this.byKey.get(req.idempotencyKey);
+    const key = ownerId === undefined ? req.idempotencyKey : `${ownerId}\u0000${req.idempotencyKey}`;
+    const existing = this.byKey.get(key);
     if (existing) return this.byId.get(existing)!;
     const id = `pay_sbx_${Date.now().toString(36)}_${(++this.seq).toString(36)}`;
     const payment: Payment = {
@@ -118,20 +124,26 @@ export class SandboxPaymentGateway implements PaymentGateway {
       nextAction: nextActionFor(req.method),
     };
     this.byId.set(id, payment);
-    this.byKey.set(req.idempotencyKey, id);
+    this.byKey.set(key, id);
+    if (ownerId !== undefined) this.owners.set(id, ownerId);
     return payment;
   }
 
-  async confirm(paymentId: string): Promise<Payment> {
+  async confirm(paymentId: string, ownerId?: string): Promise<Payment> {
     const p = this.byId.get(paymentId);
-    if (!p) throw new PaymentValidationError(`unknown payment ${paymentId}`);
+    const owner = this.owners.get(paymentId);
+    // Another customer's payment reads as unknown.
+    if (!p || (ownerId !== undefined && owner !== undefined && owner !== ownerId)) throw new PaymentValidationError(`unknown payment ${paymentId}`);
     if (p.status === 'CAPTURED') return p;
     const updated = { ...p, status: transition(p.status, 'capture'), nextAction: 'none' as const };
     this.byId.set(paymentId, updated);
     return updated;
   }
 
-  get(paymentId: string): Payment | undefined {
+  /** With `ownerId`, another owner's payment reads as undefined (like confirm). */
+  get(paymentId: string, ownerId?: string): Payment | undefined {
+    const owner = this.owners.get(paymentId);
+    if (ownerId !== undefined && owner !== undefined && owner !== ownerId) return undefined;
     return this.byId.get(paymentId);
   }
 }

@@ -6,6 +6,7 @@ import { AcceptOffer } from '@/components/AcceptOffer';
 import { applicationTitle, DecisionCard, OfferSummary, Timeline } from '@/components/Application';
 import { originations } from '@/lib/api';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { pageCustomer } from '@/lib/session';
 
 // Live application state (sandbox store), so render per request.
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 export default async function ApplicationPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale: raw, id } = await params;
   const tr = translator(resolveLocale(raw));
-  const found = originations.get(id);
+  // Only the customer who applied can see it (⚠️ sandbox session).
+  const found = originations.get(id, (await pageCustomer()).customerId);
   if (!found) notFound();
   const app = applicationView(found);
 

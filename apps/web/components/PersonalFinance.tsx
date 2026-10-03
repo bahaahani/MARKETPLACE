@@ -1,23 +1,19 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { compareStructures, financeLimits, formatBhd, LISTING_DEFAULTS, MIN_PERSONAL_FINANCE_FILS, type OriginationStructure } from '@sahel/domain';
+import { compareStructures, formatBhd, type OriginationStructure, type PersonalFinanceRange } from '@sahel/domain';
 import { t, type AppLocale, type MessageKey } from '@sahel/i18n';
 import { ApplyButton } from './ApplyFinance';
 import { QuoteColumn } from './FinanceCalculator';
 
-const AMOUNT_STEP = 100_000; // BHD 100
-const TENURE_STEP = 6;
-
 /**
  * Personal finance: amount + tenure + structure, then apply. Quotes come from the same @sahel/domain engine
- * as POST /api/v1/quotes/finance (used by the Flutter app). The slider stops at the customer's pre-approved limit.
+ * as POST /api/v1/quotes/finance (used by the Flutter app). The range (min, max = the customer's pre-approved limit,
+ * steps and defaults) is personalFinanceRange() from @sahel/domain, the same one GET /api/v1/config serves to the app.
  */
-export function PersonalFinance({ locale, maxAmountFils }: { locale: AppLocale; maxAmountFils: number }) {
-  const limits = financeLimits('personal', MIN_PERSONAL_FINANCE_FILS);
-  const maxAmount = Math.max(MIN_PERSONAL_FINANCE_FILS, Math.floor(maxAmountFils / AMOUNT_STEP) * AMOUNT_STEP);
-  const [amount, setAmount] = useState(() => Math.min(maxAmount, 5_000_000));
-  const [tenure, setTenure] = useState(LISTING_DEFAULTS.personal.tenureMonths);
+export function PersonalFinance({ locale, range }: { locale: AppLocale; range: PersonalFinanceRange }) {
+  const [amount, setAmount] = useState(range.defaultAmountFils);
+  const [tenure, setTenure] = useState(range.defaultTenureMonths);
   const [selected, setSelected] = useState<OriginationStructure>('murabaha');
 
   const quotes = useMemo(() => compareStructures({ productLine: 'personal', assetPriceFils: amount, downPaymentFils: 0, tenureMonths: tenure }), [amount, tenure]);
@@ -33,9 +29,9 @@ export function PersonalFinance({ locale, maxAmountFils }: { locale: AppLocale; 
         <input
           type="range"
           className="w-full"
-          min={MIN_PERSONAL_FINANCE_FILS}
-          max={maxAmount}
-          step={AMOUNT_STEP}
+          min={range.minAmountFils}
+          max={range.maxAmountFils}
+          step={range.amountStepFils}
           value={amount}
           onChange={(e) => setAmount(Number(e.target.value))}
           aria-label={tr('financeAmount')}
@@ -48,9 +44,9 @@ export function PersonalFinance({ locale, maxAmountFils }: { locale: AppLocale; 
         <input
           type="range"
           className="w-full"
-          min={limits.minTenureMonths}
-          max={limits.maxTenureMonths}
-          step={TENURE_STEP}
+          min={range.minTenureMonths}
+          max={range.maxTenureMonths}
+          step={range.tenureStepMonths}
           value={tenure}
           onChange={(e) => setTenure(Number(e.target.value))}
           aria-label={tr('tenure')}

@@ -11,6 +11,13 @@ info:
     - Money is always integer **fils** (1 BHD = 1000 fils). Field names end in `Fils`.
     - Success: `{ "data": ... }`. Error: `{ "error": { "code", "message" } }`.
     - Localized text is `{ "en": "...", "ar": "..." }`.
+    - ⚠️ Sandbox customer session (stand-in for eKey / OIDC login): the web carries an opaque random id in the
+      HttpOnly, SameSite=Lax cookie `sahel_session`; the mobile app sends `X-Sahel-Session: new` until the API
+      returns its id in the `X-Sahel-Session` response header, then sends that id on every request. Unknown or
+      expired ids get a new session. Each session starts as the demo customer; completing onboarding
+      (POST /onboarding/pre-approval) switches it to that customer's own financials and pre-approval.
+      Applications, issued cards, pre-approval share tokens, payments and idempotency keys belong to the session's
+      customer: another session gets 404 for them.
 servers:
   - url: http://localhost:3000/api/v1
 paths:
@@ -78,24 +85,24 @@ paths:
         '404': {$ref: '#/components/responses/Error'}
   /cards:
     get:
-      summary: IMTIAZ card products
+      summary: IMTIAZ card products, each with the session customer's eligibility (same rules as card apply)
       responses:
-        '200': {description: OK}
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/CardOffer'}}, total: {type: integer}}}}}}}}
   /quotes/finance:
     post:
-      summary: Finance quote. Omit `structure` to get every offered structure side by side.
+      summary: Finance quote. Omit `structure` to get every offered structure side by side. Omit `downPaymentFils` or `tenureMonths` to quote the listing defaults.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [productLine, assetPriceFils, tenureMonths]
+              required: [productLine, assetPriceFils]
               properties:
                 productLine: {enum: [vehicle, personal, home]}
                 assetPriceFils: {type: integer, minimum: 1}
-                downPaymentFils: {type: integer, minimum: 0, default: 0}
-                tenureMonths: {type: integer}
+                downPaymentFils: {type: integer, minimum: 0, description: Defaults to limits.defaultDownPaymentFils}
+                tenureMonths: {type: integer, description: Defaults to limits.defaultTenureMonths}
                 structure: {$ref: '#/components/schemas/FinanceStructure'}
       responses:
         '200':
@@ -134,12 +141,14 @@ paths:
         '400': {$ref: '#/components/responses/Error'}
   /me:
     get:
-      summary: Customer overview (pre-approval, contracts, garage). Demo customer until eKey login exists.
+      summary: |
+        The session customer (pre-approval, contracts, garage). The demo customer until onboarding completes, then
+        their own name, salary, obligations and pre-approval (⚠️ contracts, garage and rewards stay demo data).
       responses:
-        '200': {description: OK}
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/CustomerView'}}}}}}
   /payments:
     post:
-      summary: Create a payment (sandbox; production wraps Tap Payments server-side)
+      summary: Create a payment (sandbox; production wraps Tap Payments server-side). Idempotency keys are scoped to the customer session.
       parameters:
         - {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8}}
       requestBody:
@@ -160,7 +169,7 @@ paths:
         '422': {$ref: '#/components/responses/Error'}
   /payments/{id}/confirm:
     post:
-      summary: Sandbox stand-in for "customer completed the Tap flow and the webhook verified it"
+      summary: Sandbox stand-in for "customer completed the Tap flow and the webhook verified it". Only the session that created the payment can confirm it.
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
       responses:
         '200': {description: OK (status CAPTURED)}
@@ -338,7 +347,7 @@ paths:
         '422': {description: 'VEHICLE_NOT_IN_INVENTORY or a quote rule (DOWN_PAYMENT_TOO_LOW, TENURE_OUT_OF_RANGE, STRUCTURE_NOT_OFFERED, ...)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /onboarding/ekey:
     post:
-      summary: "Log in with eKey (SANDBOX, simulated): any valid 9-digit CPR returns a fictional verified identity. Only the masked CPR is returned"
+      summary: "Log in with eKey (SANDBOX, simulated): any valid 9-digit CPR returns a fictional verified identity, kept in the customer session. Only the masked CPR is returned or stored"
       requestBody:
         required: true
         content:
@@ -356,7 +365,7 @@ paths:
           content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
   /onboarding/pre-approval:
     post:
-      summary: "Live pre-approval at the end of onboarding (journey J1). Records the consent (valid 90 days) and returns indicative limits. SANDBOX: no CRB or Open Banking call"
+      summary: "Live pre-approval at the end of onboarding (journey J1). Records the consent (valid 90 days) and returns indicative limits. The session keeps these financials and the pre-approval for /me, cards and applications. SANDBOX: no CRB or Open Banking call"
       requestBody:
         required: true
         content:
@@ -384,27 +393,22 @@ paths:
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
       requestBody:
         required: false
-        description: Optional. Financials default to the signed-in (demo) customer's, since the eligibility check comes from pre-approval
+        description: Optional. The decision always uses the session customer's financials (from onboarding, else the demo customer's); salary and obligations in the body are rejected with 400
         content:
           application/json:
             schema:
               type: object
               properties:
-                monthlySalaryFils: {type: integer, minimum: 1}
-                existingObligationsFils: {type: integer, minimum: 0}
                 requestedLimitFils: {type: integer, minimum: 1, description: Capped at the pre-approved card limit}
       responses:
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/CardApplication'}}}}}}
-        '400': {$ref: '#/components/responses/Error'}
+        '400': {description: 'BAD_REQUEST (salary or obligations sent, or a bad requestedLimitFils), BAD_JSON', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '404':
           description: CARD_NOT_FOUND
           content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
-        '422':
-          description: INVALID_SALARY, INVALID_OBLIGATIONS
-          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
   /me/cards:
     get:
-      summary: Virtual cards issued in this sandbox session (in-memory; masked numbers only)
+      summary: Virtual cards issued to the session customer (in-memory sandbox; masked numbers only)
       responses:
         '200':
           description: OK
@@ -420,7 +424,7 @@ paths:
                       total: {type: integer}
   /applications:
     get:
-      summary: The demo customer's finance applications, newest first (sandbox store, in memory)
+      summary: The session customer's finance applications, newest first (sandbox store, in memory)
       responses:
         '200':
           description: OK
@@ -437,8 +441,9 @@ paths:
     post:
       summary: |
         Apply for vehicle or personal finance (sandbox). Creates, submits and decides immediately against the
-        demo customer's financials. The vehicle price comes from the catalog, never from the client.
-        A repeated Idempotency-Key returns the original application.
+        session customer's financials (their own after onboarding, else the demo customer's). The vehicle price
+        comes from the catalog, never from the client. A repeated Idempotency-Key from the same customer returns
+        the original application; keys are scoped to the customer.
       parameters:
         - {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8}}
       requestBody:
@@ -464,7 +469,7 @@ paths:
           content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
   /applications/{id}:
     get:
-      summary: Application status, decision, offer and timeline
+      summary: Application status, decision, offer and timeline. Another customer's application is 404
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
       responses:
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/FinanceApplication'}}}}}}
@@ -476,7 +481,7 @@ paths:
         Conventional: OFFER_ACCEPTED, CONTRACT_SIGNED, DISBURSED, COMPLETED.
         Murabaha: OFFER_ACCEPTED, CONTRACT_SIGNED, ASSET_PURCHASED_BY_BCFC, OWNERSHIP_TRANSFERRED_TO_BCFC,
         SALE_TO_CUSTOMER, (personal only: DISBURSED), COMPLETED. BCFC always owns the asset before selling it (Shari'a).
-        Accepting a COMPLETED application again returns it unchanged.
+        Accepting a COMPLETED application again returns it unchanged. Only the customer who applied can accept (others get 404).
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
       responses:
         '200': {description: OK (status COMPLETED), content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/FinanceApplication'}}}}}}
@@ -501,8 +506,8 @@ paths:
   /life-events/{id}/bundle:
     get:
       summary: |
-        The bundle for a life event, priced with the pricing engine for the demo customer and checked against their
-        DBR headroom (maxMonthlyFils). Deterministic. ⚠️ Illustrative products, amounts and placeholder premiums.
+        The bundle for a life event, priced with the pricing engine and checked against the session customer's
+        DBR headroom (maxMonthlyFils): their own financials after onboarding, otherwise the demo customer's. Deterministic. ⚠️ Illustrative products, amounts and placeholder premiums.
       parameters:
         - {name: id, in: path, required: true, schema: {enum: [married, new-job, first-home, new-baby]}}
         - name: structure
@@ -515,7 +520,7 @@ paths:
         '422': {description: INVALID_STRUCTURE, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /me/contracts/{id}:
     patch:
-      summary: Turn autopay on or off for one of the customer's contracts (⚠️ sandbox, in memory; reflected in GET /me)
+      summary: Turn autopay on or off for one of the session customer's contracts (⚠️ sandbox, in memory; reflected in this session's GET /me only)
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
       requestBody:
         required: true
@@ -620,7 +625,7 @@ paths:
       summary: |
         Hold a priced quote from one insurer before checkout (sandbox). The server re-prices it; the client's price
         is never used. Pay `premiumFils` with POST /payments (purpose insurance_premium, reference = the quote id),
-        then POST /policies/confirm. Quotes can be paid for 24 hours.
+        then POST /policies/confirm in the same session. Quotes belong to the session customer and can be paid for 24 hours.
       requestBody:
         required: true
         content:
@@ -646,7 +651,8 @@ paths:
     post:
       summary: |
         Issue the policy for a paid quote (sandbox). The payment must be CAPTURED, have purpose insurance_premium,
-        reference the quote, and match its premium to the fils. Confirming again with the same payment returns the same policy.
+        reference the quote, and match its premium to the fils. Payment and quote must belong to the session customer
+        (another session's are 404). Confirming again with the same payment returns the same policy.
       requestBody:
         required: true
         content:
@@ -674,7 +680,7 @@ paths:
           content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
   /me/policies:
     get:
-      summary: The customer's insurance policies, active first (sandbox store in memory, plus one expired demo policy)
+      summary: The session customer's insurance policies, active first (sandbox store in memory, plus one expired demo policy)
       responses:
         '200':
           description: OK
@@ -688,6 +694,18 @@ paths:
                     properties:
                       items: {type: array, items: {$ref: '#/components/schemas/Policy'}}
                       total: {type: integer}
+  /config:
+    get:
+      summary: Product rules the apps build screens from (consent period, calculator ranges, steps and defaults, personal finance range for this customer)
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/ClientConfig'}}}}}}
+  /me/cards/{id}:
+    get:
+      summary: One of the session customer's virtual cards. Another customer's card is 404
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/VirtualCard'}}}}}}
+        '404': {$ref: '#/components/responses/Error'}
 components:
   parameters:
     SellerId:
@@ -770,6 +788,10 @@ components:
         minDownPaymentFils: {type: integer}
         maxDownPaymentFils: {type: integer}
         structures: {type: array, items: {$ref: '#/components/schemas/FinanceStructure'}}
+        downPaymentStepFils: {type: integer, description: Down payment slider step}
+        tenureStepMonths: {type: integer, description: Tenure slider step}
+        defaultDownPaymentFils: {type: integer, description: 'Listing default, rounded to a step, never below the minimum'}
+        defaultTenureMonths: {type: integer}
     PreApprovalShare:
       type: object
       properties:
@@ -1092,3 +1114,101 @@ components:
         quoteId: {type: string}
         paymentId: {type: string}
         issuedAt: {type: string, format: date-time}
+    CardOffer:
+      description: A card product (fields as in the catalog) plus the session customer's eligibility
+      type: object
+      properties:
+        id: {type: string}
+        name: {$ref: '#/components/schemas/Localized'}
+        tier: {type: string}
+        network: {const: mastercard}
+        annualFeeFils: {type: integer}
+        minSalaryFils: {type: integer}
+        forHer: {type: boolean}
+        gradient: {type: array, items: {type: string}}
+        highlights: {type: array, items: {$ref: '#/components/schemas/Localized'}}
+        eligible: {type: boolean, description: An instant application would be approved}
+        ineligibleReason: {enum: [BELOW_MIN_SALARY, NO_DBR_HEADROOM, null], description: Null when eligible}
+        offeredLimitFils: {type: integer, description: 'Limit the card would be issued with (0 for prepaid or when not eligible)'}
+    CustomerView:
+      type: object
+      description: Customer overview. ⚠️ Sandbox session
+      properties:
+        customerId: {type: string, description: Opaque; never the session id}
+        name: {$ref: '#/components/schemas/Localized'}
+        monthlySalaryFils: {type: integer}
+        existingObligationsFils: {type: integer}
+        preApproval: {$ref: '#/components/schemas/PreApproval'}
+        contracts: {type: array, items: {type: object}}
+        garage: {type: array, items: {type: object}}
+        rewardsPoints: {type: integer}
+        onboarded: {type: boolean, description: false while the session is still the demo customer}
+        cprMasked: {type: string, description: "From the sandbox eKey login, when done"}
+    CalculatorRules:
+      type: object
+      properties:
+        minTenureMonths: {type: integer}
+        maxTenureMonths: {type: integer}
+        minDownPaymentPct: {type: number}
+        defaultDownPaymentPct: {type: number}
+        defaultTenureMonths: {type: integer}
+        downPaymentStepFils: {type: integer}
+        tenureStepMonths: {type: integer}
+        structures: {type: array, items: {$ref: '#/components/schemas/FinanceStructure'}}
+    PersonalFinanceRange:
+      type: object
+      properties:
+        preApprovedFils: {type: integer, description: The customer's indicative personal finance limit}
+        minAmountFils: {type: integer}
+        maxAmountFils: {type: integer, description: 'Pre-approved limit rounded down to a step, never below the minimum'}
+        defaultAmountFils: {type: integer}
+        amountStepFils: {type: integer}
+        defaultTenureMonths: {type: integer}
+        tenureStepMonths: {type: integer}
+        minTenureMonths: {type: integer}
+        maxTenureMonths: {type: integer}
+    ClientConfig:
+      type: object
+      properties:
+        consent:
+          type: object
+          properties:
+            scopes: {type: array, items: {$ref: '#/components/schemas/ConsentScope'}}
+            validityDays: {type: integer}
+        finance:
+          type: object
+          properties:
+            vehicle: {$ref: '#/components/schemas/CalculatorRules'}
+            personal: {$ref: '#/components/schemas/CalculatorRules'}
+            home: {$ref: '#/components/schemas/CalculatorRules'}
+        personalFinance: {$ref: '#/components/schemas/PersonalFinanceRange'}
+        reservationDepositFils: {type: integer, description: Deposit to reserve a car}
+        insurance: {$ref: '#/components/schemas/InsuranceRules'}
+        sandbox: {const: true}
+    InsuranceRules:
+      type: object
+      description: Travel and home insurance form rules and defaults (the quote endpoints still validate every request)
+      properties:
+        travel:
+          type: object
+          properties:
+            regions: {type: array, items: {$ref: '#/components/schemas/TravelRegion'}}
+            tiers: {type: array, items: {enum: [basic, plus]}}
+            minAdults: {type: integer}
+            maxAdults: {type: integer}
+            maxChildren: {type: integer}
+            maxTripDays: {type: integer}
+            maxDaysAhead: {type: integer, description: "Latest start date, in days from today (Bahrain date)"}
+            defaultStartInDays: {type: integer}
+            defaultTripDays: {type: integer}
+        home:
+          type: object
+          properties:
+            propertyTypes: {type: array, items: {enum: [villa, apartment, townhouse, office]}}
+            defaultPropertyType: {enum: [villa, apartment, townhouse, office]}
+            defaultBuildingSumInsuredFils: {type: integer}
+            defaultContentsSumInsuredFils: {type: integer}
+            buildingMinFils: {type: integer}
+            buildingMaxFils: {type: integer}
+            contentsMinFils: {type: integer}
+            contentsMaxFils: {type: integer}

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:sahel/core/api/api_client.dart';
 import 'package:sahel/core/models.dart';
 import 'package:sahel/core/models/bundles.dart';
+import 'package:sahel/core/models/config.dart';
 import 'package:sahel/core/models/insurance.dart';
 import 'package:sahel/core/repository.dart';
 
@@ -45,14 +46,15 @@ class FakeSahelRepository implements SahelRepository {
   Future<Property> property(String id) async => (await properties()).firstWhere((p) => p.id == id);
 
   @override
-  Future<List<CardProduct>> cards() async => [for (final j in fixture('cards')['items'] as List) CardProduct.fromJson(j as Json)];
+  Future<List<CardProduct>> cards() async =>
+      [for (final j in fixture(onboarded ? 'cards_onboarded' : 'cards')['items'] as List) CardProduct.fromJson(j as Json)];
 
   @override
   Future<FinanceComparison> financeQuotes({
     required String productLine,
     required int assetPriceFils,
-    required int downPaymentFils,
-    required int tenureMonths,
+    int? downPaymentFils,
+    int? tenureMonths,
   }) async =>
       FinanceComparison.fromJson(fixture(productLine == 'personal' ? 'quotes_personal' : 'quotes_crv') as Json);
 
@@ -64,7 +66,7 @@ class FakeSahelRepository implements SahelRepository {
 
   @override
   Future<CustomerOverview> me() async {
-    final j = fixture('me') as Json;
+    final j = fixture(onboarded ? 'me_onboarded' : 'me') as Json;
     // Apply sandbox autopay changes, like the API does.
     j['contracts'] = [
       for (final c in j['contracts'] as List) {...c as Json, if (autopay.containsKey(c['id'])) 'autopay': autopay[c['id']]},
@@ -96,6 +98,9 @@ class FakeSahelRepository implements SahelRepository {
     return Payment(id: 'pay_test_${payments.length}', status: 'CAPTURED', amountFils: amountFils);
   }
 
+  /// Set once onboarding succeeded (the API then keeps the customer's own financials in the session).
+  bool onboarded = false;
+
   /// Last pre-approval request, so tests can check what the app sent to the API.
   Map<String, Object>? lastPreApproval;
   final cardApplications = <String>[];
@@ -124,6 +129,8 @@ class FakeSahelRepository implements SahelRepository {
     if (!consentScopes.contains('CRB') || !consentScopes.contains('OPEN_BANKING')) {
       throw ApiException(422, 'CONSENT_REQUIRED', 'consent required');
     }
+    // Like the API's sandbox session: from now on /me and /cards are this customer's (recorded after onboarding).
+    onboarded = true;
     return OnboardingResult.fromJson(fixture('onboarding_preapproval') as Json);
   }
 
@@ -281,4 +288,9 @@ class FakeSahelRepository implements SahelRepository {
 
   @override
   Future<List<Policy>> myPolicies() async => [for (final j in fixture('me_policies')['items'] as List) Policy.fromJson(j as Json)];
+
+  // ---- Config
+
+  @override
+  Future<ClientConfig> config() async => ClientConfig.fromJson(fixture(onboarded ? 'config_onboarded' : 'config') as Json);
 }

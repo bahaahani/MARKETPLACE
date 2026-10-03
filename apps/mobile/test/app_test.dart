@@ -87,7 +87,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(repo.shares, 1);
     expect(find.byKey(const Key('share-token')), findsOneWidget);
-    expect(find.text('7KQ2-M9XD'), findsOneWidget);
+    expect(find.text(fixture('preapproval_token')['token'] as String), findsOneWidget);
     expect(find.byKey(const Key('share-qr')), findsOneWidget);
     expect(find.textContaining(RegExp(r'^Expires in 1[45]:\d\d$')), findsOneWidget);
     // The button is replaced by the code while it is valid.

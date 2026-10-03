@@ -15,6 +15,7 @@ import '../finance/application_screen.dart';
 import '../insurance/insurance_providers.dart';
 import '../insurance/policies.dart';
 import '../settlement/settlement_panel.dart';
+import 'my_cards.dart';
 
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
@@ -31,6 +32,7 @@ class AccountScreen extends ConsumerWidget {
           onRefresh: () async {
             ref.invalidate(meProvider);
             ref.invalidate(applicationsProvider);
+            ref.invalidate(myCardsProvider);
             ref.invalidate(myPoliciesProvider);
           },
           child: ListView(padding: const EdgeInsets.all(SahelSpace.md), children: [
@@ -41,6 +43,7 @@ class AccountScreen extends ConsumerWidget {
                 ],
               _ => const <Widget>[],
             },
+            const MyCardsSection(),
             const MyPoliciesSection(),
             SectionHeader(l.myInstallments, action: '★ ${l.rewardsPoints(context.number(me.rewardsPoints))}'),
             for (final c in me.contracts) ...[_ContractCard(c), const SizedBox(height: SahelSpace.sm)],
@@ -69,6 +72,10 @@ class AccountScreen extends ConsumerWidget {
               ),
             const SizedBox(height: SahelSpace.lg),
             const SharePreApprovalCard(),
+            Padding(
+              padding: const EdgeInsets.only(top: SahelSpace.sm),
+              child: Text('⚠️ ${l.sessionSandboxNote}', key: const Key('session-note'), style: const TextStyle(color: SahelColors.textMuted, fontSize: 11)),
+            ),
           ]),
         ),
       ),

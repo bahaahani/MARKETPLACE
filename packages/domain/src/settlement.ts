@@ -186,8 +186,8 @@ export class SandboxContractSettings {
     return findContract(this.apply(customer), contractId);
   }
 
-  /** The customer overview with this session's settings applied. */
-  apply(customer: CustomerOverview): CustomerOverview {
+  /** The customer overview with this customer's settings applied (keyed by customerId, so per session customer). */
+  apply<C extends CustomerOverview>(customer: C): C {
     return {
       ...customer,
       contracts: customer.contracts.map((c) => {

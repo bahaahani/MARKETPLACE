@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { formatBhd, TRAVEL_REGIONS, TRAVEL_TIERS, type TravelQuote, type TravelQuoteInput } from '@sahel/domain';
+import { formatBhd, MAX_ADULTS, MAX_CHILDREN, MIN_ADULTS, TRAVEL_REGIONS, TRAVEL_TIERS, type TravelQuote, type TravelQuoteInput } from '@sahel/domain';
 import { t, type AppLocale, type MessageKey } from '@sahel/i18n';
 import { BuyPolicyButton } from './BuyPolicyButton';
 import { insuranceErrorKey, REGION_LABEL, TIER_LABEL } from '@/lib/insurance-labels';
@@ -10,7 +10,7 @@ import { InsuranceApiError, postJson } from '@/lib/policy-client';
 /** Travel insurance comparison and buying, via the shared API (same endpoints the Flutter app calls). */
 export function TravelQuotes({ locale, defaultStart, defaultEnd }: { locale: AppLocale; defaultStart: string; defaultEnd: string }) {
   const tr = (k: MessageKey, v?: Record<string, string | number>) => t(locale, k, v);
-  const [form, setForm] = useState<TravelQuoteInput>({ region: 'gcc', tier: 'basic', startDate: defaultStart, endDate: defaultEnd, adults: 1, children: 0 });
+  const [form, setForm] = useState<TravelQuoteInput>({ region: 'gcc', tier: 'basic', startDate: defaultStart, endDate: defaultEnd, adults: MIN_ADULTS, children: 0 });
   // The request last submitted; the Takaful filter re-runs it immediately.
   const [query, setQuery] = useState<TravelQuoteInput>(form);
   const [takafulOnly, setTakafulOnly] = useState(false);
@@ -60,11 +60,11 @@ export function TravelQuotes({ locale, defaultStart, defaultEnd }: { locale: App
           </label>
           <label className="text-sm">
             <span className="mb-1 block font-semibold">{tr('insAdults')}</span>
-            <input type="number" inputMode="numeric" min={1} max={6} className="w-full rounded-lg border border-border bg-surface p-2" value={form.adults} onChange={(e) => set('adults', Number(e.target.value))} data-testid="adults" />
+            <input type="number" inputMode="numeric" min={MIN_ADULTS} max={MAX_ADULTS} className="w-full rounded-lg border border-border bg-surface p-2" value={form.adults} onChange={(e) => set('adults', Number(e.target.value))} data-testid="adults" />
           </label>
           <label className="text-sm">
             <span className="mb-1 block font-semibold">{tr('insChildren')}</span>
-            <input type="number" inputMode="numeric" min={0} max={8} className="w-full rounded-lg border border-border bg-surface p-2" value={form.children} onChange={(e) => set('children', Number(e.target.value))} data-testid="children" />
+            <input type="number" inputMode="numeric" min={0} max={MAX_CHILDREN} className="w-full rounded-lg border border-border bg-surface p-2" value={form.children} onChange={(e) => set('children', Number(e.target.value))} data-testid="children" />
           </label>
         </div>
         <fieldset>

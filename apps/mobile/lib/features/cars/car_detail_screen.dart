@@ -12,8 +12,6 @@ import '../finance/apply_button.dart';
 import '../finance/finance_calculator.dart';
 import '../insurance/insurance_quotes.dart';
 
-const _depositFils = 100000; // BHD 100 reservation deposit (same as web)
-
 class CarDetailScreen extends ConsumerStatefulWidget {
   const CarDetailScreen({super.key, required this.id});
   final String id;
@@ -32,6 +30,8 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen> {
     final id = widget.id;
     final car = ref.watch(vehicleProvider(id));
     final sel = _selection;
+    // Reservation deposit from GET /config (same value as the web).
+    final deposit = ref.watch(configProvider).value?.reservationDepositFils;
     return Scaffold(
       appBar: AppBar(actions: const [LanguageButton()]),
       body: AsyncView(
@@ -62,13 +62,15 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen> {
                   const SizedBox(height: SahelSpace.md),
                   FilledButton(
                     key: const Key('reserve'),
-                    onPressed: () => context.push(CheckoutScreen.link(
-                      purpose: 'reservation_deposit',
-                      amountFils: _depositFils,
-                      reference: v.id,
-                      label: '${v.title} ${v.year}',
-                    )),
-                    child: Text(l.reserveCar(context.money(_depositFils, decimals: 0))),
+                    onPressed: deposit == null
+                        ? null
+                        : () => context.push(CheckoutScreen.link(
+                              purpose: 'reservation_deposit',
+                              amountFils: deposit,
+                              reference: v.id,
+                              label: '${v.title} ${v.year}',
+                            )),
+                    child: Text(l.reserveCar(deposit == null ? '…' : context.money(deposit, decimals: 0))),
                   ),
                   const SizedBox(height: SahelSpace.sm),
                   ApplyButton(

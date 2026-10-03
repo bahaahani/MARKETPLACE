@@ -21,6 +21,9 @@ export const MAX_DAYS_AHEAD = 365;
 export const MIN_ADULTS = 1;
 export const MAX_ADULTS = 6;
 export const MAX_CHILDREN = 8;
+/** Starting point both apps offer: a week-long trip starting a week from today (Bahrain date). */
+export const TRAVEL_DEFAULT_START_IN_DAYS = 7;
+export const TRAVEL_DEFAULT_TRIP_DAYS = 7;
 
 export interface TravelPlan {
   insurerId: string;

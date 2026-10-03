@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { formatBhd, parseBhdInput, type HomeQuote, type HomeQuoteInput, type PropertyType, type ResolvedHomeInput } from '@sahel/domain';
+import { formatBhd, HOME_DEFAULT_INPUT, parseBhdInput, type HomeQuote, type HomeQuoteInput, type PropertyType, type ResolvedHomeInput } from '@sahel/domain';
 import { t, type AppLocale, type MessageKey } from '@sahel/i18n';
 import { BuyPolicyButton } from './BuyPolicyButton';
 import { HOME_TYPE_LABEL, insuranceErrorKey } from '@/lib/insurance-labels';
@@ -17,12 +17,11 @@ const bhdField = (fils: number) => String(fils / 1000);
  */
 export function HomeQuotes({ locale, propertyId }: { locale: AppLocale; propertyId?: string }) {
   const tr = (k: MessageKey, v?: Record<string, string | number>) => t(locale, k, v);
-  const [type, setType] = useState<PropertyType>('villa');
-  const [building, setBuilding] = useState('150000');
-  const [contents, setContents] = useState('20000');
-  const [query, setQuery] = useState<Partial<HomeQuoteInput>>(
-    propertyId ? { propertyId } : { propertyType: 'villa', buildingSumInsuredFils: 150_000_000, contentsSumInsuredFils: 20_000_000 },
-  );
+  // Starting point shared with the app (GET /config insurance.home); the API prices and validates.
+  const [type, setType] = useState<PropertyType>(HOME_DEFAULT_INPUT.propertyType);
+  const [building, setBuilding] = useState(bhdField(HOME_DEFAULT_INPUT.buildingSumInsuredFils));
+  const [contents, setContents] = useState(bhdField(HOME_DEFAULT_INPUT.contentsSumInsuredFils));
+  const [query, setQuery] = useState<Partial<HomeQuoteInput>>(propertyId ? { propertyId } : { ...HOME_DEFAULT_INPUT });
   const [takafulOnly, setTakafulOnly] = useState(false);
   const [result, setResult] = useState<{ input: ResolvedHomeInput; quotes: HomeQuote[] } | null>(null);
   const [error, setError] = useState<MessageKey | null>(null);

@@ -1,7 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
-// Travel + home insurance and "My policies" (sandbox). The server store is shared by both projects,
-// so tests look for the policy they bought instead of counting policies.
+// Travel + home insurance and "My policies" (sandbox). Policies belong to the browser's customer session; tests
+// still look for the policy they bought instead of counting policies (a test may buy several in one session).
 
 /** YYYY-MM-DD in Bahrain (UTC+3), `days` from today. */
 function bahrainDate(days: number): string {

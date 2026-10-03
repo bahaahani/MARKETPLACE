@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 
 const PAN_LIKE = /\d(?:[ -]?\d){12,18}/;
 
-test('apply for IMTIAZ World and get a masked virtual card (English)', async ({ page, request }) => {
+test('apply for IMTIAZ World and get a masked virtual card (English)', async ({ page }) => {
   await page.goto('/en/cards');
   await page.getByTestId('apply-imtiaz-world').click();
   await expect(page).toHaveURL(/\/en\/cards\/imtiaz-world\/apply$/);
@@ -23,7 +23,8 @@ test('apply for IMTIAZ World and get a masked virtual card (English)', async ({ 
   await expect(approved.getByTestId('wallet-on-phone')).toContainText('happens on your phone');
   await expect(approved.getByTestId('wallet-google')).toBeVisible();
 
-  const mine = await (await request.get('/api/v1/me/cards')).json();
+  // Same browser session (cookie) as the page: the card is this customer's.
+  const mine = await (await page.request.get('/api/v1/me/cards')).json();
   const card = mine.data.items.find((c: { cardId: string }) => c.cardId === 'imtiaz-world');
   expect(card.status).toBe('ACTIVE');
   expect(JSON.stringify(mine)).not.toMatch(PAN_LIKE);
@@ -51,9 +52,16 @@ test('card apply API: unknown card is 404, declined is 200 with a reason', async
   const missing = await request.post('/api/v1/cards/no-such-card/apply');
   expect(missing.status()).toBe(404);
   expect((await missing.json()).error.code).toBe('CARD_NOT_FOUND');
-  const declined = await request.post('/api/v1/cards/imtiaz-uefa/apply', {
+  // Financials come from the session customer's onboarding, never from the request body.
+  const supplied = await request.post('/api/v1/cards/imtiaz-uefa/apply', {
     data: { monthlySalaryFils: 1_000_000, existingObligationsFils: 900_000 },
   });
+  expect(supplied.status()).toBe(400);
+  const onboarded = await request.post('/api/v1/onboarding/pre-approval', {
+    data: { monthlySalaryFils: 1_000_000, existingObligationsFils: 900_000, consentScopes: ['CRB', 'OPEN_BANKING'] },
+  });
+  expect(onboarded.status()).toBe(200);
+  const declined = await request.post('/api/v1/cards/imtiaz-uefa/apply');
   expect(declined.status()).toBe(200);
   expect((await declined.json()).data).toEqual({ decision: 'DECLINED', cardId: 'imtiaz-uefa', reason: 'NO_DBR_HEADROOM' });
 });

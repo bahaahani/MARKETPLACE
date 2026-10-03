@@ -18,3 +18,5 @@ export * from './insurance-common';
 export * from './insurance-travel';
 export * from './insurance-home';
 export * from './policies';
+export * from './customer';
+export * from './config';

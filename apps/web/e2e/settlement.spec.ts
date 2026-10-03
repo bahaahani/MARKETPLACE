@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type APIRequestContext } from '@playwright/test';
 
 // "My installments": early-settlement quote (⚠️ placeholder fee / Ibra' rules) and autopay (sandbox).
 
@@ -37,23 +37,34 @@ test('conventional early settlement shows remaining principal and the placeholde
   await expect(panel).toContainText('Placeholder fee pending CBB rules');
 });
 
-test('autopay toggle persists (sandbox)', async ({ page, request }, testInfo) => {
-  // Each project flips a different contract, so parallel runs never race on the shared sandbox store.
-  const id = testInfo.project.name === 'desktop' ? 'c-1001' : 'c-1002';
-  const before = (await (await request.get('/api/v1/me')).json()).data.contracts.find((c: { id: string }) => c.id === id).autopay;
+test('autopay toggle persists for this session only (sandbox)', async ({ page, browser }) => {
+  // Each browser context is its own sandbox customer session, so this test never races with the other project.
+  const id = 'c-1001';
+  const autopayOf = async (r: APIRequestContext) => (await (await r.get('/api/v1/me')).json()).data.contracts.find((c: { id: string }) => c.id === id).autopay as boolean;
+  // page.request shares the page's cookies: the same session as the page.
+  const before = await autopayOf(page.request);
   await page.goto('/en/account');
   const toggle = page.getByTestId(`autopay-${id}`);
   await expect(toggle).toHaveAttribute('aria-checked', String(before));
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-checked', String(!before));
   await expect(toggle).toContainText(!before ? 'Autopay on' : 'Autopay off');
-  const after = (await (await request.get('/api/v1/me')).json()).data.contracts.find((c: { id: string }) => c.id === id).autopay;
-  expect(after).toBe(!before);
+  expect(await autopayOf(page.request)).toBe(!before);
   await page.reload();
   await expect(page.getByTestId(`autopay-${id}`)).toHaveAttribute('aria-checked', String(!before));
-  // Restore.
-  await page.getByTestId(`autopay-${id}`).click();
-  await expect(page.getByTestId(`autopay-${id}`)).toHaveAttribute('aria-checked', String(before));
+
+  // Another customer session still has the original setting.
+  const other = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+  try {
+    expect(await autopayOf(other.request)).toBe(before);
+    const otherPage = await other.newPage();
+    await otherPage.goto('/en/account');
+    await otherPage.request.get('/api/v1/me'); // start the session, then render with it
+    await otherPage.reload();
+    await expect(otherPage.getByTestId(`autopay-${id}`)).toHaveAttribute('aria-checked', String(before));
+  } finally {
+    await other.close();
+  }
 });
 
 test('settlement works in Arabic (RTL)', async ({ page }) => {

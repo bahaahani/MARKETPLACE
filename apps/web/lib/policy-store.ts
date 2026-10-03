@@ -1,17 +1,13 @@
-import { demoCustomer, demoPolicyHistory, InsuranceQuoteError, POLICY_ERROR_STATUS, PolicyError, SandboxPolicyStore } from '@sahel/domain';
+import { demoPolicyHistory, InsuranceQuoteError, POLICY_ERROR_STATUS, PolicyError, SandboxPolicyStore } from '@sahel/domain';
 import { handleError, problem } from '@/lib/api';
 
 const g = globalThis as unknown as { __sahelPolicies?: SandboxPolicyStore };
 
-/** The signed-in customer (sandbox: the demo customer until eKey login exists). */
-export const policyCustomerId = () => demoCustomer().customerId;
-
-/** ⚠️ Sandbox insurance policies (in memory, lost on restart), standing in for the broker platform and insurer APIs. */
-export const policyStore = (g.__sahelPolicies ??= (() => {
-  const store = new SandboxPolicyStore();
-  store.seed(demoPolicyHistory(policyCustomerId()));
-  return store;
-})());
+/**
+ * ⚠️ Sandbox insurance policies (in memory, lost on restart), standing in for the broker platform and insurer APIs.
+ * Quotes and policies belong to the session customer (lib/session.ts); every customer starts with the demo history.
+ */
+export const policyStore = (g.__sahelPolicies ??= new SandboxPolicyStore(undefined, (customerId) => [demoPolicyHistory(customerId)]));
 
 /**
  * handleError plus the insurance errors. Matched by name too: the store lives on globalThis and may have been

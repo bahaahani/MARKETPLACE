@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/format.dart';
+import '../../core/models/config.dart';
 import '../../core/models/insurance.dart';
+import '../../core/providers.dart';
 import '../../core/theme/tokens.g.dart';
 import '../../widgets/common.dart';
 import 'insurance_providers.dart';
@@ -10,24 +12,40 @@ import 'quote_tile.dart';
 
 /// Travel insurance comparison and buying (same API as the web /insurance/travel page).
 /// Dates, traveller limits and prices are validated and computed by the API.
-class TravelInsuranceScreen extends ConsumerStatefulWidget {
+class TravelInsuranceScreen extends ConsumerWidget {
   const TravelInsuranceScreen({super.key});
 
   @override
-  ConsumerState<TravelInsuranceScreen> createState() => _TravelInsuranceScreenState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final config = ref.watch(configProvider);
+    if (config case AsyncData(:final value)) return _TravelInsuranceBody(rules: value.travel);
+    return Scaffold(
+      appBar: AppBar(title: Text(context.l10n.insTravelTitle), actions: const [LanguageButton()]),
+      body: AsyncView(value: config, onRetry: () => ref.invalidate(configProvider), data: (_) => const SizedBox.shrink()),
+    );
+  }
 }
 
-class _TravelInsuranceScreenState extends ConsumerState<TravelInsuranceScreen> {
-  static const _regions = ['gcc', 'worldwide-excl-us-ca', 'worldwide'];
-  String _region = 'gcc';
-  String _tier = 'basic';
-  // A week-long trip starting a week from today, as a starting point.
+/// The form, built from the API's travel rules (GET /config insurance.travel).
+class _TravelInsuranceBody extends ConsumerStatefulWidget {
+  const _TravelInsuranceBody({required this.rules});
+  final TravelRules rules;
+
+  @override
+  ConsumerState<_TravelInsuranceBody> createState() => _TravelInsuranceScreenState();
+}
+
+class _TravelInsuranceScreenState extends ConsumerState<_TravelInsuranceBody> {
+  late final TravelRules _rules = widget.rules;
+  late String _region = _rules.regions.first;
+  late String _tier = _rules.tiers.first;
+  // The API's starting trip (a week-long trip a week from today).
   late DateTimeRange _dates = () {
     final now = DateTime.now();
-    final start = DateTime(now.year, now.month, now.day + 7);
-    return DateTimeRange(start: start, end: DateTime(start.year, start.month, start.day + 6));
+    final start = DateTime(now.year, now.month, now.day + _rules.defaultStartInDays);
+    return DateTimeRange(start: start, end: DateTime(start.year, start.month, start.day + _rules.defaultTripDays - 1));
   }();
-  int _adults = 1;
+  late int _adults = _rules.minAdults;
   int _children = 0;
   bool _takafulOnly = false;
 
@@ -46,7 +64,8 @@ class _TravelInsuranceScreenState extends ConsumerState<TravelInsuranceScreen> {
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(now.year, now.month, now.day),
-      lastDate: DateTime(now.year + 2, now.month, now.day),
+      // Trips can start up to maxDaysAhead from today and last up to maxTripDays (both from the API).
+      lastDate: DateTime(now.year, now.month, now.day + _rules.maxDaysAhead + _rules.maxTripDays - 1),
       initialDateRange: _dates,
     );
     if (picked != null) setState(() => _dates = picked);
@@ -64,7 +83,7 @@ class _TravelInsuranceScreenState extends ConsumerState<TravelInsuranceScreen> {
         const SizedBox(height: SahelSpace.md),
         Text(l.insDestination, style: const TextStyle(fontWeight: FontWeight.w600)),
         Wrap(spacing: 8, children: [
-          for (final r in _regions)
+          for (final r in _rules.regions)
             ChoiceChip(key: Key('region-$r'), label: Text(regionLabel(l, r)), selected: _region == r, onSelected: (_) => setState(() => _region = r)),
         ]),
         const SizedBox(height: SahelSpace.sm),
@@ -78,7 +97,7 @@ class _TravelInsuranceScreenState extends ConsumerState<TravelInsuranceScreen> {
         _Counter(key: const Key('children'), label: l.insChildren, value: _children, onChanged: (v) => setState(() => _children = v)),
         Text(l.insTier, style: const TextStyle(fontWeight: FontWeight.w600)),
         Wrap(spacing: 8, children: [
-          for (final t in ['basic', 'plus'])
+          for (final t in _rules.tiers)
             ChoiceChip(key: Key('tier-$t'), label: Text(tierLabel(l, t)), selected: _tier == t, onSelected: (_) => setState(() => _tier = t)),
           FilterChip(key: const Key('takaful-only'), label: Text(l.takafulOnly), selected: _takafulOnly, onSelected: (v) => setState(() => _takafulOnly = v)),
         ]),

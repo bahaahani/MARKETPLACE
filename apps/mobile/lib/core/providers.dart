@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'api/api_client.dart';
 import 'models.dart';
+import 'models/config.dart';
 import 'repository.dart';
 
 final repositoryProvider = Provider<SahelRepository>(
@@ -36,7 +37,8 @@ final propertyProvider = FutureProvider.family<Property, String>((ref, id) => re
 
 final cardsProvider = FutureProvider<List<CardProduct>>((ref) => ref.watch(repositoryProvider).cards());
 
-typedef FinanceQuery = ({String productLine, int assetPriceFils, int downPaymentFils, int tenureMonths});
+/// Null down payment / tenure: the API quotes its listing defaults.
+typedef FinanceQuery = ({String productLine, int assetPriceFils, int? downPaymentFils, int? tenureMonths});
 
 final financeQuotesProvider = FutureProvider.family<FinanceComparison, FinanceQuery>(
   (ref, q) => ref.watch(repositoryProvider).financeQuotes(
@@ -59,3 +61,19 @@ final applicationProvider =
     FutureProvider.family<FinanceApplication, String>((ref, id) => ref.watch(repositoryProvider).application(id));
 
 final applicationsProvider = FutureProvider<List<FinanceApplication>>((ref) => ref.watch(repositoryProvider).applications());
+
+/// Product rules from GET /api/v1/config. Depends on the customer (personal finance range), so it is
+/// refreshed after onboarding.
+final configProvider = FutureProvider<ClientConfig>((ref) => ref.watch(repositoryProvider).config());
+
+/// Virtual cards issued to the current (sandbox) customer, for "My cards".
+final myCardsProvider = FutureProvider<List<VirtualCard>>((ref) => ref.watch(repositoryProvider).myCards());
+
+/// After onboarding stores the customer's own financials, everything derived from them is reloaded.
+void refreshCustomer(WidgetRef ref) {
+  ref.invalidate(meProvider);
+  ref.invalidate(cardsProvider);
+  ref.invalidate(configProvider);
+  ref.invalidate(myCardsProvider);
+  ref.invalidate(applicationsProvider);
+}

@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { buildLifeEventBundle, findLifeEvent, isBundleStructure } from '@sahel/domain';
+import { buildLifeEventBundle, customerFinancials, findLifeEvent, isBundleStructure } from '@sahel/domain';
 import { BundleItemRow, BundleStructureToggle, BundleSummary } from '@/components/BundlesLifeEvent';
-import { currentCustomer } from '@/lib/api';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { pageCustomer } from '@/lib/session';
 
 // Priced against the customer's DBR headroom, so render per request.
 export const dynamic = 'force-dynamic';
@@ -23,8 +23,8 @@ export default async function LifeEventPage({ params, searchParams }: { params: 
   if (!findLifeEvent(id)) notFound();
   const sp = await searchParams;
   const structure = isBundleStructure(sp.structure) ? sp.structure : 'islamic';
-  const me = currentCustomer();
-  const b = buildLifeEventBundle(id, structure, { monthlySalaryFils: me.monthlySalaryFils, existingObligationsFils: me.existingObligationsFils });
+  // The session customer's financials (their own after onboarding), as GET /life-events/{id}/bundle uses.
+  const b = buildLifeEventBundle(id, structure, customerFinancials(await pageCustomer()));
 
   return (
     <div className="mx-auto max-w-3xl space-y-5" data-testid="life-event-bundle" data-structure={structure}>

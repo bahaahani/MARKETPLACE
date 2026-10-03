@@ -5,12 +5,14 @@ import { t } from '@sahel/i18n';
 import { ApplicationRow } from '@/components/Application';
 import { AutopayToggle } from '@/components/BundlesAutopayToggle';
 import { ContractSettlement } from '@/components/BundlesSettlement';
-import { SharePreApproval } from '@/components/SharePreApproval';
+import { MyCards } from '@/components/MyCards';
 import { PolicyList } from '@/components/PolicyList';
-import { currentCustomer, originations } from '@/lib/api';
+import { SharePreApproval } from '@/components/SharePreApproval';
+import { cardIssuer, originations } from '@/lib/api';
 import { STRUCTURE_LABEL } from '@/lib/labels';
 import { resolveLocale, translator } from '@/lib/i18n';
-import { policyCustomerId, policyStore } from '@/lib/policy-store';
+import { policyStore } from '@/lib/policy-store';
+import { pageCustomerView } from '@/lib/session';
 
 // Personalized (customer data and due dates), so render per request.
 export const dynamic = 'force-dynamic';
@@ -21,8 +23,10 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
 export default async function AccountPage({ params }: { params: Promise<{ locale: string }> }) {
   const tr = translator(resolveLocale((await params).locale));
-  const me = currentCustomer();
+  // Everything here belongs to the session's customer (⚠️ sandbox session until eKey login).
+  const me = await pageCustomerView();
   const applications = originations.list(me.customerId).map(applicationView);
+  const cards = cardIssuer.list(me.customerId);
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       {applications.length > 0 && (
@@ -35,7 +39,8 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
           </div>
         </section>
       )}
-      <PolicyList policies={policyStore.list(policyCustomerId())} tr={tr} />
+      <MyCards cards={cards} tr={tr} />
+      <PolicyList policies={policyStore.list(me.customerId)} tr={tr} />
       <section aria-labelledby="inst">
         <div className="mb-3 flex items-baseline justify-between">
           <h1 id="inst" className="text-2xl font-bold">{tr.t('myInstallments')}</h1>
@@ -97,6 +102,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
         <div className="mt-6">
           <SharePreApproval locale={tr.locale} />
         </div>
+        <p className="mt-4 text-xs text-text-muted" data-testid="session-note">⚠️ {tr.t('sessionSandboxNote')}</p>
       </section>
     </div>
   );

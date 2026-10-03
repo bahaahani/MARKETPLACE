@@ -814,5 +814,10 @@
   "insErrorSumInsured": "Check the sums insured: building 0 or BHD 10,000 to 2,000,000; contents 0 or BHD 1,000 to 250,000; not both 0.",
   "insErrorNotInsurable": "Land can't be insured under home cover.",
   "insViewPolicies": "View my policies",
-  "insCompareInsurers": "Compare"
+  "insCompareInsurers": "Compare",
+  "myCards": "My cards",
+  "noCardsYet": "No cards yet. Apply in minutes from Cards.",
+  "cardStatusFrozen": "Frozen",
+  "cardStatusClosed": "Closed",
+  "sessionSandboxNote": "Sandbox: your profile is kept for this session only, until eKey login is live."
 }

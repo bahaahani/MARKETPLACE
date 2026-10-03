@@ -1,7 +1,7 @@
 import type { Fils } from './money';
 import { bhd } from './money';
 import { maxMonthlyInstallment, type CustomerFinancials } from './affordability';
-import { offeredCardLimit } from './cards';
+import { cardEligibility } from './cards';
 import { CARDS, findProperty, findVehicle, VEHICLES } from './catalog';
 import { quoteFinance } from './pricing';
 import { LISTING_DEFAULTS, RATE_CARDS } from './rates';
@@ -304,9 +304,10 @@ const CARD_TIER_RANK = { 'world-elite': 4, world: 3, platinum: 2, youth: 1, prep
  * when asked for, since the engine does not use gender.
  */
 export function suggestCardUpgrade(f: CustomerFinancials, now: Date = new Date()) {
-  const eligible = CARDS.filter((c) => c.tier !== 'prepaid' && !c.forHer && f.monthlySalaryFils >= c.minSalaryFils)
-    .map((card) => ({ card, limitFils: offeredCardLimit(card, f, now) }))
-    .filter((x) => x.limitFils > 0)
+  // Same rules as GET /cards and the instant card decision (cardEligibility), so the suggestion is always approvable.
+  const eligible = CARDS.filter((c) => c.tier !== 'prepaid' && !c.forHer)
+    .map((card) => ({ card, check: cardEligibility(card, f, now) }))
+    .flatMap(({ card, check }) => (check.eligible && check.offeredLimitFils > 0 ? [{ card, limitFils: check.offeredLimitFils }] : []))
     .sort(
       (a, b) =>
         CARD_TIER_RANK[b.card.tier] - CARD_TIER_RANK[a.card.tier] ||

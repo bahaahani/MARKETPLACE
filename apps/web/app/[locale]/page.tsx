@@ -1,8 +1,9 @@
 import Link from 'next/link';
-import { demoCustomer, PROPERTIES, searchProperties, searchVehicles, VEHICLES, type ProductLine } from '@sahel/domain';
+import { PROPERTIES, searchProperties, searchVehicles, VEHICLES, type ProductLine } from '@sahel/domain';
 import type { MessageKey } from '@sahel/i18n';
 import { PropertyCard, VehicleCard } from '@/components/Listings';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { pageCustomerView } from '@/lib/session';
 
 // Personalized (customer data and due dates), so render per request.
 export const dynamic = 'force-dynamic';
@@ -15,7 +16,8 @@ const LIMIT_LABEL: Record<ProductLine, MessageKey> = {
 
 export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
   const tr = translator(resolveLocale((await params).locale));
-  const me = demoCustomer();
+  // The session's customer: their own pre-approval once onboarding is done (⚠️ sandbox session).
+  const me = await pageCustomerView();
   const pa = me.preApproval;
   // "Cars within your budget": filtered by the customer's DBR headroom.
   const cars = searchVehicles(VEHICLES, { maxMonthlyFils: pa.maxMonthlyFils }).slice(0, 3);

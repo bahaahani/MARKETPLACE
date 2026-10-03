@@ -3,6 +3,8 @@ import 'dart:io' show Platform;
 
 import 'package:http/http.dart' as http;
 
+import 'session.dart';
+
 /// Base URL of the shared API (served by the Next.js app today: apps/web/app/api/v1).
 /// Override with: flutter run --dart-define=API_BASE_URL=https://api.sahel.bcfc.bh
 String defaultApiBaseUrl() {
@@ -23,10 +25,15 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
-  ApiClient({required this.baseUrl, http.Client? client}) : _http = client ?? http.Client();
+  ApiClient({required this.baseUrl, http.Client? client, SandboxSession? session})
+      : _http = client ?? http.Client(),
+        session = session ?? SandboxSession();
 
   final String baseUrl;
   final http.Client _http;
+
+  /// ⚠️ Sandbox customer session (X-Sahel-Session header), kept in memory.
+  final SandboxSession session;
 
   Uri _uri(String path, [Map<String, String?>? query]) {
     final q = {for (final e in (query ?? {}).entries) if (e.value != null && e.value!.isNotEmpty) e.key: e.value!};
@@ -34,19 +41,32 @@ class ApiClient {
   }
 
   Future<dynamic> get(String path, {Map<String, String?>? query}) async =>
-      _decode(await _http.get(_uri(path, query), headers: {'Accept': 'application/json'}));
+      _decode(await _send((h) => _http.get(_uri(path, query), headers: {'Accept': 'application/json', ...h})));
 
-  Future<dynamic> post(String path, Object body, {Map<String, String>? headers}) async => _decode(await _http.post(
+  Future<dynamic> post(String path, Object body, {Map<String, String>? headers}) async => _decode(await _send((h) => _http.post(
         _uri(path),
-        headers: {'Content-Type': 'application/json', 'Accept': 'application/json', ...?headers},
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json', ...?headers, ...h},
         body: jsonEncode(body),
-      ));
+      )));
 
-  Future<dynamic> patch(String path, Object body) async => _decode(await _http.patch(
+  Future<dynamic> patch(String path, Object body) async => _decode(await _send((h) => _http.patch(
         _uri(path),
-        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json', ...h},
         body: jsonEncode(body),
-      ));
+      )));
+
+  Future<http.Response> _send(Future<http.Response> Function(Map<String, String> sessionHeaders) request) async {
+    final h = await session.headers();
+    try {
+      final r = await request(h);
+      session.capture(r.headers);
+      return r;
+    } catch (_) {
+      session.failed();
+      rethrow;
+    }
+  }
+
 
   dynamic _decode(http.Response r) {
     final body = r.body.isEmpty ? <String, dynamic>{} : jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;

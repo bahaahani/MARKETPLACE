@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { demoCustomer, findCard, offeredCardLimit } from '@sahel/domain';
+import { cardEligibility, customerFinancials, findCard } from '@sahel/domain';
 import { t } from '@sahel/i18n';
 import { CardApply } from '@/components/CardApply';
 import { CardArt } from '@/components/CardArt';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { pageCustomer } from '@/lib/session';
 
 type Params = Promise<{ locale: string; id: string }>;
 
@@ -21,8 +22,7 @@ export default async function CardApplyPage({ params }: { params: Params }) {
   const card = findCard(id);
   if (!card) notFound();
   // The eligibility check is already done from the customer's pre-approval (journey J3, step 1).
-  const me = demoCustomer();
-  const offered = offeredCardLimit(card, me);
+  const offered = cardEligibility(card, customerFinancials(await pageCustomer())).offeredLimitFils;
 
   return (
     <div className="mx-auto max-w-md space-y-5">

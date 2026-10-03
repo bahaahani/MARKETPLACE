@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/format.dart';
+import '../../core/models/config.dart';
+import '../../core/providers.dart';
 import '../../core/theme/tokens.g.dart';
 import '../../widgets/common.dart';
 import 'insurance_providers.dart';
@@ -9,24 +11,47 @@ import 'quote_tile.dart';
 
 /// Home insurance comparison and buying (same API as the web /insurance/home page).
 /// With [propertyId] (from a property listing) the API suggests the sums insured; the form shows what was priced.
-class HomeInsuranceScreen extends ConsumerStatefulWidget {
+class HomeInsuranceScreen extends ConsumerWidget {
   const HomeInsuranceScreen({super.key, this.propertyId});
   final String? propertyId;
 
   @override
-  ConsumerState<HomeInsuranceScreen> createState() => _HomeInsuranceScreenState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final config = ref.watch(configProvider);
+    if (config case AsyncData(:final value)) return _HomeInsuranceBody(rules: value.home, propertyId: propertyId);
+    return Scaffold(
+      appBar: AppBar(title: Text(context.l10n.insHomeTitle), actions: const [LanguageButton()]),
+      body: AsyncView(value: config, onRetry: () => ref.invalidate(configProvider), data: (_) => const SizedBox.shrink()),
+    );
+  }
 }
 
-class _HomeInsuranceScreenState extends ConsumerState<HomeInsuranceScreen> {
-  static const _types = ['villa', 'apartment', 'townhouse', 'office'];
-  String _type = 'villa';
-  final _building = TextEditingController(text: '150000');
-  final _contents = TextEditingController(text: '20000');
+/// The form, built from the API's home rules (GET /config insurance.home: property types and starting sums).
+class _HomeInsuranceBody extends ConsumerStatefulWidget {
+  const _HomeInsuranceBody({required this.rules, this.propertyId});
+  final HomeRules rules;
+  final String? propertyId;
+
+  @override
+  ConsumerState<_HomeInsuranceBody> createState() => _HomeInsuranceScreenState();
+}
+
+class _HomeInsuranceScreenState extends ConsumerState<_HomeInsuranceBody> {
+  late final HomeRules _rules = widget.rules;
+  late String _type = _rules.defaultPropertyType;
+  late final _building = TextEditingController(text: _bhdField(_rules.defaultBuildingSumInsuredFils));
+  late final _contents = TextEditingController(text: _bhdField(_rules.defaultContentsSumInsuredFils));
   bool _takafulOnly = false;
   bool _invalid = false;
   late HomeQuery _query = widget.propertyId != null
       ? (propertyType: null, buildingSumInsuredFils: null, contentsSumInsuredFils: null, propertyId: widget.propertyId, takafulOnly: false)
-      : (propertyType: 'villa', buildingSumInsuredFils: 150000000, contentsSumInsuredFils: 20000000, propertyId: null, takafulOnly: false);
+      : (
+          propertyType: _rules.defaultPropertyType,
+          buildingSumInsuredFils: _rules.defaultBuildingSumInsuredFils,
+          contentsSumInsuredFils: _rules.defaultContentsSumInsuredFils,
+          propertyId: null,
+          takafulOnly: false,
+        );
 
   @override
   void dispose() {
@@ -87,7 +112,7 @@ class _HomeInsuranceScreenState extends ConsumerState<HomeInsuranceScreen> {
           DropdownButton<String>(
             key: const Key('property-type'),
             value: _type,
-            items: [for (final t in _types) DropdownMenuItem(value: t, child: Text(propertyTypeLabel(l, t)))],
+            items: [for (final t in _rules.propertyTypes) DropdownMenuItem(value: t, child: Text(propertyTypeLabel(l, t)))],
             onChanged: widget.propertyId != null ? null : (v) => setState(() => _type = v ?? _type),
           ),
         ]),

@@ -20,6 +20,16 @@ export const HOME_CONTENTS_MAX_FILS: Fils = bhd(250_000);
 /** Price of each property type as a percentage of the base rate. Bare land has nothing to insure. */
 export const HOME_TYPE_PCT: Record<PropertyType, number | null> = { villa: 100, townhouse: 100, apartment: 90, office: 125, land: null };
 
+/** Property types the home form offers (bare land cannot be insured). */
+export const HOME_INSURABLE_TYPES: PropertyType[] = HOME_PROPERTY_TYPES.filter((t) => HOME_TYPE_PCT[t] !== null);
+
+/** ⚠️ Illustrative starting point for the home form when no listing is linked. */
+export const HOME_DEFAULT_INPUT = { propertyType: 'villa', buildingSumInsuredFils: bhd(150_000), contentsSumInsuredFils: bhd(20_000) } as const satisfies {
+  propertyType: PropertyType;
+  buildingSumInsuredFils: Fils;
+  contentsSumInsuredFils: Fils;
+};
+
 export interface HomePlan {
   insurerId: string;
   /** Annual rate on the building sum insured, in basis points (1 bp = 0.01%) */
