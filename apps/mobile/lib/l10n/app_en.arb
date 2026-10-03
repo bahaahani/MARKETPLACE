@@ -998,5 +998,168 @@
   "homeValuationPaid": "Valuation fee received. Continue to confirm the valuation and pay the seller.",
   "homeContinue": "Continue",
   "homeLeaseActive": "Your Ijara lease is active. The home becomes yours after the final rental.",
-  "bindServerAmount": "Amount set by BCFC for this request"
+  "bindServerAmount": "Amount set by BCFC for this request",
+  "tradeTitle": "Trade in your car",
+  "tradeIntro": "Tell us about your car and get an instant offer you can use as your down payment.",
+  "tradeSandboxNote": "Sandbox: the valuation is a deterministic rules model, not AI. Prices are illustrative.",
+  "tradeFromGarage": "From My Garage",
+  "tradeGarageOption": "{title} (plate {plate})",
+  "@tradeGarageOption": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "plate": {
+        "type": "String"
+      }
+    }
+  },
+  "tradeOtherCar": "Another car",
+  "tradeMake": "Make",
+  "tradeModel": "Model",
+  "tradeYear": "Year",
+  "tradeMileage": "Mileage (km)",
+  "tradeCondition": "Condition",
+  "tradeConditionExcellent": "Excellent",
+  "tradeConditionGood": "Good",
+  "tradeConditionFair": "Fair",
+  "tradeConditionPoor": "Poor",
+  "tradeAccident": "The car has been in an accident",
+  "tradePlate": "Plate number (optional)",
+  "tradePlateHint": "1 to 6 digits. We only ever show the last 2.",
+  "tradeSubmit": "Get my instant offer",
+  "tradeValuing": "Valuing…",
+  "tradeRange": "Estimated value",
+  "tradeRangeValue": "{low} to {high}",
+  "@tradeRangeValue": {
+    "placeholders": {
+      "low": {
+        "type": "String"
+      },
+      "high": {
+        "type": "String"
+      }
+    }
+  },
+  "tradeOffer": "Guaranteed instant offer",
+  "tradeOfferValid": "Valid until {date}",
+  "@tradeOfferValid": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "tradeBreakdown": "How we worked it out",
+  "tradeStepReference": "Reference price ({year} model)",
+  "@tradeStepReference": {
+    "placeholders": {
+      "year": {
+        "type": "String"
+      }
+    }
+  },
+  "tradeStepAge": "Age ({years} years)",
+  "@tradeStepAge": {
+    "placeholders": {
+      "years": {
+        "type": "String"
+      }
+    }
+  },
+  "tradeStepMileage": "Mileage ({km} km)",
+  "@tradeStepMileage": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "tradeStepCondition": "Condition",
+  "tradeStepAccident": "Accident history",
+  "tradeStepDealerMargin": "Reconditioning and dealer margin",
+  "tradeVehicleLine": "{year} {make} {model} · {km} km",
+  "@tradeVehicleLine": {
+    "placeholders": {
+      "year": {
+        "type": "String"
+      },
+      "make": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "tradeWithdraw": "Withdraw offer",
+  "tradeWithdrawn": "Offer withdrawn.",
+  "tradeUseOnCar": "Choose a car",
+  "tradeEntryCars": "Have a car to trade in? Get an instant offer",
+  "tradeEntryGarage": "Get a trade-in offer",
+  "tradeUseMine": "Use my trade-in ({amount})",
+  "@tradeUseMine": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "tradeApplied": "Trade-in applied: {amount} down payment.",
+  "@tradeApplied": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "tradeCapped": "Your offer is above the maximum down payment, so {amount} is used.",
+  "@tradeCapped": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "tradeTopUp": "Add {amount} in cash to reach the minimum down payment.",
+  "@tradeTopUp": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "tradeCreditNote": "The trade-in is credited at delivery (sandbox).",
+  "tradeDidYouMean": "Did you mean: {names}?",
+  "@tradeDidYouMean": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "tradeErrorGeneric": "We couldn't value this car. Please check the details.",
+  "tradeErrorYear": "Choose a year between {min} and {max}.",
+  "@tradeErrorYear": {
+    "placeholders": {
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "tradeErrorMileage": "Enter the mileage in km, from 0 to {max}.",
+  "@tradeErrorMileage": {
+    "placeholders": {
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "tradeErrorPlate": "The plate must be 1 to 6 digits."
 }

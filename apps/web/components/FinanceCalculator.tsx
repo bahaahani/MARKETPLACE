@@ -10,11 +10,22 @@ import { useSetFinanceSelection } from './ApplyFinance';
  * Islamic / conventional side-by-side calculator. Runs the same @sahel/domain pricing engine
  * that backs POST /api/v1/quotes/finance (used by the Flutter app), so figures match on every channel.
  */
-export function FinanceCalculator({ locale, productLine, assetPriceFils }: { locale: AppLocale; productLine: ProductLine; assetPriceFils: number }) {
+export function FinanceCalculator({
+  locale,
+  productLine,
+  assetPriceFils,
+  initialDownPaymentFils,
+}: {
+  locale: AppLocale;
+  productLine: ProductLine;
+  assetPriceFils: number;
+  /** Start from this down payment instead of the listing default (e.g. a trade-in offer, already within the limits) */
+  initialDownPaymentFils?: number;
+}) {
   const limits = financeLimits(productLine, assetPriceFils);
   // Steps and defaults come with the limits (same values the API sends the Flutter app).
   const step = limits.downPaymentStepFils;
-  const [down, setDown] = useState(limits.defaultDownPaymentFils);
+  const [down, setDown] = useState(initialDownPaymentFils ?? limits.defaultDownPaymentFils);
   const [tenure, setTenure] = useState(limits.defaultTenureMonths);
   const [selected, setSelected] = useState<FinanceStructure>(limits.structures[1] ?? limits.structures[0]!);
 

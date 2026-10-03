@@ -24,3 +24,4 @@ export * from './backoffice';
 export * from './assistant';
 export * from './payment-amounts';
 export * from './home-finance';
+export * from './tradein';

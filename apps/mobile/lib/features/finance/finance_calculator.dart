@@ -13,9 +13,13 @@ typedef FinanceSelection = ({FinanceStructure structure, int downPaymentFils, in
 /// Islamic / conventional side-by-side calculator. Figures come from POST /api/v1/quotes/finance,
 /// the same pricing engine the web calculator runs, so both channels always agree.
 class FinanceCalculator extends ConsumerStatefulWidget {
-  const FinanceCalculator({super.key, required this.productLine, required this.assetPriceFils, this.onChanged});
+  const FinanceCalculator({super.key, required this.productLine, required this.assetPriceFils, this.onChanged, this.initialDownPaymentFils});
   final String productLine;
   final int assetPriceFils;
+
+  /// Start from this down payment instead of the API's listing default (e.g. the down payment the API returned for a
+  /// trade-in offer). Null: the API's default.
+  final int? initialDownPaymentFils;
 
   /// Called with the current selection once quotes load, and whenever the customer changes it.
   final ValueChanged<FinanceSelection>? onChanged;
@@ -27,9 +31,13 @@ class FinanceCalculator extends ConsumerStatefulWidget {
 class _FinanceCalculatorState extends ConsumerState<FinanceCalculator> {
   // The first request leaves down payment and tenure out, so the API quotes its listing defaults
   // (same as the web calculator); the sliders then start from the values it returns.
-  late FinanceQuery _query =
-      (productLine: widget.productLine, assetPriceFils: widget.assetPriceFils, downPaymentFils: null, tenureMonths: null);
-  int? _down;
+  late FinanceQuery _query = (
+    productLine: widget.productLine,
+    assetPriceFils: widget.assetPriceFils,
+    downPaymentFils: widget.initialDownPaymentFils,
+    tenureMonths: null,
+  );
+  late int? _down = widget.initialDownPaymentFils;
   int? _tenure;
   FinanceStructure? _selected;
   FinanceComparison? _last;

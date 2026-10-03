@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { searchVehicles, VEHICLES, type BodyType, type VehicleCondition } from '@sahel/domain';
 import { t } from '@sahel/i18n';
 import { VehicleCard } from '@/components/Listings';
@@ -23,7 +24,12 @@ export default async function CarsPage({ params, searchParams }: { params: Promi
   // Plain GET form: works without JavaScript and keeps result pages crawlable.
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-bold">{tr.t('navCars')}</h1>
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+        <h1 className="text-2xl font-bold">{tr.t('navCars')}</h1>
+        <Link className="text-sm font-semibold text-brand underline" href={`/${tr.locale}/trade-in`} data-testid="tradein-entry">
+          {tr.t('tradeEntryCars')}
+        </Link>
+      </div>
       <form className="card mb-6 flex flex-wrap items-end gap-3 p-4" role="search">
         <label className="min-w-48 flex-1">
           <span className="sr-only">{tr.t('searchCars')}</span>

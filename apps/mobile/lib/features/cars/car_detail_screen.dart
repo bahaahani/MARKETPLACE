@@ -11,6 +11,7 @@ import '../checkout/checkout_screen.dart';
 import '../finance/apply_button.dart';
 import '../finance/finance_calculator.dart';
 import '../insurance/insurance_quotes.dart';
+import '../tradein/tradein_screen.dart';
 
 class CarDetailScreen extends ConsumerStatefulWidget {
   const CarDetailScreen({super.key, required this.id});
@@ -23,6 +24,9 @@ class CarDetailScreen extends ConsumerStatefulWidget {
 class _CarDetailScreenState extends ConsumerState<CarDetailScreen> {
   /// Carried from the finance calculator, so "Apply for finance" applies for what is shown.
   FinanceSelection? _selection;
+
+  /// Down payment from the session's trade-in offer, once the customer chose to use it (computed by the API).
+  int? _tradeInDownFils;
 
   @override
   Widget build(BuildContext context) {
@@ -92,9 +96,13 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen> {
             ]),
           ),
           const SizedBox(height: SahelSpace.md),
+          TradeInUseCard(vehicleId: v.id, onUse: (down) => setState(() => _tradeInDownFils = down)),
           FinanceCalculator(
+            // Restarts from the trade-in down payment when the customer uses their offer.
+            key: ValueKey('calc-${_tradeInDownFils ?? 'listing'}'),
             productLine: 'vehicle',
             assetPriceFils: v.priceFils,
+            initialDownPaymentFils: _tradeInDownFils,
             onChanged: (s) => setState(() => _selection = s),
           ),
           const SizedBox(height: SahelSpace.md),

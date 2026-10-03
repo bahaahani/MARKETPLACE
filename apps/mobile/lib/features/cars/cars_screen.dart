@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/format.dart';
 import '../../core/providers.dart';
@@ -46,6 +47,15 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
             ],
             selected: {_condition},
             onSelectionChanged: (s) => setState(() => _condition = s.first),
+          ),
+        ),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton.icon(
+            key: const Key('tradein-entry'),
+            icon: const Icon(Icons.swap_horiz),
+            onPressed: () => context.push('/trade-in'),
+            label: Text(l.tradeEntryCars),
           ),
         ),
         if (widget.initialMaxMonthlyFils != null)

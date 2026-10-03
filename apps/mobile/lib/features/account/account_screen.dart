@@ -67,6 +67,12 @@ class AccountScreen extends ConsumerWidget {
                       title: Text(l.insuranceExpiry(context.date(g.insuranceExpiry))),
                       trailing: TextButton(onPressed: () => context.push('/insurance'), child: Text(l.renew)),
                     ),
+                    OutlinedButton.icon(
+                      key: Key('garage-tradein-${g.vehicleId}'),
+                      icon: const Icon(Icons.swap_horiz),
+                      onPressed: () => context.push('/trade-in?garage=${Uri.encodeQueryComponent(g.vehicleId)}'),
+                      label: Text(l.tradeEntryGarage),
+                    ),
                   ]),
                 ),
               ),

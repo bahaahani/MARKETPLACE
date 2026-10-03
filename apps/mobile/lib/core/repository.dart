@@ -2,8 +2,9 @@ import 'api/api_client.dart';
 import 'models.dart';
 import 'models/bundles.dart';
 import 'models/config.dart';
-import '../features/assistant/assistant_models.dart';
 import 'models/insurance.dart';
+import 'models/tradein.dart';
+import '../features/assistant/assistant_models.dart';
 import 'models/payment_price.dart';
 
 /// Everything the app needs from the backend. The API implementation calls the same
@@ -116,6 +117,16 @@ abstract interface class SahelRepository {
   /// The server amount for a server-priced payment (reservation deposit, valuation fee). Other purposes throw
   /// ApiException(422, NOT_SERVER_PRICED).
   Future<PaymentPrice> paymentPrice({required String purpose, required String reference});
+
+  /// ⚠️ Sandbox instant trade-in valuation (rules model, not AI); the low end becomes the session's offer.
+  /// [request] is the API's body (make, model, year, mileageKm, condition, accidentHistory, plate or garageVehicleId).
+  Future<TradeInOffer> valueTradeIn(Json request);
+
+  /// The active trade-in offer and, with [vehicleId], the down payment it gives that car.
+  Future<TradeInStatus> myTradeIn({String? vehicleId});
+
+  /// Withdraw the active offer; false when there was none.
+  Future<bool> withdrawTradeIn();
 }
 
 class ApiSahelRepository implements SahelRepository {
@@ -329,4 +340,14 @@ class ApiSahelRepository implements SahelRepository {
   @override
   Future<PaymentPrice> paymentPrice({required String purpose, required String reference}) async =>
       PaymentPrice.fromJson(await _api.get('/payments/price', query: {'purpose': purpose, 'reference': reference}) as Json);
+
+  @override
+  Future<TradeInOffer> valueTradeIn(Json request) async => TradeInOffer.fromJson(await _api.post('/trade-in/valuations', request) as Json);
+
+  @override
+  Future<TradeInStatus> myTradeIn({String? vehicleId}) async =>
+      TradeInStatus.fromJson(await _api.get('/me/trade-in', query: {'vehicleId': vehicleId}) as Json);
+
+  @override
+  Future<bool> withdrawTradeIn() async => (await _api.delete('/me/trade-in') as Json)['withdrawn'] as bool;
 }
