@@ -593,15 +593,22 @@ class FinanceApplication {
 /// A payment the customer must make before the application continues (home finance: the TRESCO valuation fee).
 /// The amount comes from GET /payments/price.
 class ApplicationNextAction {
-  const ApplicationNextAction({required this.type, required this.purpose, required this.reference});
+  const ApplicationNextAction({required this.type, required this.purpose, required this.reference, this.feePaid = false});
 
   /// PAY_VALUATION_FEE
   final String type;
   final String purpose;
   final String reference;
 
-  factory ApplicationNextAction.fromJson(Json j) =>
-      ApplicationNextAction(type: j['type'] as String, purpose: j['purpose'] as String, reference: j['reference'] as String);
+  /// True once the server sees the customer's captured fee: show "Continue" instead of "Pay valuation fee".
+  final bool feePaid;
+
+  factory ApplicationNextAction.fromJson(Json j) => ApplicationNextAction(
+        type: j['type'] as String,
+        purpose: j['purpose'] as String,
+        reference: j['reference'] as String,
+        feePaid: j['feePaid'] as bool? ?? false,
+      );
 }
 
 // ---- Onboarding (journey J1). ⚠️ Sandbox: eKey, CRB and Open Banking are simulated by the API.

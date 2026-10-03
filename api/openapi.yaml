@@ -956,7 +956,7 @@ paths:
                       amountFils: {type: integer}
                       currency: {const: BHD}
                       pendingApproval: {const: true, description: ⚠️ Placeholder amount pending business sign-off}
-        '400': {description: 'INVALID_REQUEST (missing reference)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '400': {description: 'INVALID_REQUEST (missing purpose or reference)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '404': {description: 'UNKNOWN_REFERENCE (no such vehicle, or no such property for sale)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '422': {description: 'NOT_SERVER_PRICED (other purposes: premiums and settlements are priced by their quotes)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
 components:
@@ -1218,6 +1218,7 @@ components:
             type: {const: PAY_VALUATION_FEE}
             purpose: {const: valuation_fee}
             reference: {type: string, description: The property id}
+            feePaid: {type: boolean, description: 'True once this customer has a captured valuation fee for the property: clients show "Continue" (accept again) instead of "Pay valuation fee"'}
         valuationPaymentId: {type: string, description: 'Conventional home finance: the captured valuation-fee payment that confirmed the valuation'}
     LifeEvent:
       type: object
@@ -1533,9 +1534,9 @@ components:
         id: {type: string}
         firstName: {$ref: '#/components/schemas/Localized'}
         cprMasked: {type: string, description: When the customer logged in with eKey}
-        productLine: {enum: [vehicle, personal]}
-        structure: {enum: [conventional, murabaha]}
-        reference: {type: string}
+        productLine: {enum: [vehicle, personal, home]}
+        structure: {enum: [conventional, murabaha, ijara]}
+        reference: {type: string, description: 'Vehicle id, property id (home finance), or "personal"'}
         financedFils: {type: integer}
         tenureMonths: {type: integer}
         monthlyFils: {type: integer}

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { can, creditQueue, findVehicle } from '@sahel/domain';
+import { can, creditQueue, findProperty, findVehicle } from '@sahel/domain';
 import { t } from '@sahel/i18n';
 import { CreditDecisionForm } from '@/components/BackOffice';
 import { originations } from '@/lib/api';
@@ -39,6 +39,8 @@ export default async function CreditQueuePage({ params }: { params: Promise<{ lo
         <ul className="space-y-3" data-testid="bo-credit-queue">
           {items.map((a) => {
             const v = a.productLine === 'vehicle' ? findVehicle(a.reference) : undefined;
+            const home = a.productLine === 'home' ? findProperty(a.reference) : undefined;
+            const productLabel = a.productLine === 'vehicle' ? 'boProductVehicle' : a.productLine === 'home' ? 'homeFinance' : 'boProductPersonal';
             return (
               <li key={a.id} className="card grid gap-4 p-4 lg:grid-cols-[1fr_320px]" data-testid="bo-referred" data-id={a.id}>
                 <div className="space-y-3">
@@ -53,8 +55,9 @@ export default async function CreditQueuePage({ params }: { params: Promise<{ lo
                     <div>
                       <dt className="text-xs text-text-muted">{tr.t('boColProduct')}</dt>
                       <dd className="font-semibold">
-                        {tr.t(a.productLine === 'vehicle' ? 'boProductVehicle' : 'boProductPersonal')}
-                        {v && <span className="block text-xs font-normal text-text-muted">{v.make} {v.model} {v.year}</span>}
+                        {tr.t(productLabel)}
+                        {v && <span className="block text-xs font-normal text-text-muted" data-testid="bo-asset">{v.make} {v.model} {v.year}</span>}
+                        {home && <span className="block text-xs font-normal text-text-muted" data-testid="bo-asset">{home.title[tr.locale]}</span>}
                       </dd>
                       <dd className={`text-xs font-semibold ${a.structure === 'conventional' ? 'text-brand' : 'text-islamic'}`} data-testid="bo-structure">
                         {tr.t(STRUCTURE_LABEL[a.structure])}

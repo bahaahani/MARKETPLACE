@@ -1,6 +1,5 @@
-import { applicationView } from '@sahel/domain';
 import { ok, originations } from '@/lib/api';
-import { homeFulfilmentEvidence } from '@/lib/home-finance';
+import { customerApplicationView, homeFulfilmentEvidence } from '@/lib/home-finance';
 import { withCustomer } from '@/lib/session';
 
 /**
@@ -16,6 +15,6 @@ export function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
     const { id } = await ctx.params;
     const app = originations.get(id, s.customerId);
     const evidence = app?.productLine === 'home' ? homeFulfilmentEvidence(s.customerId, app.reference) : {};
-    return ok(applicationView(originations.accept(id, s.customerId, evidence)));
+    return ok(customerApplicationView(originations.accept(id, s.customerId, evidence)));
   });
 }

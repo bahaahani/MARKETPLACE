@@ -96,6 +96,7 @@ ID=$(curl -s -X POST $B/applications -H "$J" -H "$H" -H 'Idempotency-Key: fixtur
 curl -s -X POST $B/backoffice/applications/$ID/decision -H "$J" -H 'X-Sahel-Staff-Role: credit_officer' \
   -d '{"outcome":"APPROVED","note":"Stable employment, approved on review"}' > /dev/null
 curl -s -H "$H" $B/applications/$ID > application_reviewed.json
+curl -s -X POST -H "$H" $B/applications/$ID/accept > application_reviewed_accepted.json
 # Suhail & Suhaila (assistant), in its own session: a balance question, a follow-up settlement (uses the conversation
 # memory), the next installment, and an Arabic car search with Arabic-Indic digits (persona Suhail).
 S=$(session); H="X-Sahel-Session: $S"

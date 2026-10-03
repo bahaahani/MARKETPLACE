@@ -43,6 +43,12 @@ class _ApplicationScreenState extends ConsumerState<ApplicationScreen> {
     }
   }
 
+  /// Back from paying the valuation fee: show the application as the server now sees it (fee paid → "Continue").
+  void _reload() {
+    setState(() => _accepted = null);
+    ref.invalidate(applicationProvider(widget.id));
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
@@ -62,7 +68,7 @@ class _ApplicationScreenState extends ConsumerState<ApplicationScreen> {
             _OfferSummary(app.quote, productLine: app.productLine),
             if (app.nextAction?.type == 'PAY_VALUATION_FEE') ...[
               const SizedBox(height: SahelSpace.md),
-              _ValuationStep(app.nextAction!, onContinue: _busy ? null : _accept),
+              _ValuationStep(app.nextAction!, onContinue: _busy ? null : _accept, onReturnFromCheckout: _reload),
               if (_error) Text(l.errorGeneric, style: const TextStyle(color: SahelColors.danger)),
             ],
             if (app.status == 'LEASE_STARTED') ...[
@@ -340,37 +346,44 @@ class _StepTile extends StatelessWidget {
 }
 
 /// Conventional home finance waits for the TRESCO valuation: pay the fee (amount from GET /payments/price), then
-/// continue (the API runs the next steps only once it sees the captured payment).
+/// continue (the API runs the next steps only once it sees the captured payment). Like the web, "Continue" shows only
+/// when the API reports the fee as paid (`nextAction.feePaid`).
 class _ValuationStep extends ConsumerWidget {
-  const _ValuationStep(this.action, {required this.onContinue});
+  const _ValuationStep(this.action, {required this.onContinue, required this.onReturnFromCheckout});
   final ApplicationNextAction action;
   final VoidCallback? onContinue;
+  final VoidCallback onReturnFromCheckout;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
-    final fee = ref.watch(paymentPriceProvider((purpose: action.purpose, reference: action.reference))).value;
+    final paid = action.feePaid;
+    final fee = paid ? null : ref.watch(paymentPriceProvider((purpose: action.purpose, reference: action.reference))).value;
     return Card(
       key: const Key('valuation-step'),
       child: Padding(
         padding: const EdgeInsets.all(SahelSpace.md),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(l.homeValuationPending),
+          Text(paid ? l.homeValuationPaid : l.homeValuationPending),
           const SizedBox(height: SahelSpace.sm),
-          FilledButton(
-            key: const Key('pay-valuation'),
-            onPressed: fee == null
-                ? null
-                : () => context.push(CheckoutScreen.link(
-                      purpose: action.purpose,
-                      amountFils: fee.amountFils,
-                      reference: action.reference,
-                      label: l.requestValuation,
-                    )),
-            child: Text(l.homePayValuation(fee == null ? '…' : context.money(fee.amountFils, decimals: 0))),
-          ),
-          const SizedBox(height: SahelSpace.sm),
-          OutlinedButton(key: const Key('continue-fulfilment'), onPressed: onContinue, child: Text(l.homeContinue)),
+          if (paid)
+            FilledButton(key: const Key('continue-fulfilment'), onPressed: onContinue, child: Text(l.homeContinue))
+          else
+            FilledButton(
+              key: const Key('pay-valuation'),
+              onPressed: fee == null
+                  ? null
+                  : () async {
+                      await context.push(CheckoutScreen.link(
+                        purpose: action.purpose,
+                        amountFils: fee.amountFils,
+                        reference: action.reference,
+                        label: l.requestValuation,
+                      ));
+                      onReturnFromCheckout();
+                    },
+              child: Text(l.homePayValuation(fee == null ? '…' : context.money(fee.amountFils, decimals: 0))),
+            ),
         ]),
       ),
     );

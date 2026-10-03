@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   applicationSteps,
   ApplicationTransitionError,
+  applicationView,
+  fulfilmentPath,
+  homeApplicationRequest,
   assertPermission,
   AuditLog,
   auditEntries,
@@ -77,6 +80,66 @@ function referred(svc: SandboxOriginationService, customerId = 'cus_a', req = pa
   expect(app.status).toBe('REFERRED');
   return app;
 }
+
+// A referred application a credit officer approves must continue exactly like an automatically approved one.
+describe('approved referrals continue like automatic approvals', () => {
+  const homeApplicant: CustomerFinancials = { monthlySalaryFils: bhd(1_300), existingObligationsFils: 0 };
+
+  it('vehicle Murabaha: the full Murabaha sequence is still to come, and accepting runs it in order', () => {
+    const c = clock();
+    const svc = new SandboxOriginationService(c.now);
+    const app = referred(svc, 'cus_a', { ...patrol, structure: 'murabaha', idempotencyKey: 'key-patrol-mur' });
+    // Referred: nothing planned after the decision.
+    expect(applicationSteps(app).map((s) => s.status)).toEqual(['DRAFT', 'SUBMITTED', 'REFERRED']);
+    const r = decideReferred(officer, svc, new AuditLog(c.now), app.id, { outcome: 'APPROVED', note: 'Verified salary' });
+    const upcoming = applicationSteps(r.application).filter((s) => !s.done);
+    expect(upcoming.map((s) => s.status)).toEqual(fulfilmentPath('vehicle', 'murabaha'));
+    expect(upcoming.filter((s) => s.murabaha).map((s) => s.status)).toEqual(['ASSET_PURCHASED_BY_BCFC', 'OWNERSHIP_TRANSFERRED_TO_BCFC', 'SALE_TO_CUSTOMER']);
+    const accepted = svc.accept(app.id, 'cus_a');
+    expect(accepted.status).toBe('COMPLETED');
+    expect(accepted.timeline.map((e) => e.status)).toEqual(['DRAFT', 'SUBMITTED', 'REFERRED', 'APPROVED', ...fulfilmentPath('vehicle', 'murabaha')]);
+    expect(applicationSteps(accepted).every((s) => s.done)).toBe(true);
+  });
+
+  it('home Ijara: Ijara steps to come; accepting stops at LEASE_STARTED with ownership transfer still to come', () => {
+    const c = clock();
+    const svc = new SandboxOriginationService(c.now);
+    const req = homeApplicationRequest({ structure: 'ijara', propertyId: 'p-amwaj-apt-2br', downPaymentFils: bhd(19_600), tenureMonths: 240, idempotencyKey: 'key-home-ref-1' });
+    const app = svc.apply(req, homeApplicant, 'cus_h');
+    expect(app.status).toBe('REFERRED');
+    const r = decideReferred(officer, svc, new AuditLog(c.now), app.id, { outcome: 'APPROVED', note: 'Verified salary' });
+    const upcoming = applicationSteps(r.application).filter((s) => !s.done);
+    expect(upcoming.map((s) => s.status)).toEqual(fulfilmentPath('home', 'ijara'));
+    expect(upcoming.filter((s) => s.ijara).map((s) => s.status)).toEqual(['ASSET_PURCHASED_BY_BCFC', 'LEASE_STARTED', 'OWNERSHIP_TRANSFERRED_TO_CUSTOMER']);
+    expect(upcoming.some((s) => s.murabaha)).toBe(false);
+    const accepted = svc.accept(app.id, 'cus_h');
+    expect(accepted.status).toBe('LEASE_STARTED');
+    expect(applicationSteps(accepted).filter((s) => !s.done).map((s) => s.status)).toEqual(['OWNERSHIP_TRANSFERRED_TO_CUSTOMER', 'COMPLETED']);
+  });
+
+  it('home conventional: after review and accept it waits for the valuation fee (nextAction, not yet paid)', () => {
+    const c = clock();
+    const svc = new SandboxOriginationService(c.now);
+    const req = homeApplicationRequest({ structure: 'conventional', propertyId: 'p-amwaj-apt-2br', downPaymentFils: bhd(19_600), tenureMonths: 240, idempotencyKey: 'key-home-ref-2' });
+    const app = svc.apply(req, homeApplicant, 'cus_h');
+    decideReferred(officer, svc, new AuditLog(c.now), app.id, { outcome: 'APPROVED', note: 'Verified salary' });
+    const signed = svc.accept(app.id, 'cus_h');
+    expect(signed.status).toBe('CONTRACT_SIGNED');
+    expect(applicationView(signed).nextAction).toMatchObject({ type: 'PAY_VALUATION_FEE', feePaid: false });
+    expect(svc.accept(app.id, 'cus_h', { valuationPaymentId: 'pay_x' }).status).toBe('COMPLETED');
+  });
+
+  it('the credit queue and KPIs include home finance (property id as reference, Ijara structure)', () => {
+    const c = clock();
+    const svc = new SandboxOriginationService(c.now);
+    const req = homeApplicationRequest({ structure: 'ijara', propertyId: 'p-amwaj-apt-2br', downPaymentFils: bhd(19_600), tenureMonths: 240, idempotencyKey: 'key-home-ref-3' });
+    svc.apply(req, homeApplicant, 'cus_h');
+    const [item] = creditQueue(officer, svc.listAll(), () => undefined);
+    expect(item).toMatchObject({ productLine: 'home', structure: 'ijara', reference: 'p-amwaj-apt-2br', financials: { monthlySalaryFils: bhd(1_300) } });
+    const k = backOfficeKpis(officer, svc.listAll(), [], () => false, c.now());
+    expect(k).toMatchObject({ referredPending: 1, applicationsTodayTotal: 1, applicationsToday: { REFERRED: 1 } });
+  });
+});
 
 describe('staff auth and roles', () => {
   it('sandbox sign-in needs a known role (401 otherwise)', () => {

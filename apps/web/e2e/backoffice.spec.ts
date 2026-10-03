@@ -77,6 +77,69 @@ test('customer is referred, a credit officer approves it in the back office, the
   await expect(compliance.getByTestId('bo-approve')).toHaveCount(0);
 });
 
+type Step = { status: string; done: boolean; murabaha: boolean; ijara: boolean; by?: string };
+
+test('a referred vehicle Murabaha approved by a credit officer shows the Murabaha steps to come and is accepted like any approval', async ({ request }) => {
+  const created = await request.post('/api/v1/applications', {
+    headers: { 'Idempotency-Key': `e2e-ref-mur-${Date.now()}` },
+    data: { productLine: 'vehicle', structure: 'murabaha', vehicleId: 'v-nissan-patrol-2021', downPaymentFils: 3_900_000, tenureMonths: 60 },
+  });
+  const app = (await created.json()).data;
+  expect(app.status).toBe('REFERRED');
+  expect((app.steps as Step[]).filter((s) => !s.done)).toEqual([]);
+  const decided = await request.post(`/api/v1/backoffice/applications/${app.id}/decision`, {
+    headers: staff('credit_officer'),
+    data: { outcome: 'APPROVED', note: 'Verified salary certificate' },
+  });
+  expect(decided.status()).toBe(200);
+  const view = (await (await request.get(`/api/v1/applications/${app.id}`)).json()).data;
+  const upcoming = (view.steps as Step[]).filter((s) => !s.done);
+  expect(upcoming.map((s) => s.status)).toEqual(['OFFER_ACCEPTED', 'CONTRACT_SIGNED', 'ASSET_PURCHASED_BY_BCFC', 'OWNERSHIP_TRANSFERRED_TO_BCFC', 'SALE_TO_CUSTOMER', 'COMPLETED']);
+  expect(upcoming.filter((s) => s.murabaha).map((s) => s.status)).toEqual(['ASSET_PURCHASED_BY_BCFC', 'OWNERSHIP_TRANSFERRED_TO_BCFC', 'SALE_TO_CUSTOMER']);
+  const accepted = (await (await request.post(`/api/v1/applications/${app.id}/accept`)).json()).data;
+  expect(accepted.status).toBe('COMPLETED');
+  expect((accepted.steps as Step[]).map((s) => s.status)).toEqual([
+    'DRAFT', 'SUBMITTED', 'REFERRED', 'APPROVED', 'OFFER_ACCEPTED', 'CONTRACT_SIGNED',
+    'ASSET_PURCHASED_BY_BCFC', 'OWNERSHIP_TRANSFERRED_TO_BCFC', 'SALE_TO_CUSTOMER', 'COMPLETED',
+  ]);
+  expect((accepted.steps as Step[]).find((s) => s.status === 'APPROVED')?.by).toBe('CREDIT_OFFICER');
+});
+
+test('a referred home Ijara application: the credit queue shows the property, approval adds the Ijara steps, accept starts the lease', async ({ page, browser, baseURL }) => {
+  // Salary that refers a home application (thin DBR margin).
+  const onboard = await page.request.post('/api/v1/onboarding/pre-approval', {
+    data: { monthlySalaryFils: 1_300_000, existingObligationsFils: 0, employer: 'Bahrain Co.', consentScopes: ['CRB', 'OPEN_BANKING'] },
+  });
+  expect(onboard.status()).toBe(200);
+  const created = await page.request.post('/api/v1/applications', {
+    headers: { 'Idempotency-Key': `e2e-ref-ijara-${Date.now()}` },
+    data: { productLine: 'home', structure: 'ijara', propertyId: 'p-amwaj-apt-2br', downPaymentFils: 19_600_000, tenureMonths: 240 },
+  });
+  const app = (await created.json()).data;
+  expect(app.status).toBe('REFERRED');
+
+  const officer = await staffPage(browser, baseURL, 'bo-role-credit_officer');
+  await officer.getByTestId('bo-nav-credit').click();
+  const row = officer.locator(`[data-testid="bo-referred"][data-id="${app.id}"]`);
+  await expect(row).toContainText('Home finance');
+  await expect(row.getByTestId('bo-asset')).toHaveText('Sea-view 2-bedroom apartment');
+  await expect(row.getByTestId('bo-structure')).toHaveText('Islamic · Ijara');
+  await expect(row).not.toContainText(/interest/i);
+  await row.getByTestId('bo-note').fill('Verified salary certificate');
+  await row.getByTestId('bo-approve').click();
+  await expect(row.getByTestId('bo-decision-message')).toContainText('Approved');
+
+  await page.goto(`/en/applications/${app.id}`);
+  await expect(page.getByTestId('decision')).toHaveAttribute('data-outcome', 'APPROVED');
+  const ijara = page.getByTestId('ijara-steps');
+  await expect(ijara.locator('[data-testid="timeline-step"]')).toHaveCount(3);
+  await expect(page.locator('body')).not.toContainText(/interest/i);
+  await page.getByTestId('accept-offer').click();
+  await expect(page.getByTestId('lease-active')).toBeVisible();
+  await expect(page.locator('[data-testid="timeline-step"][data-status="LEASE_STARTED"]')).toHaveAttribute('data-done', 'true');
+  await expect(page.locator('[data-testid="timeline-step"][data-status="OWNERSHIP_TRANSFERRED_TO_CUSTOMER"]')).toHaveAttribute('data-done', 'false');
+});
+
 test('operations refunds a captured premium that never became a policy, once', async ({ request, browser, baseURL }) => {
   // Customer pays a held travel quote but the app never confirms the policy.
   const quoteRes = await request.post('/api/v1/policies/quotes', {

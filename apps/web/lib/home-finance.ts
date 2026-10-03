@@ -1,4 +1,12 @@
-import { findValuationPayment, PAYMENT_AMOUNT_ERROR_STATUS, PaymentAmountError, type FulfilmentEvidence } from '@sahel/domain';
+import {
+  applicationView,
+  findValuationPayment,
+  PAYMENT_AMOUNT_ERROR_STATUS,
+  PaymentAmountError,
+  type ApplicationView,
+  type FinanceApplication,
+  type FulfilmentEvidence,
+} from '@sahel/domain';
 import { handleError, payments, problem } from './api';
 
 /**
@@ -14,6 +22,14 @@ import { handleError, payments, problem } from './api';
 export function homeFulfilmentEvidence(customerId: string, propertyId: string): FulfilmentEvidence {
   const paid = findValuationPayment(payments.list(customerId), propertyId);
   return paid ? { valuationPaymentId: paid.id } : {};
+}
+
+/**
+ * The application as its customer sees it: for home finance, `nextAction.feePaid` tells the apps whether this
+ * customer's valuation fee is captured (show "Continue") or not (show "Pay valuation fee").
+ */
+export function customerApplicationView(app: FinanceApplication): ApplicationView {
+  return applicationView(app, app.productLine === 'home' ? homeFulfilmentEvidence(app.customerId, app.reference) : {});
 }
 
 /** handleError plus the payment amount binding errors (AMOUNT_MISMATCH, UNKNOWN_REFERENCE, NOT_SERVER_PRICED). */

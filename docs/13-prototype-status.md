@@ -37,7 +37,8 @@
 | Arabic (RTL) and English | all | ✅ | ✅ | ✅ localized fields | Playwright (RTL checks), Flutter | |
 | Real login (eKey / OIDC, passkeys, biometrics) | J1 | ❌ | ❌ | ❌ | – | |
 | Back-office console | – | ✅ `/{locale}/backoffice` | ➖ web-only staff tool | ✅ `/backoffice/*` | Domain, Playwright | ⚠️ No staff login: pick a role (credit officer, operations, compliance viewer); one `staffSession()` check per route (401 / 403). KPIs, credit review, refunds of premiums without a policy (idempotent), audit log (in memory, filterable) |
-| Claims, Suhail / Suhaila 2.0, push notifications, rewards redemption | J6, J8 | ❌ | ❌ | ❌ | – | |
+| Suhail & Suhaila 2.0 assistant | J8 | ✅ chat button on customer pages | ✅ `/assistant` | ✅ `POST /assistant/messages` | Domain, Playwright, Flutter | ⚠️ Rules-based (`RulesBrain`), no language model yet. Read-only tools over the session customer's data (balance, next installment, settlement quote, cars by budget, pre-approval, policies, cards, handoff); actions are links the customer confirms. PII redaction, input cap, rate limit and memory in server memory |
+| Claims, push notifications, rewards redemption | J6 | ❌ | ❌ | ❌ | – | |
 
 Where the tests live: `packages/domain/test` (Vitest), `apps/web/e2e` (Playwright, desktop and Pixel 7 viewports), `apps/mobile/test` (Flutter widget tests on recorded API fixtures in `test/fixtures`). CI runs all three.
 
@@ -49,7 +50,7 @@ Where the tests live: `packages/domain/test` (Vitest), `apps/web/e2e` (Playwrigh
 | Customer data | Every session starts as the fictional demo customer. Onboarding replaces salary, obligations and pre-approval with the customer's own (self-declared) numbers. Contracts, garage and rewards stay demo data | `packages/domain/src/customer.ts` |
 | Stores | Payments, applications, cards, share tokens, leads, contract settings, policies: in-memory singletons on the Next.js server, lost on restart. Scoped per session customer; another session gets 404 | `apps/web/lib/api.ts`, `apps/web/lib/policy-store.ts` |
 | Idempotency | `Idempotency-Key` header (or body field) required on payments and applications, scoped per customer. A repeated key returns the **original** result | `packages/domain/src/payments.ts`, `origination.ts` |
-| Payments | Create → confirm (captured). No money moves. Back-office Operations can refund a captured premium that never became a policy (CAPTURED → REFUNDED, idempotent); no voids | `packages/domain/src/payments.ts`, `backoffice.ts` |
+| Payments | Create → confirm (captured). No money moves. Deposits and valuation fees must carry the server amount (`GET /payments/price`, else 422 `AMOUNT_MISMATCH`). Back-office Operations can refund a captured premium that never became a policy (CAPTURED → REFUNDED, idempotent); no voids | `packages/domain/src/payments.ts`, `backoffice.ts` |
 
 ## 3. Placeholders that need business sign-off
 

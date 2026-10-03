@@ -81,6 +81,15 @@ test('conventional home finance waits for the TRESCO valuation fee, then pays ou
   await page.getByTestId('accept-offer').click();
   const valuation = page.getByTestId('valuation-step');
   await expect(valuation).toHaveAttribute('data-paid', 'false');
+  await expect(page.getByTestId('continue-fulfilment')).toHaveCount(0);
+  const appPath = `/api/v1/applications/${url.split('/').pop()}`;
+  // The API tells every client whether the fee is paid (the app shows "Continue" only then).
+  expect((await (await page.request.get(appPath)).json()).data.nextAction).toEqual({
+    type: 'PAY_VALUATION_FEE',
+    purpose: 'valuation_fee',
+    reference: PROPERTY,
+    feePaid: false,
+  });
   await expect(step(page, 'CONTRACT_SIGNED')).toHaveAttribute('data-done', 'true');
   await expect(step(page, 'VALUATION_CONFIRMED')).toHaveAttribute('data-done', 'false');
   await expect(step(page, 'DISBURSED')).toHaveAttribute('data-done', 'false');
@@ -93,8 +102,10 @@ test('conventional home finance waits for the TRESCO valuation fee, then pays ou
   await page.getByTestId('pay').click();
   await expect(page.getByTestId('payment-success')).toBeVisible();
 
+  expect((await (await page.request.get(appPath)).json()).data.nextAction.feePaid).toBe(true);
   await page.goto(url);
   await expect(valuation).toHaveAttribute('data-paid', 'true');
+  await expect(page.getByTestId('pay-valuation')).toHaveCount(0);
   await page.getByTestId('continue-fulfilment').click();
   await expect(step(page, 'COMPLETED')).toHaveAttribute('data-done', 'true');
   await expect(page.getByTestId('valuation-step')).toHaveCount(0);
@@ -159,6 +170,8 @@ test('server-side amounts: deposits and valuation fees must match the server pri
   expect(fee).toMatchObject({ purpose: 'valuation_fee', reference: PROPERTY, currency: 'BHD' });
   expect((await price('valuation_fee', 'p-seef-apt-1br')).status()).toBe(404);
   expect((await (await price('installment', 'c-1001-15')).json()).error.code).toBe('NOT_SERVER_PRICED');
+  expect((await request.get('/api/v1/payments/price')).status()).toBe(400);
+  expect((await request.get(`/api/v1/payments/price?purpose=valuation_fee`)).status()).toBe(400);
 
   const pay = (purpose: string, reference: string, amountFils: number) =>
     request.post('/api/v1/payments', {

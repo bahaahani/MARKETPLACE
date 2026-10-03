@@ -59,9 +59,11 @@ export interface PaymentPrice {
  * The server amount for a payment purpose and reference:
  * - reservation_deposit: the deposit to reserve a car in the catalog (reference = vehicle id)
  * - valuation_fee: the TRESCO valuation fee for a property for sale (reference = property id)
- * Throws NOT_SERVER_PRICED for other purposes and UNKNOWN_REFERENCE when the reference is not in the catalog.
+ * Throws INVALID_REQUEST without a purpose or reference, NOT_SERVER_PRICED for other purposes and UNKNOWN_REFERENCE when
+ * the reference is not in the catalog.
  */
 export function serverPaymentPrice(purpose: unknown, reference: unknown): PaymentPrice {
+  if (purpose === undefined || purpose === null || purpose === '') throw new PaymentAmountError('INVALID_REQUEST', 'purpose is required');
   if (!isServerPricedPurpose(purpose)) {
     throw new PaymentAmountError('NOT_SERVER_PRICED', `the server does not price ${String(purpose)} payments here`);
   }

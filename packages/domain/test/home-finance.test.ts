@@ -4,6 +4,8 @@ import {
   applicationView,
   ApplicationTransitionError,
   assertServerAmount,
+  AuditLog,
+  backOfficeKpis,
   assertTransition,
   bhd,
   buildLifeEventBundle,
@@ -24,7 +26,10 @@ import {
   OriginationError,
   PaymentAmountError,
   preApprove,
+  refundOrphanPremium,
+  refundQueue,
   RESERVATION_DEPOSIT_FILS,
+  SANDBOX_STAFF,
   SandboxContractSettings,
   SandboxOriginationService,
   SandboxPaymentGateway,
@@ -140,7 +145,9 @@ describe('home finance applications', () => {
     const signed = svc.accept(id, 'cus-1');
     expect(signed.status).toBe('CONTRACT_SIGNED');
     const view = applicationView(signed);
-    expect(view.nextAction).toEqual({ type: 'PAY_VALUATION_FEE', purpose: 'valuation_fee', reference: 'p-amwaj-apt-2br' });
+    expect(view.nextAction).toEqual({ type: 'PAY_VALUATION_FEE', purpose: 'valuation_fee', reference: 'p-amwaj-apt-2br', feePaid: false });
+    // With the customer's captured fee as evidence, the apps show "Continue" instead of "Pay valuation fee".
+    expect(applicationView(signed, { valuationPaymentId: 'pay_1' }).nextAction?.feePaid).toBe(true);
     expect(view.steps.filter((s) => !s.done).map((s) => s.status)).toEqual(['VALUATION_CONFIRMED', 'DISBURSED', 'COMPLETED']);
     // Neither skipping the valuation nor confirming it without a payment is possible.
     expect(() => svc.advance(id, 'DISBURSED')).toThrow(ApplicationTransitionError);
@@ -183,6 +190,9 @@ describe('server-side payment amounts (P1)', () => {
     expect(code(() => serverPaymentPrice('valuation_fee', 'p-seef-apt-1br'))).toBe('UNKNOWN_REFERENCE');
     expect(code(() => serverPaymentPrice('reservation_deposit', 'v-nope'))).toBe('UNKNOWN_REFERENCE');
     expect(code(() => serverPaymentPrice('insurance_premium', 'q-1'))).toBe('NOT_SERVER_PRICED');
+    // GET /payments/price without a purpose is a bad request (400), not "not server priced".
+    expect(code(() => serverPaymentPrice(null, 'p-saar-villa-4br'))).toBe('INVALID_REQUEST');
+    expect(code(() => serverPaymentPrice('', 'p-saar-villa-4br'))).toBe('INVALID_REQUEST');
     expect(code(() => serverPaymentPrice('valuation_fee', ''))).toBe('INVALID_REQUEST');
   });
 
@@ -206,6 +216,28 @@ describe('server-side payment amounts (P1)', () => {
     expect(findValuationPayment(gw.list('cus-1'), 'p-saar-villa-4br')).toBeUndefined();
     expect(findValuationPayment(gw.list('cus-2'), 'p-amwaj-apt-2br')).toBeUndefined();
     expect(findValuationPayment([{ ...pending, status: 'CAPTURED', amountFils: 1 }], 'p-amwaj-apt-2br')).toBeUndefined();
+    // A refunded valuation fee is no longer evidence for VALUATION_CONFIRMED.
+    await gw.refund(pending.id);
+    expect(findValuationPayment(gw.list('cus-1'), 'p-amwaj-apt-2br')).toBeUndefined();
+  });
+
+  it('the back-office refund queue ignores captured valuation fees and deposits (only unbound premiums)', async () => {
+    const gw = new SandboxPaymentGateway();
+    const fee = await gw.createCharge(
+      { amountFils: VALUATION_FEE_FILS, method: 'card', purpose: 'valuation_fee', reference: 'p-amwaj-apt-2br', idempotencyKey: 'val-key-002' },
+      'cus-1',
+    );
+    await gw.confirm(fee.id, 'cus-1');
+    const dep = await gw.createCharge(
+      { amountFils: RESERVATION_DEPOSIT_FILS, method: 'card', purpose: 'reservation_deposit', reference: 'v-honda-crv-2026', idempotencyKey: 'dep-key-002' },
+      'cus-1',
+    );
+    await gw.confirm(dep.id, 'cus-1');
+    const ops = SANDBOX_STAFF.operations;
+    expect(refundQueue(ops, gw.listAll(), () => false)).toEqual([]);
+    expect(backOfficeKpis(ops, [], gw.listAll(), () => false).refundsPending).toBe(0);
+    await expect(refundOrphanPremium(ops, gw, new AuditLog(), fee.id, () => false)).rejects.toMatchObject({ code: 'NOT_REFUNDABLE' });
+    expect(findValuationPayment(gw.list('cus-1'), 'p-amwaj-apt-2br')?.id).toBe(fee.id);
   });
 });
 

@@ -1,5 +1,4 @@
 import {
-  applicationView,
   customerFinancials,
   findVehicle,
   homeApplicationRequest,
@@ -10,6 +9,7 @@ import {
   type OriginationStructure,
 } from '@sahel/domain';
 import { jsonBody, ok, originations, problem } from '@/lib/api';
+import { customerApplicationView } from '@/lib/home-finance';
 import { withCustomer } from '@/lib/session';
 
 // Per customer session, so never cache.
@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 /** GET /api/v1/applications: this customer's finance applications, newest first. */
 export function GET(req: Request) {
   return withCustomer(req, (s) => {
-    const items = originations.list(s.customerId).map(applicationView);
+    const items = originations.list(s.customerId).map((a) => customerApplicationView(a));
     return ok({ items, total: items.length });
   });
 }
@@ -83,6 +83,6 @@ export function POST(req: Request) {
     }
 
     const app = originations.apply(request, customerFinancials(s.profile), s.customerId);
-    return ok(applicationView(app), { status: 201 });
+    return ok(customerApplicationView(app), { status: 201 });
   });
 }

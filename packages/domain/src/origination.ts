@@ -295,11 +295,20 @@ export interface ApplicationNextAction {
   type: 'PAY_VALUATION_FEE';
   purpose: 'valuation_fee';
   reference: string;
+  /**
+   * True once the customer has a captured valuation fee for the property: accepting again continues fulfilment.
+   * Clients show "Pay valuation fee" while false and "Continue" when true.
+   */
+  feePaid: boolean;
 }
 
-export function applicationNextAction(app: FinanceApplication): ApplicationNextAction | undefined {
+/**
+ * `evidence` is what the caller found for this customer (a captured valuation fee). Without it the fee counts as
+ * not paid.
+ */
+export function applicationNextAction(app: FinanceApplication, evidence: FulfilmentEvidence = {}): ApplicationNextAction | undefined {
   if (app.productLine === 'home' && app.structure === 'conventional' && app.status === 'CONTRACT_SIGNED') {
-    return { type: 'PAY_VALUATION_FEE', purpose: 'valuation_fee', reference: app.reference };
+    return { type: 'PAY_VALUATION_FEE', purpose: 'valuation_fee', reference: app.reference, feePaid: evidence.valuationPaymentId !== undefined };
   }
   return undefined;
 }
@@ -307,8 +316,8 @@ export function applicationNextAction(app: FinanceApplication): ApplicationNextA
 /** API representation: the application plus its timeline steps (and the customer's next action, if any). */
 export type ApplicationView = FinanceApplication & { steps: ApplicationStep[]; nextAction?: ApplicationNextAction };
 
-export function applicationView(app: FinanceApplication): ApplicationView {
-  const nextAction = applicationNextAction(app);
+export function applicationView(app: FinanceApplication, evidence: FulfilmentEvidence = {}): ApplicationView {
+  const nextAction = applicationNextAction(app, evidence);
   return { ...app, steps: applicationSteps(app), ...(nextAction ? { nextAction } : {}) };
 }
 

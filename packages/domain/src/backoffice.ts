@@ -209,7 +209,7 @@ export interface ReferredApplication {
   cprMasked?: string;
   productLine: OriginationProductLine;
   structure: OriginationStructure;
-  /** Vehicle id, or "personal" */
+  /** Vehicle id, property id (home finance), or "personal" */
   reference: string;
   financedFils: Fils;
   tenureMonths: number;

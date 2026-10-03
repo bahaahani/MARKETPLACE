@@ -63,4 +63,20 @@ void main() {
     expect(find.text('تمت المراجعة من مسؤول الائتمان'), findsWidgets);
     expect(Directionality.of(tester.element(find.byKey(const Key('reviewed-by-officer')))), TextDirection.rtl);
   });
+
+  testWidgets('accepting an offer approved by a credit officer runs fulfilment like an automatic approval', (tester) async {
+    await pump(tester);
+    final list = find.descendant(of: find.byType(ApplicationScreen), matching: find.byType(Scrollable)).first;
+    await tester.scrollUntilVisible(find.byKey(const Key('accept-offer')), 200, scrollable: list);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('accept-offer')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('accept-offer')), findsNothing);
+    await tester.scrollUntilVisible(find.byKey(const Key('step-COMPLETED-done')), 200, scrollable: list);
+    await tester.pumpAndSettle();
+    for (final s in ['OFFER_ACCEPTED', 'CONTRACT_SIGNED', 'DISBURSED', 'COMPLETED']) {
+      expect(find.byKey(Key('step-$s-done')), findsOneWidget);
+    }
+    expect(find.byKey(const Key('step-APPROVED-reviewed-by-officer')), findsOneWidget);
+  });
 }

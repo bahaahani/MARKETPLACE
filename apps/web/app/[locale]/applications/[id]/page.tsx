@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { applicationView, serverPaymentPrice } from '@sahel/domain';
+import { serverPaymentPrice } from '@sahel/domain';
 import { t } from '@sahel/i18n';
 import Link from 'next/link';
 import { AcceptOffer } from '@/components/AcceptOffer';
 import { applicationTitle, DecisionCard, OfferSummary, Timeline } from '@/components/Application';
 import { ContinueFulfilment } from '@/components/HomeFinance';
 import { originations } from '@/lib/api';
-import { homeFulfilmentEvidence } from '@/lib/home-finance';
+import { customerApplicationView } from '@/lib/home-finance';
 import { resolveLocale, translator } from '@/lib/i18n';
 import { pageCustomer } from '@/lib/session';
 
@@ -24,10 +24,10 @@ export default async function ApplicationPage({ params }: { params: Promise<{ lo
   // Only the customer who applied can see it (⚠️ sandbox session).
   const found = originations.get(id, (await pageCustomer()).customerId);
   if (!found) notFound();
-  const app = applicationView(found);
+  const app = customerApplicationView(found);
   // Conventional home finance waiting for the TRESCO valuation: pay the (server-priced) fee, then continue.
   const valuation = app.nextAction?.type === 'PAY_VALUATION_FEE' ? serverPaymentPrice(app.nextAction.purpose, app.nextAction.reference) : undefined;
-  const valuationPaid = valuation !== undefined && homeFulfilmentEvidence(found.customerId, app.reference).valuationPaymentId !== undefined;
+  const valuationPaid = app.nextAction?.feePaid === true;
 
   return (
     <div className="space-y-6">

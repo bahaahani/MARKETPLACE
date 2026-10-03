@@ -24,6 +24,7 @@ import {
   withOnboarding,
   preApprove,
   bhd,
+  quoteFinance,
   type AssistantContext,
   type AssistantIntent,
   type AssistantReply,
@@ -362,5 +363,25 @@ describe('limits: input cap, validation, rate limit, memory', () => {
     for (let i = 0; i < 5; i++) store.append('k', { role: 'user', text: `m${i}`, at: '' }, { role: 'assistant', text: `r${i}`, at: '' });
     expect(store.history('k').map((t) => t.text)).toEqual(['m3', 'r3', 'm4', 'r4']);
     expect(store.history('other')).toEqual([]);
+  });
+});
+
+describe('home finance (Ijara) contracts', () => {
+  it('settlement of an Ijara contract is a buy-out at the remaining asset cost: no fee, never "interest"', async () => {
+    const base = ctxFor();
+    const personal = base.customer.contracts.find((c) => c.id === 'c-1002')!;
+    const quote = quoteFinance({ productLine: 'home', structure: 'ijara', assetPriceFils: bhd(120_000), downPaymentFils: bhd(24_000), tenureMonths: 240 });
+    const ijara = { ...personal, id: 'c-home', title: { en: 'Amwaj apartment: Home Ijara', ar: 'شقة أمواج: إجارة' }, structure: 'ijara' as const, quote };
+    const ctx = { ...base, customer: { ...base.customer, contracts: [ijara] } };
+    for (const locale of ['en', 'ar'] as const) {
+      const r = await ask(locale === 'en' ? 'What if I pay it all off now?' : 'كم السداد المبكر؟', { ctx, locale });
+      expect(r.intent).toBe('settlement_quote');
+      const card = r.cards[0]!;
+      expect(card.kind).toBe('amounts');
+      const note = card.kind === 'amounts' ? card.note ?? '' : '';
+      expect(note).toContain(locale === 'en' ? 'Ijara buy-out' : 'الإجارة');
+      expect(note).not.toMatch(/fee|رسوم/);
+      expect(JSON.stringify(r)).not.toMatch(/interest|فائدة|فوائد/i);
+    }
   });
 });

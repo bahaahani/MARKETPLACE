@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { applicationView } from '@sahel/domain';
 import { t } from '@sahel/i18n';
 import { ApplicationRow } from '@/components/Application';
 import { AutopayToggle } from '@/components/BundlesAutopayToggle';
@@ -9,6 +8,7 @@ import { MyCards } from '@/components/MyCards';
 import { PolicyList } from '@/components/PolicyList';
 import { SharePreApproval } from '@/components/SharePreApproval';
 import { cardIssuer, originations } from '@/lib/api';
+import { customerApplicationView } from '@/lib/home-finance';
 import { STRUCTURE_LABEL } from '@/lib/labels';
 import { resolveLocale, translator } from '@/lib/i18n';
 import { policyStore } from '@/lib/policy-store';
@@ -25,7 +25,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
   const tr = translator(resolveLocale((await params).locale));
   // Everything here belongs to the session's customer (⚠️ sandbox session until eKey login).
   const me = await pageCustomerView();
-  const applications = originations.list(me.customerId).map(applicationView);
+  const applications = originations.list(me.customerId).map((a) => customerApplicationView(a));
   const cards = cardIssuer.list(me.customerId);
   return (
     <div className="grid gap-6 lg:grid-cols-2">

@@ -207,7 +207,7 @@ class FakeSahelRepository implements SahelRepository {
   @override
   Future<FinanceApplication> application(String id) async {
     final name = _byId[id];
-    if (accepted.contains(id)) return _acceptedApp(name);
+    if (accepted.contains(id)) return _acceptedApp(id, name);
     if (name == null) throw StateError('no fixture for application $id');
     return _app(name);
   }
@@ -218,24 +218,35 @@ class FakeSahelRepository implements SahelRepository {
 
   @override
   Future<FinanceApplication> acceptApplication(String id) async {
-    // Recorded "accepted" responses: the CR-V Murabaha and the two home finance applications.
+    // Recorded "accepted" responses: the CR-V Murabaha (automatic or credit officer approval) and the two home
+    // finance applications.
     final name = _byId[id];
-    if (!const ['application_crv', 'application_home_ijara', 'application_home_conventional'].contains(name)) {
+    if (!const ['application_crv', 'application_reviewed', 'application_home_ijara', 'application_home_conventional'].contains(name)) {
       throw StateError('no accepted fixture for $id');
     }
     accepted.add(id);
-    return _acceptedApp(name);
+    // Like the API: accepting (again) after the valuation fee is captured runs conventional home finance to the end.
+    if (name == 'application_home_conventional' && valuationsPaid.contains('p-amwaj-apt-2br')) completedHome.add(id);
+    return _acceptedApp(id, name);
   }
 
-  /// Like the API: Ijara stops at LEASE_STARTED; conventional home finance waits at CONTRACT_SIGNED until a valuation
-  /// fee for the property is paid, then runs to COMPLETED (recorded in that order).
-  FinanceApplication _acceptedApp(String? name) => switch (name) {
+  /// Conventional home finance applications accepted again after their valuation fee was paid.
+  final completedHome = <String>{};
+
+  /// Like the API: Ijara stops at LEASE_STARTED; conventional home finance waits at CONTRACT_SIGNED (nextAction with
+  /// feePaid once the fee is captured) until it is accepted again with the fee paid, then it is COMPLETED.
+  FinanceApplication _acceptedApp(String id, String? name) => switch (name) {
         'application_home_ijara' => _app('application_home_ijara_accepted'),
-        'application_home_conventional' => _app(valuationsPaid.contains('p-amwaj-apt-2br')
-            ? 'application_home_conventional_completed'
-            : 'application_home_conventional_signed'),
+        'application_home_conventional' => completedHome.contains(id) ? _app('application_home_conventional_completed') : _signedHome(),
+        'application_reviewed' => _app('application_reviewed_accepted'),
         _ => _app('application_crv_accepted'),
       };
+
+  FinanceApplication _signedHome() {
+    final j = Map<String, dynamic>.from(fixture('application_home_conventional_signed') as Json);
+    j['nextAction'] = {...j['nextAction'] as Json, 'feePaid': valuationsPaid.contains('p-amwaj-apt-2br')};
+    return FinanceApplication.fromJson(j);
+  }
 
   /// Properties whose valuation fee was paid (server amount).
   final valuationsPaid = <String>{};

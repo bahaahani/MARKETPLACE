@@ -98,6 +98,8 @@ void main() {
 
     expect(find.byKey(const Key('valuation-step')), findsOneWidget);
     expect(find.text('Pay valuation fee · BHD 150'), findsOneWidget);
+    // Like the web: no "Continue" until the API reports the fee as paid.
+    expect(find.byKey(const Key('continue-fulfilment')), findsNothing);
     await scrollTo<ApplicationScreen>(tester, find.byKey(const Key('step-VALUATION_CONFIRMED-upcoming')));
     expect(find.byKey(const Key('step-CONTRACT_SIGNED-done')), findsOneWidget);
     expect(find.byKey(const Key('step-DISBURSED-upcoming')), findsOneWidget);
@@ -115,6 +117,10 @@ void main() {
     // Back on the application: continue runs VALUATION_CONFIRMED, DISBURSED, COMPLETED.
     await tester.pageBack();
     await tester.pumpAndSettle();
+    // Back on the application, re-read from the API: the fee is paid, so "Continue" replaces "Pay valuation fee".
+    expect(find.byKey(const Key('pay-valuation')), findsNothing);
+    expect(find.text('Valuation fee received. Continue to confirm the valuation and pay the seller.'), findsOneWidget);
+    expect(find.byKey(const Key('step-COMPLETED-done')), findsNothing);
     await tapOn<ApplicationScreen>(tester, find.byKey(const Key('continue-fulfilment')));
     expect(find.byKey(const Key('valuation-step')), findsNothing);
     await scrollTo<ApplicationScreen>(tester, find.byKey(const Key('step-COMPLETED-done')));

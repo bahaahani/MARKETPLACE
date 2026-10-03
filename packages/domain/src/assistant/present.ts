@@ -235,7 +235,9 @@ export function presentToolResult(r: AssistantToolResult, l: L): Presentation {
           note:
             q.structure === 'murabaha'
               ? pick(l, "Ibra' is at BCFC's discretion and pending the Shari'a Supervisory Board (placeholder rule).", 'الإبراء تقديري من الشركة وبانتظار اعتماد هيئة الرقابة الشرعية (قاعدة مؤقتة).')
-              : pick(l, 'Placeholder fee pending CBB rules.', 'رسوم مؤقتة بانتظار قواعد مصرف البحرين المركزي.'),
+              : q.structure === 'ijara'
+                ? pick(l, "Ijara buy-out at the remaining asset cost (placeholder rule pending the Shari'a Supervisory Board).", 'شراء الأصل في الإجارة بالتكلفة المتبقية (قاعدة مؤقتة بانتظار اعتماد هيئة الرقابة الشرعية).')
+                : pick(l, 'Placeholder fee pending CBB rules.', 'رسوم مؤقتة بانتظار قواعد مصرف البحرين المركزي.'),
         });
         actions.push(
           payment(
