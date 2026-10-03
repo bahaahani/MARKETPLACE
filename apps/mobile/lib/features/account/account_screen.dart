@@ -12,6 +12,7 @@ import '../../core/theme/tokens.g.dart';
 import '../../widgets/common.dart';
 import '../checkout/checkout_screen.dart';
 import '../finance/application_screen.dart';
+import '../settlement/settlement_panel.dart';
 
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
@@ -228,6 +229,7 @@ class _ContractCard extends StatelessWidget {
               child: Text(l.payNow),
             ),
           ],
+          ContractSettlementPanel(c),
         ]),
       ),
     );

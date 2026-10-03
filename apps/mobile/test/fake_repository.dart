@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:sahel/core/api/api_client.dart';
 import 'package:sahel/core/models.dart';
+import 'package:sahel/core/models/bundles.dart';
 import 'package:sahel/core/repository.dart';
 
 /// Recorded responses from the real shared API (apps/web/app/api/v1), refreshed by
@@ -61,7 +62,14 @@ class FakeSahelRepository implements SahelRepository {
       ];
 
   @override
-  Future<CustomerOverview> me() async => CustomerOverview.fromJson(fixture('me') as Json);
+  Future<CustomerOverview> me() async {
+    final j = fixture('me') as Json;
+    // Apply sandbox autopay changes, like the API does.
+    j['contracts'] = [
+      for (final c in j['contracts'] as List) {...c as Json, if (autopay.containsKey(c['id'])) 'autopay': autopay[c['id']]},
+    ];
+    return CustomerOverview.fromJson(j);
+  }
 
   @override
   Future<PreApprovalShare> sharePreApproval() async {
@@ -169,5 +177,35 @@ class FakeSahelRepository implements SahelRepository {
     if (_byId[id] != 'application_crv') throw StateError('no accepted fixture for $id');
     accepted.add(id);
     return _app('application_crv_accepted');
+  }
+
+  // --- Life events and early settlement / autopay ---
+
+  final bundleRequests = <String>[];
+
+  /// Autopay changes sent to the API, by contract id; applied to the next me() response.
+  final autopay = <String, bool>{};
+
+  @override
+  Future<List<LifeEvent>> lifeEvents() async => [for (final j in fixture('life_events')['items'] as List) LifeEvent.fromJson(j as Json)];
+
+  @override
+  Future<LifeEventBundle> lifeEventBundle(String id, BundleStructure structure) async {
+    bundleRequests.add('$id:${structure.name}');
+    // Recorded: married (islamic, conventional) and new-baby (islamic).
+    final name = 'bundle_${id.replaceAll('-', '_')}_${structure.name}';
+    if (!File('test/fixtures/$name.json').existsSync()) throw StateError('no fixture $name');
+    return LifeEventBundle.fromJson(fixture(name) as Json);
+  }
+
+  @override
+  Future<SettlementQuote> settlementQuote(String contractId) async =>
+      SettlementQuote.fromJson(fixture('settlement_${contractId.replaceAll('-', '')}') as Json);
+
+  @override
+  Future<Contract> setAutopay(String contractId, bool on) async {
+    autopay[contractId] = on;
+    final recorded = fixture('contract_autopay_on') as Json;
+    return Contract.fromJson({...recorded, 'id': contractId, 'autopay': on});
   }
 }

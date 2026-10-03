@@ -558,5 +558,131 @@
   "personalFinanceSubtitle": "For anything you need, Islamic or conventional.",
   "financeAmount": "Amount",
   "myApplications": "My applications",
-  "viewApplication": "View"
+  "viewApplication": "View",
+  "lifeEventsTitle": "Life events",
+  "lifeEventsIntro": "Tell us what's happening and we'll put together what you need, priced for you and checked against your budget.",
+  "lifeEntryTitle": "Something big coming up?",
+  "lifeEntrySubtitle": "Getting married, a new job, a first home or a new baby: see a bundle and whether it fits your budget.",
+  "lifeEntryCta": "Explore",
+  "lifeRulesNote": "Curated by BCFC product rules, not AI.",
+  "lifeStructureIslamic": "Islamic",
+  "lifeStructureConventional": "Conventional",
+  "lifeTotalMonthly": "Total monthly installments",
+  "lifeHeadroom": "Your monthly budget (DBR headroom)",
+  "lifeVerdictFits": "Fits your budget",
+  "lifeVerdictOver": "Over budget",
+  "lifeLeftAfter": "{amount}/month left after this bundle",
+  "@lifeLeftAfter": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "lifeShortfall": "{amount}/month over your budget",
+  "@lifeShortfall": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "lifeOtherMonthly": "Plus cover premiums, not counted in DBR: {amount}/month",
+  "@lifeOtherMonthly": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "lifeComingSoon": "Coming soon",
+  "lifeNotInDbr": "Not counted in DBR",
+  "lifeView": "View",
+  "lifeFinanced": "{amount} financed over {months} months",
+  "@lifeFinanced": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "months": {
+        "type": "String"
+      }
+    }
+  },
+  "lifeProfit": "Profit: {amount}",
+  "@lifeProfit": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "lifeInterest": "Interest: {amount}",
+  "@lifeInterest": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "lifeCardOffer": "Limit up to {limit} · annual fee {fee}",
+  "@lifeCardOffer": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      },
+      "fee": {
+        "type": "String"
+      }
+    }
+  },
+  "lifeIndicativePremium": "Indicative premium",
+  "lifeIllustrative": "⚠️ Illustrative bundle: products, prices and premiums are demo values, not an offer. Final terms depend on a full application.",
+  "lifeAllEvents": "All life events",
+  "settleTitle": "Early settlement",
+  "settleShow": "Early settlement quote",
+  "settleToTerm": "Paying to term",
+  "settleLineRemainingPrincipal": "Remaining principal",
+  "settleLineFee": "Early settlement fee ⚠️",
+  "settleLineRemainingSalePrice": "Remaining sale price",
+  "settleLineIbra": "Ibra' rebate ⚠️",
+  "settleLineRemainingAssetCost": "Remaining asset cost",
+  "settleAmount": "Settle today for",
+  "settleSavings": "You save {amount}",
+  "@settleSavings": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "settleNow": "Settle now",
+  "settleValidUntil": "Quote valid until {date}",
+  "@settleValidUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "settleRemaining": "{count} installments left",
+  "@settleRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "settleFeeNote": "⚠️ Placeholder fee pending CBB rules. Figures are as of your last paid installment.",
+  "settleIbraNote": "⚠️ Ibra' is a discretionary rebate on profit not yet earned. Placeholder rule pending BCFC's Shari'a Supervisory Board and CBB rules.",
+  "settlePaymentLabel": "Early settlement: {title}",
+  "@settlePaymentLabel": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "settleAutopay": "Autopay",
+  "settleAutopayHint": "Pay each installment automatically on its due date (sandbox)."
 }

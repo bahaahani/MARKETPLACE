@@ -1,5 +1,6 @@
 import 'api/api_client.dart';
 import 'models.dart';
+import 'models/bundles.dart';
 
 /// Everything the app needs from the backend. The API implementation calls the same
 /// endpoints as the Next.js web app, so both channels show identical data and pricing.
@@ -59,6 +60,16 @@ abstract interface class SahelRepository {
 
   /// Accept the offer and e-sign (sandbox).
   Future<FinanceApplication> acceptApplication(String id);
+
+  /// Life-Event Engine: curated events, and a priced bundle checked against the DBR headroom.
+  Future<List<LifeEvent>> lifeEvents();
+  Future<LifeEventBundle> lifeEventBundle(String id, BundleStructure structure);
+
+  /// Early-settlement quote for one of the customer's contracts.
+  Future<SettlementQuote> settlementQuote(String contractId);
+
+  /// Turn autopay on or off (sandbox).
+  Future<Contract> setAutopay(String contractId, bool autopay);
 }
 
 class ApiSahelRepository implements SahelRepository {
@@ -195,4 +206,19 @@ class ApiSahelRepository implements SahelRepository {
   @override
   Future<FinanceApplication> acceptApplication(String id) async =>
       FinanceApplication.fromJson(await _api.post('/applications/$id/accept', const {}) as Json);
+
+  @override
+  Future<List<LifeEvent>> lifeEvents() async => [for (final j in _items(await _api.get('/life-events'))) LifeEvent.fromJson(j as Json)];
+
+  @override
+  Future<LifeEventBundle> lifeEventBundle(String id, BundleStructure structure) async => LifeEventBundle.fromJson(
+      await _api.get('/life-events/${Uri.encodeComponent(id)}/bundle', query: {'structure': structure.name}) as Json);
+
+  @override
+  Future<SettlementQuote> settlementQuote(String contractId) async =>
+      SettlementQuote.fromJson(await _api.get('/me/contracts/${Uri.encodeComponent(contractId)}/settlement-quote') as Json);
+
+  @override
+  Future<Contract> setAutopay(String contractId, bool autopay) async =>
+      Contract.fromJson(await _api.patch('/me/contracts/${Uri.encodeComponent(contractId)}', {'autopay': autopay}) as Json);
 }
