@@ -24,8 +24,8 @@ marketplace/
 │   │   ├── app/
 │   │   └── packages/         # feature_* and core_* packages, bcfc_ui
 │   ├── dealer_portal/        # Flutter Web
-│   ├── backoffice/           # Web
-│   └── web/                  # Next.js public site (SEO)
+│   ├── backoffice/           # Flutter Web
+│   └── web_seo/              # Next.js public SEO pages (the full customer web app is the Flutter app itself)
 ├── services/
 │   └── platform/             # modular monolith (modules per domain)
 ├── integrations/             # partner adapters + mock servers
@@ -60,6 +60,12 @@ Monorepo vs. multiple repos: start as a **monorepo** for speed, and split if tea
 - Staged rollouts (1% → 10% → 50% → 100%) with a crash-free sessions gate ≥ 99.5%
 - Forced-update mechanism via Remote Config (security fixes)
 
+### Web release pipeline
+- On every merge to main: Flutter Web build (WebAssembly) + Next.js build → Playwright end-to-end tests → deploy to S3/CloudFront `dev`
+- Promote the same artifact to `staging` → `prod` (blue/green, instant rollback)
+- Performance budget enforced in CI (Lighthouse CI): first load < 3 s on 4G
+- Web and mobile versions are tied to the same feature flags, so features switch on together
+
 ## 6. Team (MVP)
 
 | Role | Count |
@@ -67,10 +73,11 @@ Monorepo vs. multiple repos: start as a **monorepo** for speed, and split if tea
 | Product owner (BCFC) | 1 |
 | Product managers (Finance, Marketplace) | 2 |
 | UX/UI designers (bilingual, right-to-left experience) | 2 |
-| Flutter engineers | 4–5 |
+| Flutter engineers (mobile **and web**) | 5–6 |
+| Web engineer (Next.js SEO, web performance, web security) | 1–2 |
 | Backend engineers | 4–5 |
 | DevOps / cloud / SRE | 1–2 |
-| QA / automation | 2 |
+| QA / automation (mobile + web, Playwright) | 2–3 |
 | Security engineer | 1 |
 | Data / ML engineer | 1 (Phase 2+) |
 | Business analysts (lending, Islamic, insurance) | 2 |

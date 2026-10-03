@@ -1,5 +1,7 @@
 # 08 — Key User Journeys
 
+> **Web parity:** every journey below works in a web browser too. Where a phone-only step appears (NFC, wallet provisioning, biometrics), the web equivalent in [12-web-platform.md](12-web-platform.md) §3 applies.
+
 ## J1. Onboarding (target < 3 minutes)
 
 1. Download the app (or update Sahel) and choose Arabic or English.

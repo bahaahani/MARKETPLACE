@@ -45,7 +45,7 @@ Please answer these (or assign an owner) before Phase 1 starts. **Bold** marks b
 | T2 | Backend language | NestJS (TypeScript) or Kotlin/Spring. Decide based on team skills |
 | T3 | Flutter state management | Riverpod |
 | T4 | Compute | ECS Fargate |
-| T5 | Public web | Next.js for SEO; Flutter Web for portals |
+| T5 | Web | ✅ **Web parity mandatory** ([ADR-0004](adr/0004-web-parity.md)): Flutter Web for the full customer app + portals; Next.js for SEO pages |
 | T6 | Auth | Keycloak/Cognito + eKey federation |
 | T7 | Workflow engine | Step Functions vs. Temporal |
 | T8 | AI | Bedrock (in-region) for Suhail/Suhaila 2.0 |
@@ -61,6 +61,8 @@ Because Sahel 2.0 is decided and Sahel was built in-house, these are now the mos
 | N2 | **Is Sahel's backend already on AWS?** Which account and region? | IT | Open |
 | N3 | Are the Sahel developers available to join the Sahel 2.0 team? | IT / HR | Open |
 | N4 | How many active Sahel users are there, and what are the top features by usage? (These must not break during migration) | Product | Open |
+| N6 | Does Sahel have a web channel today? If so, what does it do and what is it built with? | IT | Open |
+| N7 | Does iGA support eKey 2.0 login on the web for private companies (redirect or QR code)? | IT | Open |
 | N5 | Can the Sahel 2.0 release keep the same store listings and bundle IDs (`com.cbt.bcfc`, iOS `id6443493467`) so users just get an update? | IT | Open |
 
 ## Next steps (this week)

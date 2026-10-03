@@ -46,6 +46,7 @@ Every step is a separate company, a separate app or branch visit, and the same d
 5. **Bilingual from day one.** Arabic in full right-to-left layout and English are equal. Neither is a translation afterthought.
 6. **After purchase is where loyalty is built.** Renewals, service, claims, and early payoff all live in the app.
 7. **Regulator-ready by design.** CBB, PDPL, PCI DSS, and Shari'a compliance are architecture inputs, not a final checklist.
+8. **Web parity, always.** Everything the mobile app does, the website does too. A feature isn't done until it works on iOS, Android, Huawei, **and Web** ([ADR-0004](adr/0004-web-parity.md)).
 
 ## What "crazy" means for us
 

@@ -2,7 +2,7 @@
 
 > **Status:** Planning / discovery (no code yet)
 > **Owner:** Bahrain Commercial Facilities Company (BCF / "Bahrain Credit")
-> **Platform:** Flutter (iOS, Android, Web) on AWS
+> **Platform:** Flutter (iOS, Android, Huawei, **Web: full parity**) + Next.js SEO pages, on AWS
 > **Payments:** Tap Payments (cards, Click to Pay, Apple Pay, Google Pay, Samsung Pay, BenefitPay) + BENEFIT rails
 
 One app that turns big life purchases into a single flow: **find it, finance it, insure it, pay for it, and manage it**, in Arabic and English, with Islamic and conventional options shown side by side.
@@ -34,8 +34,9 @@ The verticals are:
 | 09 | [Roadmap](docs/09-roadmap.md) | Phases, MVP scope, and milestones |
 | 10 | [Team, Repo & DevOps](docs/10-team-repo-devops.md) | GitLab vs. GitHub, CI/CD, environments, team |
 | 11 | [Open Questions & Decisions](docs/11-open-questions.md) | What we must decide before writing code |
+| 12 | [Web Platform](docs/12-web-platform.md) | Web parity: how every feature also ships on the web |
 
 ## Conventions
 
 - Anything marked **⚠️ VERIFY** is an assumption. It must be confirmed with the partner, the regulator, or BCF internal teams before we build on it.
-- Architecture decisions are recorded as ADRs under [`docs/adr/`](docs/adr/README.md). **Decided so far:** Sahel 2.0, GitHub for now, AWS hosting.
+- Architecture decisions are recorded as ADRs under [`docs/adr/`](docs/adr/README.md). **Decided so far:** Sahel 2.0, GitHub for now, AWS hosting, web parity.

@@ -12,6 +12,9 @@
 | **BenefitPay** | The most-used local wallet: deposits and installments | `benefit_pay_flutter` (Tap) | Essential for adoption in Bahrain |
 | **BENEFIT debit cards** | Local debit | Through Tap ⚠️ VERIFY | |
 
+### On the web (web parity)
+Every method above is also available on the web: Tap Card SDK (hosted fields, 3-D Secure), **Apple Pay on Safari** (requires Apple Pay domain verification for each web domain), **Google Pay on Chrome**, Click to Pay, and **BenefitPay Web SDK** (QR code scanned by the BenefitPay app). Samsung Pay on the web ⚠️ VERIFY. Saved cards and autopay are managed from both channels.
+
 ## Money in: collection flows
 
 | Flow | Method | Mechanism |

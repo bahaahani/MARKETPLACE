@@ -6,7 +6,8 @@
 
 ```
  ┌─────────────────────────── Clients ───────────────────────────┐
- │ Flutter app (iOS / Android / Huawei)   Web (SEO listings)     │
+ │ Flutter app: iOS / Android / Huawei / WEB (one codebase)      │
+ │ Next.js public SEO pages (listings, products, calculators)    │
  │ Dealer & Broker portal (Flutter Web)   Back-office (Web)      │
  └───────────────┬───────────────────────────────────────────────┘
                  │ HTTPS (TLS 1.2+/1.3, cert pinning in the app)
@@ -47,13 +48,13 @@
 | Secure storage | `flutter_secure_storage` (Keychain/Keystore) | Tokens and keys |
 | Biometrics | `local_auth` | Login and transaction signing |
 | Device security | Root/jailbreak detection, anti-tamper, obfuscation (`--obfuscate`), RASP (e.g., freeRASP / Talsec, or a commercial option) | CBB and app-security expectations |
-| Payments | Tap Flutter SDKs (Checkout, Apple Pay, BenefitPay) | See [05-payments.md](05-payments.md) |
+| Payments | Tap Flutter SDKs (Checkout, Apple Pay, BenefitPay) on mobile; **Tap Web SDKs** (Card, Apple Pay on Safari, Google Pay, BenefitPay Web) on web | See [05-payments.md](05-payments.md) |
 | Push | Firebase Messaging + **Huawei Push Kit** | Sahel is on AppGallery, so we must support HMS |
 | Maps | `google_maps_flutter` (+ HMS Map on Huawei) | |
 | ID / NFC | CPR chip reading via an NFC plugin / e-KYC vendor SDK | |
 | AR / 3D | `model_viewer_plus` / ARKit / ARCore (later phase) | |
 | Analytics | Firebase / Amplitude behind an interface | Swappable for PDPL reasons |
-| Testing | Unit, widget, golden, and `integration_test` + Patrol | |
+| Testing | Unit, widget, golden, and `integration_test` + Patrol (mobile); **Playwright** (web) | Parity is tested, not assumed |
 
 ### The super-app pattern
 - Each vertical is a **feature package** with its own routes, state, and API client.
@@ -61,7 +62,7 @@
 - Consider **server-driven UI** for home-screen widgets and campaigns, so marketing can change layouts without an app release.
 
 ### Web
-- The **public listings website** (cars and property) needs SEO. Flutter Web is weak at SEO, so use **Next.js** for public pages and Flutter Web only for logged-in portals (dealer and back-office). ⚠️ DECISION
+- ✅ **Web parity is mandatory** ([ADR-0004](adr/0004-web-parity.md)). The **same Flutter codebase** runs the full customer app on the web. **Next.js** serves only the public SEO pages. Details, mobile-only fallbacks, and the definition of done: [12-web-platform.md](12-web-platform.md).
 - Domain: not decided yet. **Use bcfc.bh subdomains by default** (e.g., `sahel.bcfc.bh` for web, `api.sahel.bcfc.bh` for the API).
 
 ## 3. Backend
