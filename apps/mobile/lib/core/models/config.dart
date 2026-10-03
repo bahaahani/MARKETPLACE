@@ -2,6 +2,7 @@
 // slider ranges, steps, defaults and the consent period all come from the API (@sahel/domain).
 
 import '../models.dart';
+import 'tradein.dart';
 
 class CalculatorRules {
   const CalculatorRules({
@@ -132,6 +133,7 @@ class ClientConfig {
     required this.reservationDepositFils,
     required this.travel,
     required this.home,
+    this.tradeIn,
   });
 
   final List<String> consentScopes;
@@ -141,6 +143,9 @@ class ClientConfig {
   final int reservationDepositFils;
   final TravelRules travel;
   final HomeRules home;
+
+  /// Trade-in form rules (absent from an older API).
+  final TradeInRules? tradeIn;
 
   factory ClientConfig.fromJson(Json j) {
     final consent = j['consent'] as Json;
@@ -152,6 +157,7 @@ class ClientConfig {
       reservationDepositFils: j['reservationDepositFils'] as int,
       travel: TravelRules.fromJson((j['insurance'] as Json)['travel'] as Json),
       home: HomeRules.fromJson((j['insurance'] as Json)['home'] as Json),
+      tradeIn: j['tradeIn'] == null ? null : TradeInRules.fromJson(j['tradeIn'] as Json),
     );
   }
 }

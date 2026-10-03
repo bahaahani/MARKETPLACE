@@ -920,6 +920,75 @@ paths:
           headers:
             Retry-After: {schema: {type: integer}, description: Seconds to wait}
           content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+  /trade-in/valuations:
+    post:
+      summary: |
+        Instant trade-in valuation (⚠️ sandbox: a deterministic rules model, not AI). Values the car from make, model,
+        year, mileage, condition grade and accident history: reference price for the model year (demo table derived
+        from the catalog), then age, mileage, condition, accident and dealer-margin steps (all in `breakdown`).
+        Returns a range (low / high, BHD 100 grid) and makes the low end the session customer's guaranteed instant
+        offer, valid through the 7th Bahrain calendar day after today. Replaces the session's previous offer.
+        With `garageVehicleId` make, model, year, mileage and plate default to that My Garage car.
+        The plate is validated and only ever returned (or kept) masked.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [condition]
+              properties:
+                make: {type: string, description: 'Required unless garageVehicleId is given. Matched ignoring case, spaces and dashes'}
+                model: {type: string}
+                year: {type: integer, description: 'Model year, GET /config tradeIn.minYear to maxYear (and not before the model was sold)'}
+                mileageKm: {type: integer, minimum: 0, maximum: 500000}
+                condition: {enum: [excellent, good, fair, poor]}
+                accidentHistory: {type: boolean, default: false}
+                plate: {type: string, description: 'Optional Bahrain private plate, 1 to 6 digits (spaces ignored)'}
+                garageVehicleId: {type: string, description: "A car in the customer's My Garage (GET /config tradeIn.garage)"}
+      responses:
+        '201': {description: Created, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/TradeInOffer'}}}}}}
+        '400': {description: BAD_JSON, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: GARAGE_VEHICLE_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422':
+          description: 'UNKNOWN_MAKE or UNKNOWN_MODEL (with `error.suggestions`: close makes or models), YEAR_OUT_OF_RANGE, MILEAGE_OUT_OF_RANGE, INVALID_CONDITION, INVALID_PLATE, INVALID_REQUEST'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code: {type: string}
+                      message: {type: string}
+                      suggestions: {type: array, items: {type: string}}
+  /me/trade-in:
+    get:
+      summary: |
+        The session customer's active trade-in offer (`offer` is null when there is none or it expired; another
+        session never sees it). With `vehicleId`, `forVehicle` is the down payment the offer gives that car:
+        min(offer, maximum down payment) on the calculator step, never below the minimum (cash top-up). ⚠️ Sandbox:
+        the trade-in is credited at delivery.
+      parameters: [{name: vehicleId, in: query, required: false, schema: {type: string}}]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      offer: {oneOf: [{$ref: '#/components/schemas/TradeInOffer'}, {type: 'null'}]}
+                      forVehicle: {oneOf: [{$ref: '#/components/schemas/TradeInApplication'}, {type: 'null'}]}
+        '404': {description: 'NOT_FOUND (unknown vehicleId)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    delete:
+      summary: Withdraw the active trade-in offer (idempotent; `withdrawn` is false when there was none)
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {type: object, properties: {withdrawn: {type: boolean}}}}}}}}
 components:
   parameters:
     StaffRoleHeader:
@@ -1416,6 +1485,7 @@ components:
         reservationDepositFils: {type: integer, description: Deposit to reserve a car}
         insurance: {$ref: '#/components/schemas/InsuranceRules'}
         sandbox: {const: true}
+        tradeIn: {$ref: '#/components/schemas/TradeInRules'}
     InsuranceRules:
       type: object
       description: Travel and home insurance form rules and defaults (the quote endpoints still validate every request)
@@ -1586,3 +1656,79 @@ components:
         href: {type: string, description: 'Locale-free app path, e.g. /checkout?purpose=early_settlement&amount=…, /cars/{id}, /account'}
         kind: {enum: [navigate, payment]}
         requiresConfirmation: {type: boolean}
+    TradeInOffer:
+      type: object
+      description: 'A guaranteed instant trade-in offer (⚠️ sandbox rules model, not AI)'
+      properties:
+        id: {type: string}
+        offerFils: {type: integer, description: 'The low end of the range'}
+        createdAt: {type: string, format: date-time}
+        validUntil: {type: string, format: date, description: 'Last Bahrain calendar day the offer is valid'}
+        expiresAt: {type: string, format: date-time, description: 'End of validUntil in Bahrain'}
+        valuation:
+          type: object
+          properties:
+            vehicle:
+              type: object
+              properties:
+                make: {type: string}
+                model: {type: string}
+                year: {type: integer}
+                mileageKm: {type: integer}
+                condition: {enum: [excellent, good, fair, poor]}
+                accidentHistory: {type: boolean}
+                plateMasked: {type: string, description: 'e.g. ****56; the full plate is never returned'}
+                garageVehicleId: {type: string}
+            ageYears: {type: integer}
+            valueFils: {type: integer}
+            rangeLowFils: {type: integer}
+            rangeHighFils: {type: integer}
+            breakdown:
+              type: array
+              items:
+                type: object
+                properties:
+                  code: {enum: [reference, age, mileage, condition, accident, dealerMargin]}
+                  amountFils: {type: integer, description: 'Change at this step (the reference price for reference)'}
+                  bps: {type: integer, description: 'Basis points applied (negative lowers the value)'}
+                  valueAfterFils: {type: integer}
+            method: {const: rules}
+            sandbox: {const: true}
+    TradeInApplication:
+      type: object
+      properties:
+        vehicleId: {type: string}
+        offerFils: {type: integer}
+        downPaymentFils: {type: integer, description: 'Down payment the calculator starts from'}
+        creditedFils: {type: integer, description: 'Part of the offer used'}
+        capped: {type: boolean, description: 'The offer is above the maximum down payment'}
+        cashTopUpFils: {type: integer, description: 'Cash the customer adds when the offer is below the minimum down payment'}
+    TradeInRules:
+      type: object
+      description: 'Trade-in form rules (GET /config tradeIn). The valuation endpoint still validates every request'
+      properties:
+        makes:
+          type: array
+          items:
+            type: object
+            properties:
+              make: {type: string}
+              models: {type: array, items: {type: object, properties: {model: {type: string}, firstYear: {type: integer}}}}
+        minYear: {type: integer}
+        maxYear: {type: integer}
+        maxMileageKm: {type: integer}
+        conditions: {type: array, items: {enum: [excellent, good, fair, poor]}}
+        offerValidityDays: {type: integer}
+        garage:
+          type: array
+          items:
+            type: object
+            properties:
+              garageVehicleId: {type: string}
+              title: {type: string}
+              make: {type: string}
+              model: {type: string}
+              year: {type: integer}
+              mileageKm: {type: integer}
+              plateMasked: {type: string}
+        method: {const: rules}

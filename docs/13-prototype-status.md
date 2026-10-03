@@ -31,6 +31,7 @@
 | Motor insurance comparison and purchase | – | ✅ | ✅ | ✅ `/insurance/motor-quotes`, `/policies/*` | Domain, Playwright, Flutter | |
 | Travel insurance comparison and purchase | – | ✅ | ✅ | ✅ `/insurance/travel-quotes`, `/policies/*` | Domain, Playwright, Flutter | |
 | Home insurance comparison and purchase (incl. from a listing) | J4 | ✅ | ✅ | ✅ `/insurance/home-quotes`, `/policies/*` | Domain, Playwright, Flutter | Suggested sums insured are rules of thumb |
+| Instant trade-in valuation → down payment (idea #6) | J2 | ✅ `/{locale}/trade-in`, "Use my trade-in" on car pages | ✅ `/trade-in` | ✅ `POST /trade-in/valuations`, `GET` / `DELETE /me/trade-in`, `GET /config` `tradeIn` | Domain, Playwright, Flutter | ⚠️ Deterministic **rules model, not AI** (reference price per model year from a demo table derived from the catalog, then age, mileage, condition, accident, dealer margin). Range on a BHD 100 grid; the low end is the instant offer, valid 7 Bahrain days, one per session. Plate validated and only ever shown masked. Using it sets the calculator's down payment to min(offer, maximum down payment); credited at delivery (nothing is recorded on the application yet). No photos, plate lookup or inspection |
 | Policies bound to payments, My policies | – | ✅ | ✅ | ✅ `/policies/quotes`, `/policies/confirm`, `/me/policies` | Domain, Playwright, Flutter | Issued only for a CAPTURED payment whose amount and reference match the held quote |
 | Share pre-approval with a dealer (customer side) | J7 | ✅ | ✅ | ✅ `/me/preapproval-token` | Domain, Playwright | 15-minute code, minimal data |
 | Dealer & broker portal: inventory, leads board, showroom offer | J7 | ✅ | ➖ web-first | ✅ `/dealer/*` | Domain, Playwright | No staff login; offers are not pushed to the customer |
@@ -75,6 +76,7 @@ Each item is marked ⚠️ in the code. None of these values may go live without
 | P16 | Consent validity | 90 days for CRB and Open Banking | `onboarding.ts` | Compliance ⚠️ VERIFY with CBB Open Banking rules |
 | P17 | Pre-approval share code | 15 minutes, 8 characters | `dealer.ts` | Product, Compliance |
 | P18 | Back office | Role permissions (`ROLE_PERMISSIONS`), minimum note length (5), premium refundable after **0 minutes** (`ORPHAN_PREMIUM_MIN_AGE_MS`) | `backoffice.ts` | Credit Risk, Operations, Compliance |
+| P19 | **Trade-in model** | Reference prices (catalog new cars, otherwise illustrative); depreciation 10% current model year, 15% first year then 12% / year; −1% per 5,000 km (max −40%); condition +4% / 0 / −8% / −20%; accident −12%; dealer margin −10%; range −7% / +5%; offer valid 7 days; up to 15 model years old, 500,000 km | `tradein.ts` `TRADE_IN_MODEL` | Tasheelat Automotive pricing desk |
 
 ## 4. Privacy decisions pending
 

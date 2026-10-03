@@ -6,6 +6,7 @@ import 'package:sahel/core/models.dart';
 import 'package:sahel/core/models/bundles.dart';
 import 'package:sahel/core/models/config.dart';
 import 'package:sahel/core/models/insurance.dart';
+import 'package:sahel/core/models/tradein.dart';
 import 'package:sahel/core/repository.dart';
 import 'package:sahel/features/assistant/assistant_models.dart';
 
@@ -325,5 +326,38 @@ class FakeSahelRepository implements SahelRepository {
                 ? 'assistant_settle_en'
                 : 'assistant_balance_en';
     return AssistantReply.fromJson(fixture(name) as Json);
+  }
+
+  // ---- Trade-in (recorded: test/fixtures/README.md)
+
+  /// Valuation requests, as sent.
+  final tradeInRequests = <Json>[];
+
+  /// Whether the session has an active offer (the recorded My Garage CR-V valuation).
+  bool tradeInActive = false;
+
+  @override
+  Future<TradeInOffer> valueTradeIn(Json request) async {
+    tradeInRequests.add(request);
+    // An unknown model, as the API answers it (422 with suggestions).
+    if (request['model'] == 'Camri') {
+      final err = (jsonDecode(File('test/fixtures/tradein_unknown_model.json').readAsStringSync()) as Json)['error'] as Json;
+      throw ApiException(422, err['code'] as String, err['message'] as String, suggestions: [for (final x in err['suggestions'] as List) x as String]);
+    }
+    tradeInActive = true;
+    return TradeInOffer.fromJson(fixture('tradein_offer') as Json);
+  }
+
+  @override
+  Future<TradeInStatus> myTradeIn({String? vehicleId}) async {
+    final j = fixture(tradeInActive ? 'tradein_active_crv' : 'tradein_none') as Json;
+    return TradeInStatus.fromJson(vehicleId == null ? {'offer': j['offer']} : j);
+  }
+
+  @override
+  Future<bool> withdrawTradeIn() async {
+    final had = tradeInActive;
+    tradeInActive = false;
+    return had;
   }
 }

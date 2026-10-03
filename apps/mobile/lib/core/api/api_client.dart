@@ -15,10 +15,13 @@ String defaultApiBaseUrl() {
 }
 
 class ApiException implements Exception {
-  ApiException(this.statusCode, this.code, this.message);
+  ApiException(this.statusCode, this.code, this.message, {this.suggestions = const []});
   final int statusCode;
   final String code;
   final String message;
+
+  /// Close matches the API suggests (e.g. trade-in makes or models), when it sends any.
+  final List<String> suggestions;
 
   @override
   String toString() => 'ApiException($statusCode, $code): $message';
@@ -55,6 +58,9 @@ class ApiClient {
         body: jsonEncode(body),
       )));
 
+  Future<dynamic> delete(String path) async =>
+      _decode(await _send((h) => _http.delete(_uri(path), headers: {'Accept': 'application/json', ...h})));
+
   Future<http.Response> _send(Future<http.Response> Function(Map<String, String> sessionHeaders) request) async {
     final h = await session.headers();
     try {
@@ -72,7 +78,8 @@ class ApiClient {
     final body = r.body.isEmpty ? <String, dynamic>{} : jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
     if (r.statusCode >= 400) {
       final err = (body['error'] as Map<String, dynamic>?) ?? {};
-      throw ApiException(r.statusCode, err['code'] as String? ?? 'HTTP_${r.statusCode}', err['message'] as String? ?? r.reasonPhrase ?? '');
+      throw ApiException(r.statusCode, err['code'] as String? ?? 'HTTP_${r.statusCode}', err['message'] as String? ?? r.reasonPhrase ?? '',
+          suggestions: [for (final x in (err['suggestions'] as List?) ?? const []) x as String]);
     }
     return body['data'];
   }

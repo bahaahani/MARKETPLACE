@@ -1,4 +1,4 @@
-import { clientConfig } from '@sahel/domain';
+import { clientConfig, tradeInRules } from '@sahel/domain';
 import { ok } from '@/lib/api';
 import { withCustomer } from '@/lib/session';
 
@@ -10,5 +10,6 @@ export const dynamic = 'force-dynamic';
  * steps and defaults, the personal finance range for this customer). The Flutter app hard-codes none of them.
  */
 export function GET(req: Request) {
-  return withCustomer(req, (s) => ok(clientConfig(s.customer.preApproval)));
+  // `tradeIn` (additive): trade-in form makes, models, year and mileage limits, and this customer's garage cars.
+  return withCustomer(req, (s) => ok({ ...clientConfig(s.customer.preApproval), tradeIn: tradeInRules(s.customer.garage) }));
 }

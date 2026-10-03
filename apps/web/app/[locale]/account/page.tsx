@@ -103,6 +103,9 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
                 <Link className="btn btn-ghost px-3 py-1 text-xs" href={`/${tr.locale}/insurance`}>{tr.t('renew')}</Link>
               </li>
             </ul>
+            <Link className="btn btn-ghost mt-3 w-full text-sm" href={`/${tr.locale}/trade-in?garage=${encodeURIComponent(g.vehicleId)}`} data-testid="garage-tradein">
+              {tr.t('tradeEntryGarage')}
+            </Link>
           </article>
         ))}
         <div className="mt-6">

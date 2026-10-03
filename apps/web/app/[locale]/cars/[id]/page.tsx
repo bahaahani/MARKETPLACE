@@ -5,8 +5,8 @@ import { findVehicle, RESERVATION_DEPOSIT_FILS, VEHICLES } from '@sahel/domain';
 import { LOCALES } from '@sahel/i18n';
 import { CarApplyButton, FinanceSelectionProvider } from '@/components/ApplyFinance';
 import { AssetArt } from '@/components/AssetArt';
-import { FinanceCalculator } from '@/components/FinanceCalculator';
 import { InsuranceQuotes } from '@/components/InsuranceQuotes';
+import { TradeInFinance } from '@/components/TradeIn';
 import { resolveLocale, translator } from '@/lib/i18n';
 
 const DEPOSIT_FILS = RESERVATION_DEPOSIT_FILS;
@@ -71,7 +71,8 @@ export default async function CarDetail({ params }: { params: Promise<{ locale: 
           <InsuranceQuotes locale={tr.locale} vehicleValueFils={v.priceFils} reference={v.id} />
         </div>
         <div className="lg:sticky lg:top-20 lg:self-start">
-          <FinanceCalculator locale={tr.locale} productLine="vehicle" assetPriceFils={v.priceFils} />
+          {/* The calculator, plus "Use my trade-in" when this session has an active offer (fetched client-side: the page is static) */}
+          <TradeInFinance locale={tr.locale} vehicleId={v.id} assetPriceFils={v.priceFils} />
         </div>
       </div>
     </FinanceSelectionProvider>

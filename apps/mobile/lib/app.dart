@@ -25,6 +25,7 @@ import 'l10n/gen/app_localizations.dart';
 import 'core/models/bundles.dart';
 import 'features/bundles/life_events_screen.dart';
 import 'features/assistant/assistant_screen.dart';
+import 'features/tradein/tradein_screen.dart';
 
 /// Routes mirror the web URLs (minus the /en|/ar prefix), so the same deep link
 /// (e.g. /cars/v-honda-crv-2026 or /checkout?...) opens the same screen on every channel.
@@ -85,6 +86,7 @@ GoRouter buildRouter({String initialLocation = '/'}) => GoRouter(
           ],
         ),
         GoRoute(path: '/assistant', builder: (_, _) => const AssistantScreen()),
+        GoRoute(path: '/trade-in', builder: (_, s) => TradeInScreen(garageVehicleId: s.uri.queryParameters['garage'])),
       ],
     );
 

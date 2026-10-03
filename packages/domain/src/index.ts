@@ -22,3 +22,4 @@ export * from './customer';
 export * from './config';
 export * from './backoffice';
 export * from './assistant';
+export * from './tradein';
