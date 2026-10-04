@@ -1212,6 +1212,82 @@ paths:
         '404': {description: CLAIM_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '409': {description: INVALID_TRANSITION, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '422': {description: INVALID_REQUEST (unknown status), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /me/notifications:
+    get:
+      summary: |
+        ⚠️ Sandbox notifications inbox of the session customer, DERIVED on every read (nothing is stored but read /
+        dismissed ids and preferences): installment due in 0..3 Bahrain days or overdue, autopay off, early settlement
+        completed, My Garage registration and motor insurance ending in 30 days, policies ending in 30 days or ended,
+        claim status changes, application decisions and next actions, cards issued, trade-in offer ending in 2 days,
+        pre-approval and consent ending in 7 days. Ids are stable (type, entity, period) so read and dismissed state
+        survives. Dismissed items are left out. Sorted by group (today, this week, earlier; Bahrain days), priority,
+        newest first. `delivery` says which channels it WOULD go out on (nothing is sent).
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/NotificationInbox'}}}}}}
+  /me/notifications/unread-count:
+    get:
+      summary: |
+        Unread count for the web header bell. Unlike the other /me routes it never STARTS a session: without one it
+        answers for a fresh demo customer (like server-rendered pages), so polling it on page load cannot race a
+        request that is starting the browser's session. Apps with a session use GET /me/notifications.
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {type: object, properties: {unreadCount: {type: integer}, total: {type: integer}}}}}}}}
+  /me/notifications/{id}/read:
+    post:
+      summary: "Mark one of the session customer's current notifications read (idempotent). Returns the inbox"
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/NotificationInbox'}}}}}}
+        '404': {description: 'NOTIFICATION_NOT_FOUND (unknown, malformed, or another customer''s id)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /me/notifications/read-all:
+    post:
+      summary: Mark every current notification of the session customer read. Returns the inbox (unreadCount 0)
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/NotificationInbox'}}}}}}
+  /me/notifications/{id}/dismiss:
+    post:
+      summary: |
+        Remove one notification from the inbox. It stays dismissed when derived again; a new period (next installment,
+        new claim status, new expiry date) is a new id. Returns the inbox
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/NotificationInbox'}}}}}}
+        '404': {description: NOTIFICATION_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /me/notification-preferences:
+    get:
+      summary: "The session customer's channel switches per category, mandatory categories and quiet hours (Asia/Bahrain). Defaults until changed"
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/NotificationPreferences'}}}}}}
+    put:
+      summary: |
+        Change some channel switches and / or quiet hours (every field optional; returns the full preferences).
+        A mandatory category (overdue payments; ⚠️ CBB consumer-protection placeholder) must keep at least one channel.
+        ⚠️ Sandbox: in memory, nothing is ever sent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                categories:
+                  type: array
+                  items:
+                    type: object
+                    required: [category, channels]
+                    properties:
+                      category: {$ref: '#/components/schemas/NotificationCategory'}
+                      channels: {$ref: '#/components/schemas/NotificationChannelSwitches'}
+                quietHours:
+                  type: object
+                  properties:
+                    enabled: {type: boolean}
+                    start: {type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'}
+                    end: {type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'}
+      responses:
+        '200': {description: Saved, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/NotificationPreferences'}}}}}}
+        '400': {description: BAD_JSON, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {description: 'INVALID_REQUEST (unknown category or channel, non-boolean, bad time), or MANDATORY_CATEGORY', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
 components:
   parameters:
     StaffRoleHeader:
@@ -2162,3 +2238,61 @@ components:
         policeReportRequiredFor: {type: array, items: {$ref: '#/components/schemas/ClaimType'}}
         maxDaysSinceIncident: {type: integer}
         thirdPartyCoverTypes: {type: array, items: {$ref: '#/components/schemas/ClaimType'}, description: 'Types third-party-only cover accepts (with a third party involved)'}
+    NotificationCategory:
+      enum: [payments, overdue, insurance, claims, applications, cards, vehicle, account]
+    NotificationChannelSwitches:
+      type: object
+      properties:
+        push: {type: boolean}
+        sms: {type: boolean}
+        whatsapp: {type: boolean}
+        email: {type: boolean}
+    Notification:
+      type: object
+      properties:
+        id: {type: string, description: 'Stable: type.entity[.period], e.g. installment_due.c-1001.15'}
+        type:
+          enum: [installment_due, installment_overdue, autopay_off, settlement_completed, registration_expiring, garage_insurance_expiring, policy_expiring, policy_expired, claim_status, application_update, card_issued, tradein_expiring, preapproval_expiring, consent_expiring]
+        category: {$ref: '#/components/schemas/NotificationCategory'}
+        priority: {enum: [high, normal, low]}
+        mandatory: {type: boolean, description: 'Category cannot be fully switched off (⚠️ CBB placeholder)'}
+        link: {type: string, description: 'Deep link, the same path on web (after /{locale}) and in the app, e.g. /applications/app_1'}
+        occurredAt: {type: string, format: date-time}
+        group: {enum: [today, week, earlier], description: Bahrain calendar days}
+        read: {type: boolean}
+        title: {$ref: '#/components/schemas/Localized'}
+        body: {$ref: '#/components/schemas/Localized'}
+        delivery:
+          type: object
+          description: '⚠️ Sandbox: where it WOULD be sent (nothing is sent); deferredUntil is set during quiet hours'
+          properties:
+            channels: {type: array, items: {enum: [push, sms, whatsapp, email]}}
+            deferredUntil: {type: string, format: date-time}
+            sandbox: {const: true}
+    NotificationInbox:
+      type: object
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Notification'}}
+        unreadCount: {type: integer}
+        total: {type: integer}
+        timeZone: {const: Asia/Bahrain}
+    NotificationPreferences:
+      type: object
+      properties:
+        timeZone: {const: Asia/Bahrain}
+        channels: {type: array, items: {enum: [push, sms, whatsapp, email]}}
+        categories:
+          type: array
+          items:
+            type: object
+            properties:
+              category: {$ref: '#/components/schemas/NotificationCategory'}
+              mandatory: {type: boolean}
+              channels: {$ref: '#/components/schemas/NotificationChannelSwitches'}
+        quietHours:
+          type: object
+          properties:
+            enabled: {type: boolean}
+            start: {type: string, description: 'HH:MM, Bahrain time'}
+            end: {type: string, description: 'HH:MM, Bahrain time; may be earlier than start (crosses midnight)'}
+        sandbox: {const: true}

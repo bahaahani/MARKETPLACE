@@ -14,6 +14,8 @@ import 'package:sahel/features/assistant/assistant_models.dart';
 import 'package:sahel/features/claims/claims_models.dart';
 import 'package:sahel/features/rewards/rewards_models.dart';
 
+import 'package:sahel/features/notifications/notifications_models.dart';
+
 /// Recorded responses from the real shared API (apps/web/app/api/v1), refreshed by
 /// re-running the curl commands in test/fixtures/README.md.
 dynamic fixture(String name) => (jsonDecode(File('test/fixtures/$name.json').readAsStringSync()) as Map<String, dynamic>)['data'];
@@ -519,4 +521,57 @@ class FakeSahelRepository implements SahelRepository {
   Future<List<RewardRedemption>> myRedemptions() async => rewardsState == 'rewards_redeemed'
       ? [for (final j in fixture('rewards_redemptions')['items'] as List) RewardRedemption.fromJson(j as Json)]
       : const [];
+
+  // ---- Notifications (recorded in test/fixtures/README.md: an approved car application on top of the demo reminders)
+
+  /// Recorded inbox state: notifications, notifications_read, notifications_dismissed or notifications_read_all.
+  String inboxState = 'notifications';
+
+  /// Every read / dismiss / read-all and preferences save, as sent.
+  final notificationCalls = <String>[];
+  final savedPreferences = <Json>[];
+
+  NotificationInbox _inbox() => NotificationInbox.fromJson(fixture(inboxState) as Json);
+
+  @override
+  Future<NotificationInbox> notifications() async => _inbox();
+
+  @override
+  Future<NotificationInbox> markNotificationRead(String id) async {
+    notificationCalls.add('read:$id');
+    if (!_inbox().items.any((n) => n.id == id)) throw ApiException(404, 'NOTIFICATION_NOT_FOUND', 'no notification');
+    // Only the application notification's read was recorded; reading another one answers like read-all.
+    inboxState = id.startsWith('application_update.') && inboxState == 'notifications' ? 'notifications_read' : 'notifications_read_all';
+    return _inbox();
+  }
+
+  @override
+  Future<NotificationInbox> markAllNotificationsRead() async {
+    notificationCalls.add('read-all');
+    inboxState = 'notifications_read_all';
+    return _inbox();
+  }
+
+  @override
+  Future<NotificationInbox> dismissNotification(String id) async {
+    notificationCalls.add('dismiss:$id');
+    inboxState = 'notifications_dismissed';
+    return _inbox();
+  }
+
+  @override
+  Future<NotificationPreferences> notificationPreferences() async =>
+      NotificationPreferences.fromJson(fixture(savedPreferences.isEmpty ? 'notification_preferences' : 'notification_preferences_saved') as Json);
+
+  @override
+  Future<NotificationPreferences> saveNotificationPreferences(NotificationPreferences prefs) async {
+    final body = prefs.toJson();
+    savedPreferences.add(body);
+    // Mirrors the API's 422 for a mandatory category with every channel off (packages/domain/src/notifications.ts).
+    if (prefs.categories.any((c) => c.mandatory && !c.channels.values.any((on) => on))) {
+      final err = (jsonDecode(File('test/fixtures/notification_preferences_mandatory.json').readAsStringSync()) as Json)['error'] as Json;
+      throw ApiException(422, err['code'] as String, err['message'] as String);
+    }
+    return NotificationPreferences.fromJson(fixture('notification_preferences_saved') as Json);
+  }
 }

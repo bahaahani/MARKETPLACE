@@ -188,4 +188,23 @@ curl -s -H "$H" $B/me/rewards > rewards_paid.json
 curl -s -X POST $B/me/rewards/redemptions -H "$J" -H "$H" -H 'Idempotency-Key: fixture-rewards-redeem-01' -d '{"itemId":"fuel-5"}' > rewards_redemption.json
 curl -s -H "$H" $B/me/rewards > rewards_redeemed.json
 curl -s -H "$H" $B/me/rewards/redemptions > rewards_redemptions.json
+Notifications (inbox, reminders, preferences), with the same `B`, `J` and `session()` as above, in their own session:
+an approved car application adds a notification to the demo customer's reminders; read it, dismiss it, mark everything
+read; then the preferences (default, saved, and a mandatory category switched off, refused with 422). Notifications are
+derived at recording time (Bahrain dates, quiet hours), so the recorded titles carry that day's dates.
+
+```sh
+S=$(session); H="X-Sahel-Session: $S"
+curl -s -X POST $B/applications -H "$J" -H "$H" -H 'Idempotency-Key: fixture-notif-crv-01' \
+  -d '{"productLine":"vehicle","structure":"murabaha","vehicleId":"v-honda-crv-2026","downPaymentFils":3000000,"tenureMonths":60}' > /dev/null
+curl -s -H "$H" $B/me/notifications > notifications.json
+NID=$(node -pe 'JSON.parse(require("fs").readFileSync("notifications.json")).data.items.find(i=>i.type==="application_update").id')
+curl -s -X POST -H "$H" $B/me/notifications/$NID/read > notifications_read.json
+curl -s -X POST -H "$H" $B/me/notifications/$NID/dismiss > notifications_dismissed.json
+curl -s -X POST -H "$H" $B/me/notifications/read-all > notifications_read_all.json
+curl -s -H "$H" $B/me/notification-preferences > notification_preferences.json
+curl -s -X PUT $B/me/notification-preferences -H "$J" -H "$H" \
+  -d '{"categories":[{"category":"payments","channels":{"whatsapp":true}}],"quietHours":{"enabled":true,"start":"23:00","end":"06:30"}}' > notification_preferences_saved.json
+curl -s -X PUT $B/me/notification-preferences -H "$J" -H "$H" \
+  -d '{"categories":[{"category":"overdue","channels":{"push":false,"sms":false,"whatsapp":false,"email":false}}]}' > notification_preferences_mandatory.json
 ```

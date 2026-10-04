@@ -27,3 +27,4 @@ export * from './home-finance';
 export * from './tradein';
 export * from './claims';
 export * from './rewards';
+export * from './notifications';

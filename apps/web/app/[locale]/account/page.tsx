@@ -121,6 +121,9 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
         <div className="mt-6">
           <SharePreApproval locale={tr.locale} />
         </div>
+        <Link className="btn btn-ghost mt-4 w-full text-sm" href={`/${tr.locale}/notifications/preferences`} data-testid="account-notif-prefs">
+          {tr.t('notifPrefsLink')}
+        </Link>
         <p className="mt-4 text-xs text-text-muted" data-testid="session-note">⚠️ {tr.t('sessionSandboxNote')}</p>
       </section>
     </div>
