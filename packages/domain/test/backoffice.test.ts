@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   applicationSteps,
   ApplicationTransitionError,
@@ -275,6 +275,12 @@ describe('credit review queue', () => {
 
 describe('refund queue (captured premiums without a policy)', () => {
   const NOW = new Date(Date.UTC(2026, 9, 3, 9, 0));
+  // Payments are timestamped with the real clock; pin it so quotes created at NOW never look expired.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => vi.useRealTimers());
   const travel: PolicyQuoteRequest = {
     line: 'travel',
     insurerId: 'pearl-takaful',

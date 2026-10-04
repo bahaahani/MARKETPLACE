@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildLifeEventBundle,
   customerFinancials,
@@ -39,6 +39,12 @@ function code(fn: () => unknown): string | undefined {
 }
 
 describe('policies are per session customer', () => {
+  // Payments are timestamped with the real clock; pin it so quotes created at NOW never look expired.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => vi.useRealTimers());
   function setup() {
     let t = NOW.getTime();
     const store = new SandboxPolicyStore(() => new Date((t += 1000)), (customerId) => [demoPolicyHistory(customerId)]);
