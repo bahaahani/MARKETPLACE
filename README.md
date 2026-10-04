@@ -31,7 +31,7 @@ Every customer feature works on **web and mobile**, in **English and Arabic (RTL
 | **IMTIAZ Points Everywhere** (ideas #13, #21) | ✅ `/rewards` (entries on home and the account page): balance, tier (Silver / Gold / Platinum) and progress, earned / burned history with its source, earn rules, catalogue with redeem → confirm, My vouchers | ✅ `/rewards` | ⚠️ Placeholder earn / burn rates, bonuses, tiers and catalogue; demo partners are fictional. Points are **derived** from existing data (captured payments, first card, autopay, good-payer streaks from the demo history, refunds reversed), not booked by the payment flow. Voucher codes shown once, then masked; vouchers have no real value |
 | **Suhail & Suhaila 2.0** (J8) | ✅ Chat button on customer pages: balance, next installment, settlement quote, cars by monthly budget, pre-approval, policies, cards, handoff; EN + AR (Gulf phrasings) | ✅ `/assistant` (home app bar) | ⚠️ Rules-based, no language model (`AssistantBrain` interface ready for an in-region model). Actions are links the customer confirms in the normal UI. Memory and rate limit in server memory |
 
-Not built yet (planned in the docs): real login (customer and staff), rewards redemption, a language model behind Suhail / Suhaila, push notifications, Huawei-specific services.
+Not built yet (planned in the docs): real login (customer and staff), a language model behind Suhail / Suhaila, push notifications, Huawei-specific services.
 
 ## Run it
 
