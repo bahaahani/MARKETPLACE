@@ -31,6 +31,8 @@ import 'features/tradein/tradein_screen.dart';
 import 'features/rewards/rewards_screen.dart';
 import 'features/notifications/notification_preferences_screen.dart';
 import 'features/notifications/notifications_screen.dart';
+import 'features/bids/bid_request_detail_screen.dart';
+import 'features/bids/bid_request_screen.dart';
 
 /// Routes mirror the web URLs (minus the /en|/ar prefix), so the same deep link
 /// (e.g. /cars/v-honda-crv-2026 or /checkout?...) opens the same screen on every channel.
@@ -103,6 +105,8 @@ GoRouter buildRouter({String initialLocation = '/'}) => GoRouter(
           builder: (_, _) => const NotificationsScreen(),
           routes: [GoRoute(path: 'preferences', builder: (_, _) => const NotificationPreferencesScreen())],
         ),
+        GoRoute(path: '/requests/new', builder: (_, _) => const NewBidRequestScreen()),
+        GoRoute(path: '/requests/:id', builder: (_, s) => BidRequestDetailScreen(id: s.pathParameters['id']!)),
       ],
     );
 

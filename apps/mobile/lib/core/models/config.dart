@@ -1,6 +1,7 @@
 // Product rules from GET /api/v1/config (api/openapi.yaml: ClientConfig). The app hard-codes none of these:
 // slider ranges, steps, defaults and the consent period all come from the API (@sahel/domain).
 
+import '../../features/bids/bids_models.dart';
 import '../../features/claims/claims_models.dart';
 import '../models.dart';
 import 'tradein.dart';
@@ -136,6 +137,7 @@ class ClientConfig {
     required this.home,
     required this.claims,
     this.tradeIn,
+    this.bids,
   });
 
   final List<String> consentScopes;
@@ -152,6 +154,9 @@ class ClientConfig {
   /// Trade-in form rules (absent from an older API).
   final TradeInRules? tradeIn;
 
+  /// "Bid For Me" form rules for this customer (absent from an older API).
+  final BidRules? bids;
+
   factory ClientConfig.fromJson(Json j) {
     final consent = j['consent'] as Json;
     return ClientConfig(
@@ -164,6 +169,7 @@ class ClientConfig {
       home: HomeRules.fromJson((j['insurance'] as Json)['home'] as Json),
       claims: ClaimRules.fromJson(j['claims'] as Json),
       tradeIn: j['tradeIn'] == null ? null : TradeInRules.fromJson(j['tradeIn'] as Json),
+      bids: j['bids'] == null ? null : BidRules.fromJson(j['bids'] as Json),
     );
   }
 }

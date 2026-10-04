@@ -23,6 +23,7 @@ export default async function DealerLayout({ children, params }: { children: Rea
         <nav className="flex gap-1" aria-label={tr.t('dealerPortalTitle')}>
           <Link href={base} className="rounded-md px-3 py-2 text-sm font-medium hover:bg-brand-soft">{tr.t('dealerNavDashboard')}</Link>
           <Link href={`${base}/showroom`} className="rounded-md px-3 py-2 text-sm font-medium hover:bg-brand-soft" data-testid="nav-showroom">{tr.t('dealerNavShowroom')}</Link>
+          <Link href={`${base}/requests`} className="rounded-md px-3 py-2 text-sm font-medium hover:bg-brand-soft" data-testid="nav-requests">{tr.t('bidDealerNav')}</Link>
           <Link href={`/${tr.locale}/dealer`} className="rounded-md px-3 py-2 text-sm text-text-muted hover:text-text">{tr.t('dealerSwitch')}</Link>
         </nav>
       </div>

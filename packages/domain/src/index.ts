@@ -28,3 +28,5 @@ export * from './tradein';
 export * from './claims';
 export * from './rewards';
 export * from './notifications';
+export * from './bids';
+export * from './lead-append';

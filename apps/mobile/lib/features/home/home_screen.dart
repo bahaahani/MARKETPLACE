@@ -8,6 +8,7 @@ import '../../core/providers.dart';
 import '../../core/theme/tokens.g.dart';
 import '../../widgets/common.dart';
 import '../../widgets/listings.dart';
+import '../bids/bids_providers.dart';
 import '../bundles/life_events_screen.dart';
 import '../rewards/rewards_screen.dart';
 import '../notifications/notification_bell.dart';
@@ -109,6 +110,7 @@ class _HomeBody extends ConsumerWidget {
         const LifeEventsEntryCard(),
         const SizedBox(height: SahelSpace.sm),
         const RewardsBadge(),
+        const BidForMeEntryCard(),
         const SizedBox(height: SahelSpace.sm),
         Row(children: [
           Expanded(child: OutlinedButton.icon(onPressed: () => context.push('/insurance'), icon: const Icon(Icons.shield_outlined), label: Text(l.navInsurance))),

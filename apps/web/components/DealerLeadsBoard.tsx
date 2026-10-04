@@ -17,6 +17,7 @@ const SOURCE_LABEL: Record<LeadSource, MessageKey> = {
   reserved: 'dealerSourceReserved',
   applied: 'dealerSourceApplied',
   viewed: 'dealerSourceViewed',
+  bid: 'bidLeadSource',
 };
 
 /**
