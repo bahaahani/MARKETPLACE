@@ -1379,5 +1379,452 @@
   },
   "claimSandboxNote": "Sandbox: claims are kept in memory and are not sent to any insurer.",
   "claimPhotosGallery": "Choose from gallery",
-  "claimPhotosCamera": "Take a photo"
+  "claimPhotosCamera": "Take a photo",
+  "notifTitle": "Notifications",
+  "notifBellLabel": "Notifications",
+  "notifBellUnread": "Notifications, {count} unread",
+  "@notifBellUnread": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "notifUnreadCount": "{count} unread",
+  "@notifUnreadCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "notifEmpty": "You're all caught up. Reminders about payments, renewals and applications appear here.",
+  "notifGroupToday": "Today",
+  "notifGroupWeek": "This week",
+  "notifGroupEarlier": "Earlier",
+  "notifMarkAllRead": "Mark all as read",
+  "notifMarkRead": "Mark as read",
+  "notifDismiss": "Dismiss",
+  "notifOpen": "Open",
+  "notifUnread": "Unread",
+  "notifImportant": "Important",
+  "notifRequired": "Required",
+  "notifWouldSend": "Sandbox: would also send by {channels}. Nothing is sent.",
+  "@notifWouldSend": {
+    "placeholders": {
+      "channels": {
+        "type": "String"
+      }
+    }
+  },
+  "notifInAppOnly": "In the app only (every channel is off for this kind of update).",
+  "notifDeferred": "Quiet hours: held until {time}.",
+  "@notifDeferred": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "notifChannelPush": "Push",
+  "notifChannelSms": "SMS",
+  "notifChannelWhatsapp": "WhatsApp",
+  "notifChannelEmail": "Email",
+  "notifSandboxNote": "Sandbox: reminders are worked out from your account each time you look. Nothing is sent outside the app.",
+  "notifPrefsTitle": "Notification settings",
+  "notifPrefsLink": "Notification settings",
+  "notifPrefsIntro": "Choose how we reach you for each kind of update. Your inbox in the app always shows everything.",
+  "notifPrefsCategoryPayments": "Installments and payments",
+  "notifPrefsCategoryOverdue": "Overdue payments",
+  "notifPrefsCategoryInsurance": "Insurance renewals",
+  "notifPrefsCategoryClaims": "Claims",
+  "notifPrefsCategoryApplications": "Finance applications",
+  "notifPrefsCategoryCards": "Cards",
+  "notifPrefsCategoryVehicle": "My garage and trade-in",
+  "notifPrefsCategoryAccount": "Pre-approval and consent",
+  "notifPrefsMandatory": "Required: keep at least one channel on (consumer protection).",
+  "notifPrefsQuietHours": "Quiet hours",
+  "notifPrefsQuietHoursHint": "No push, SMS, WhatsApp or email between these times (Bahrain time). Messages wait until the end.",
+  "notifPrefsQuietEnabled": "Use quiet hours",
+  "notifPrefsQuietFrom": "From",
+  "notifPrefsQuietTo": "To",
+  "notifPrefsSave": "Save settings",
+  "notifPrefsSaved": "Settings saved",
+  "notifPrefsErrorMandatory": "Overdue payment notices need at least one channel.",
+  "notifPrefsSandboxNote": "Sandbox: nothing is sent by push, SMS, WhatsApp or email. Your choices are kept in memory only.",
+  "notifLineMotor": "Motor",
+  "notifLineTravel": "Travel",
+  "notifLineHome": "Home",
+  "notifProductVehicle": "car",
+  "notifProductPersonal": "personal",
+  "notifProductHome": "home",
+  "notifInstallmentDueTitle": "Installment due on {date}",
+  "@notifInstallmentDueTitle": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notifInstallmentDueBody": "{amount} for {contract}. Pay now from My installments.",
+  "@notifInstallmentDueBody": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "contract": {
+        "type": "String"
+      }
+    }
+  },
+  "notifInstallmentDueAutopayTitle": "Installment due on {date}",
+  "@notifInstallmentDueAutopayTitle": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notifInstallmentDueAutopayBody": "{amount} for {contract} will be collected by autopay.",
+  "@notifInstallmentDueAutopayBody": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "contract": {
+        "type": "String"
+      }
+    }
+  },
+  "notifInstallmentOverdueTitle": "Installment overdue",
+  "notifInstallmentOverdueBody": "{amount} for {contract} was due on {date}. Please pay as soon as you can.",
+  "@notifInstallmentOverdueBody": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "contract": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notifAutopayOffTitle": "Autopay is off",
+  "notifAutopayOffBody": "Turn on autopay for {contract} so the {amount} due on {date} is paid on time.",
+  "@notifAutopayOffBody": {
+    "placeholders": {
+      "contract": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notifSettlementCompletedTitle": "Contract settled",
+  "notifSettlementCompletedBody": "{contract} was settled on {date}. Nothing more is due.",
+  "@notifSettlementCompletedBody": {
+    "placeholders": {
+      "contract": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notifRegistrationExpiringTitle": "Registration ends on {date}",
+  "@notifRegistrationExpiringTitle": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notifRegistrationExpiringBody": "Renew the registration of your {vehicle} in time.",
+  "@notifRegistrationExpiringBody": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      }
+    }
+  },
+  "notifRegistrationExpiredTitle": "Registration expired",
+  "notifRegistrationExpiredBody": "The registration of your {vehicle} ended on {date}. Renew it before you drive.",
+  "@notifRegistrationExpiredBody": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notifGarageInsuranceExpiringTitle": "Motor insurance ends on {date}",
+  "@notifGarageInsuranceExpiringTitle": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notifGarageInsuranceExpiringBody": "Compare quotes and renew cover for your {vehicle}.",
+  "@notifGarageInsuranceExpiringBody": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      }
+    }
+  },
+  "notifGarageInsuranceExpiredTitle": "Motor insurance expired",
+  "notifGarageInsuranceExpiredBody": "Cover for your {vehicle} ended on {date}. Get a quote to stay covered.",
+  "@notifGarageInsuranceExpiredBody": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notifPolicyExpiringTitle": "{line} cover ends on {date}",
+  "@notifPolicyExpiringTitle": {
+    "placeholders": {
+      "line": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notifPolicyExpiringBody": "Policy {number} with {insurer}. Compare quotes to renew in time.",
+  "@notifPolicyExpiringBody": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      },
+      "insurer": {
+        "type": "String"
+      }
+    }
+  },
+  "notifPolicyExpiringTravelTitle": "Travel cover ends on {date}",
+  "@notifPolicyExpiringTravelTitle": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notifPolicyExpiringTravelBody": "Policy {number} with {insurer}. Staying longer? Get new cover before it ends.",
+  "@notifPolicyExpiringTravelBody": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      },
+      "insurer": {
+        "type": "String"
+      }
+    }
+  },
+  "notifPolicyExpiredTitle": "{line} cover has ended",
+  "@notifPolicyExpiredTitle": {
+    "placeholders": {
+      "line": {
+        "type": "String"
+      }
+    }
+  },
+  "notifPolicyExpiredBody": "Policy {number} with {insurer} ended on {date}.",
+  "@notifPolicyExpiredBody": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      },
+      "insurer": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notifClaimUnderAssessmentTitle": "Claim {number} is being assessed",
+  "@notifClaimUnderAssessmentTitle": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "notifClaimUnderAssessmentBody": "The assessor is reviewing your claim and photos.",
+  "notifClaimApprovedTitle": "Claim {number} approved",
+  "@notifClaimApprovedTitle": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "notifClaimApprovedBody": "Open the claim for the approved amount and your next step.",
+  "notifClaimRejectedTitle": "Claim {number} was not approved",
+  "@notifClaimRejectedTitle": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "notifClaimRejectedBody": "Open the claim to see the decision.",
+  "notifClaimSettledTitle": "Claim {number} settled",
+  "@notifClaimSettledTitle": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "notifClaimSettledBody": "Your claim is closed.",
+  "notifApplicationApprovedTitle": "Your {product} finance is approved",
+  "@notifApplicationApprovedTitle": {
+    "placeholders": {
+      "product": {
+        "type": "String"
+      }
+    }
+  },
+  "notifApplicationApprovedBody": "Review and accept your offer: {monthly} a month.",
+  "@notifApplicationApprovedBody": {
+    "placeholders": {
+      "monthly": {
+        "type": "String"
+      }
+    }
+  },
+  "notifApplicationReferredTitle": "Your application is with a credit officer",
+  "notifApplicationReferredBody": "We'll let you know as soon as it is decided.",
+  "notifApplicationDeclinedTitle": "Application not approved",
+  "notifApplicationDeclinedBody": "Open it to see why and what you can do next.",
+  "notifApplicationValuationFeeTitle": "Pay the valuation fee",
+  "notifApplicationValuationFeeBody": "Your {product} finance waits for the TRESCO valuation fee.",
+  "@notifApplicationValuationFeeBody": {
+    "placeholders": {
+      "product": {
+        "type": "String"
+      }
+    }
+  },
+  "notifApplicationValuationPaidTitle": "Continue your {product} finance",
+  "@notifApplicationValuationPaidTitle": {
+    "placeholders": {
+      "product": {
+        "type": "String"
+      }
+    }
+  },
+  "notifApplicationValuationPaidBody": "The valuation fee is paid. Continue to finish your finance.",
+  "notifApplicationLeaseStartedTitle": "Your Ijara lease has started",
+  "notifApplicationLeaseStartedBody": "BCFC bought the home and leased it to you: {monthly} a month.",
+  "@notifApplicationLeaseStartedBody": {
+    "placeholders": {
+      "monthly": {
+        "type": "String"
+      }
+    }
+  },
+  "notifApplicationCompletedTitle": "Your {product} finance is complete",
+  "@notifApplicationCompletedTitle": {
+    "placeholders": {
+      "product": {
+        "type": "String"
+      }
+    }
+  },
+  "notifApplicationCompletedBody": "Every step is done. Installments: {monthly} a month.",
+  "@notifApplicationCompletedBody": {
+    "placeholders": {
+      "monthly": {
+        "type": "String"
+      }
+    }
+  },
+  "notifCardIssuedTitle": "Your {card} is ready",
+  "@notifCardIssuedTitle": {
+    "placeholders": {
+      "card": {
+        "type": "String"
+      }
+    }
+  },
+  "notifCardIssuedBody": "Your virtual card ending {last4} is active.",
+  "@notifCardIssuedBody": {
+    "placeholders": {
+      "last4": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTradeInExpiringTitle": "Trade-in offer ends on {date}",
+  "@notifTradeInExpiringTitle": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTradeInExpiringBody": "Use your {amount} offer for the {vehicle} before it expires.",
+  "@notifTradeInExpiringBody": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "vehicle": {
+        "type": "String"
+      }
+    }
+  },
+  "notifPreApprovalExpiringTitle": "Pre-approval ends on {date}",
+  "@notifPreApprovalExpiringTitle": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notifPreApprovalExpiringBody": "Refresh it in a minute to keep your limits.",
+  "notifPreApprovalExpiredTitle": "Pre-approval expired",
+  "notifPreApprovalExpiredBody": "It ended on {date}. Refresh it to see your limits again.",
+  "@notifPreApprovalExpiredBody": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notifConsentExpiringTitle": "Data-sharing consent ends on {date}",
+  "@notifConsentExpiringTitle": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notifConsentExpiringBody": "Renew your CRB and Open Banking consent to keep your pre-approval up to date.",
+  "notifConsentExpiredTitle": "Data-sharing consent expired",
+  "notifConsentExpiredBody": "It ended on {date}. Renew it to refresh your pre-approval.",
+  "@notifConsentExpiredBody": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  }
 }

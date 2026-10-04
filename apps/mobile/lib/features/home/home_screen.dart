@@ -9,6 +9,7 @@ import '../../core/theme/tokens.g.dart';
 import '../../widgets/common.dart';
 import '../../widgets/listings.dart';
 import '../bundles/life_events_screen.dart';
+import '../notifications/notification_bell.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -25,6 +26,7 @@ class HomeScreen extends ConsumerWidget {
           icon: const Icon(Icons.chat_bubble_outline),
           onPressed: () => context.push('/assistant'),
         ),
+        const NotificationBell(),
         const LanguageButton(),
       ]),
       body: AsyncView(

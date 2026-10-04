@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { t, type AppLocale, type MessageKey } from '@sahel/i18n';
+import { NotificationBell } from './NotificationBell';
 
 const NAV: { href: string; key: MessageKey }[] = [
   { href: '', key: 'navHome' },
@@ -44,6 +45,7 @@ export function Header({ locale }: { locale: AppLocale }) {
         <Link href={switchHref} className="ms-auto rounded-md border border-border px-3 py-1.5 text-sm font-medium md:ms-0" hrefLang={other}>
           {t(locale, 'languageSwitch')}
         </Link>
+        <NotificationBell locale={locale} />
       </div>
       <nav className="flex gap-1 overflow-x-auto px-3 pb-2 md:hidden" aria-label={t(locale, 'navMain')}>
         {NAV.map((n) => (

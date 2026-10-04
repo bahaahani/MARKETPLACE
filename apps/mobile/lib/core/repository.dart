@@ -7,6 +7,7 @@ import 'models/payment_price.dart';
 import 'models/tradein.dart';
 import '../features/assistant/assistant_models.dart';
 import '../features/claims/claims_models.dart';
+import '../features/notifications/notifications_models.dart';
 
 /// Everything the app needs from the backend. The API implementation calls the same
 /// endpoints as the Next.js web app, so both channels show identical data and pricing.
@@ -137,6 +138,16 @@ abstract interface class SahelRepository {
 
   /// ⚠️ Sandbox only: stands in for the insurer's claims team (next assessment step, or [to]).
   Future<Claim> advanceClaim(String claimId, {String? to});
+
+  /// Notifications inbox (derived by the API from the customer's data) and read / dismiss; each returns the inbox.
+  Future<NotificationInbox> notifications();
+  Future<NotificationInbox> markNotificationRead(String id);
+  Future<NotificationInbox> markAllNotificationsRead();
+  Future<NotificationInbox> dismissNotification(String id);
+
+  /// Channel switches per category and quiet hours; saving a mandatory category with every channel off is 422.
+  Future<NotificationPreferences> notificationPreferences();
+  Future<NotificationPreferences> saveNotificationPreferences(NotificationPreferences prefs);
 }
 
 class ApiSahelRepository implements SahelRepository {
@@ -378,4 +389,27 @@ class ApiSahelRepository implements SahelRepository {
   @override
   Future<Claim> advanceClaim(String claimId, {String? to}) async =>
       Claim.fromJson(await _api.post('/claims/${Uri.encodeComponent(claimId)}/advance', {'to': ?to}) as Json);
+
+  @override
+  Future<NotificationInbox> notifications() async => NotificationInbox.fromJson(await _api.get('/me/notifications') as Json);
+
+  @override
+  Future<NotificationInbox> markNotificationRead(String id) async =>
+      NotificationInbox.fromJson(await _api.post('/me/notifications/${Uri.encodeComponent(id)}/read', const {}) as Json);
+
+  @override
+  Future<NotificationInbox> markAllNotificationsRead() async =>
+      NotificationInbox.fromJson(await _api.post('/me/notifications/read-all', const {}) as Json);
+
+  @override
+  Future<NotificationInbox> dismissNotification(String id) async =>
+      NotificationInbox.fromJson(await _api.post('/me/notifications/${Uri.encodeComponent(id)}/dismiss', const {}) as Json);
+
+  @override
+  Future<NotificationPreferences> notificationPreferences() async =>
+      NotificationPreferences.fromJson(await _api.get('/me/notification-preferences') as Json);
+
+  @override
+  Future<NotificationPreferences> saveNotificationPreferences(NotificationPreferences prefs) async =>
+      NotificationPreferences.fromJson(await _api.put('/me/notification-preferences', prefs.toJson()) as Json);
 }

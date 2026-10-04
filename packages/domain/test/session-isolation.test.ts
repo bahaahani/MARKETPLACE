@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   buildLifeEventBundle,
   customerFinancials,
@@ -39,6 +39,13 @@ function code(fn: () => unknown): string | undefined {
 }
 
 describe('policies are per session customer', () => {
+  // The sandbox payment gateway stamps payments with the real clock; pin it to NOW so the held quotes (24 h) are
+  // still valid however long after NOW the suite runs.
+  beforeAll(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
+  });
+  afterAll(() => vi.useRealTimers());
   function setup() {
     let t = NOW.getTime();
     const store = new SandboxPolicyStore(() => new Date((t += 1000)), (customerId) => [demoPolicyHistory(customerId)]);

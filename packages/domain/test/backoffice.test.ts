@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   applicationSteps,
   ApplicationTransitionError,
@@ -275,6 +275,13 @@ describe('credit review queue', () => {
 
 describe('refund queue (captured premiums without a policy)', () => {
   const NOW = new Date(Date.UTC(2026, 9, 3, 9, 0));
+  // The sandbox payment gateway stamps payments with the real clock; pin it to NOW so the held quotes (24 h) are
+  // still valid however long after NOW the suite runs.
+  beforeAll(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
+  });
+  afterAll(() => vi.useRealTimers());
   const travel: PolicyQuoteRequest = {
     line: 'travel',
     insurerId: 'pearl-takaful',
