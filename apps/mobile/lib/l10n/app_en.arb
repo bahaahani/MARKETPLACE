@@ -1379,5 +1379,144 @@
   },
   "claimSandboxNote": "Sandbox: claims are kept in memory and are not sent to any insurer.",
   "claimPhotosGallery": "Choose from gallery",
-  "claimPhotosCamera": "Take a photo"
+  "claimPhotosCamera": "Take a photo",
+  "rewTitle": "IMTIAZ Points",
+  "rewIntro": "Earn points when you pay on time, insure, or get your first card, and spend them on vouchers and offers.",
+  "rewSandboxNote": "Sandbox: earn and burn rates, tiers and rewards are placeholders, demo partners are fictional and vouchers have no real value.",
+  "rewBalance": "Your balance",
+  "rewTier": "{tier} tier",
+  "@rewTier": {
+    "placeholders": {
+      "tier": {
+        "type": "String"
+      }
+    }
+  },
+  "rewTierProgress": "{points} more points to {tier}",
+  "@rewTierProgress": {
+    "placeholders": {
+      "points": {
+        "type": "String"
+      },
+      "tier": {
+        "type": "String"
+      }
+    }
+  },
+  "rewTierTop": "You are at the top tier",
+  "rewTierWindow": "{points} points earned since {date}",
+  "@rewTierWindow": {
+    "placeholders": {
+      "points": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "rewHistory": "Points history",
+  "rewHistoryEmpty": "No points yet.",
+  "rewHowToEarn": "How you earn",
+  "rewRulePerBhd": "{points} points per BHD",
+  "@rewRulePerBhd": {
+    "placeholders": {
+      "points": {
+        "type": "String"
+      }
+    }
+  },
+  "rewRuleFixed": "{points} points",
+  "@rewRuleFixed": {
+    "placeholders": {
+      "points": {
+        "type": "String"
+      }
+    }
+  },
+  "rewCatalogue": "Redeem your points",
+  "rewCost": "{points} points",
+  "@rewCost": {
+    "placeholders": {
+      "points": {
+        "type": "String"
+      }
+    }
+  },
+  "rewValue": "Worth {amount}",
+  "@rewValue": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "rewValidDays": "Valid for {days} days",
+  "@rewValidDays": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "rewDemoPartner": "Demo partner",
+  "rewRedeem": "Redeem",
+  "rewConfirmTitle": "Redeem {item} for {points} points?",
+  "@rewConfirmTitle": {
+    "placeholders": {
+      "item": {
+        "type": "String"
+      },
+      "points": {
+        "type": "String"
+      }
+    }
+  },
+  "rewConfirm": "Confirm",
+  "rewCancel": "Cancel",
+  "rewNotEnough": "Not enough points",
+  "rewCodeTitle": "Your voucher code",
+  "rewCodeNote": "Save this code now: afterwards it is shown masked.",
+  "rewExpires": "Valid until {date}",
+  "@rewExpires": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "rewMyVouchers": "My vouchers",
+  "rewErrorInsufficient": "You don't have enough points for this reward.",
+  "rewOpen": "View my points",
+  "rewHomeSubtitle": "{points} points · {tier} tier",
+  "@rewHomeSubtitle": {
+    "placeholders": {
+      "points": {
+        "type": "String"
+      },
+      "tier": {
+        "type": "String"
+      }
+    }
+  },
+  "rewHomeCta": "Redeem",
+  "rewNewBalance": "New balance: {points} points",
+  "@rewNewBalance": {
+    "placeholders": {
+      "points": {
+        "type": "String"
+      }
+    }
+  },
+  "rewTotals": "Earned {earned} · Redeemed {burned}",
+  "@rewTotals": {
+    "placeholders": {
+      "earned": {
+        "type": "String"
+      },
+      "burned": {
+        "type": "String"
+      }
+    }
+  }
 }

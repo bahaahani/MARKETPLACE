@@ -4,6 +4,7 @@ import type { MessageKey } from '@sahel/i18n';
 import { PropertyCard, VehicleCard } from '@/components/Listings';
 import { resolveLocale, translator } from '@/lib/i18n';
 import { pageCustomerView } from '@/lib/session';
+import { RewardsEntry } from '@/components/RewardsEntry';
 
 // Personalized (customer data and due dates), so render per request.
 export const dynamic = 'force-dynamic';
@@ -84,6 +85,8 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
           {tr.t('lifeEntryCta')} <span className="inline-block rtl:rotate-180">→</span>
         </span>
       </Link>
+
+      <RewardsEntry tr={tr} customer={me} />
 
       <Section title={tr.t('featuredCars')} href={`/${tr.locale}/cars?maxMonthlyFils=${pa.maxMonthlyFils}`} more={tr.t('seeAll')}>
         {cars.map((v) => (

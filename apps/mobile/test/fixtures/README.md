@@ -170,3 +170,22 @@ PAY=$(curl -s -X POST $B/payments -H "$J" -H "$H" -H 'Idempotency-Key: fixture-v
 curl -s -X POST -H "$H" $B/payments/$PAY/confirm > /dev/null
 curl -s -X POST -H "$H" $B/applications/$ID/accept > application_home_conventional_completed.json
 ```
+
+IMTIAZ points (rewards), with the same `B`, `J` and `session()` as above:
+
+```sh
+# IMTIAZ points (⚠️ sandbox, placeholder rates), in its own session: the opening ledger and catalogue, pay the next CR-V
+# installment on time, redeem a fuel voucher, then the ledger and the (masked) voucher list.
+S=$(session); H="X-Sahel-Session: $S"
+curl -s -H "$H" $B/me/rewards > rewards.json
+curl -s -H "$H" $B/rewards/catalogue > rewards_catalogue.json
+NEXT=$(curl -s -H "$H" $B/me | node -pe 'const c=JSON.parse(require("fs").readFileSync(0)).data.contracts[0]; `${c.nextInstallment.amountFils} ${c.id}-${c.nextInstallment.number}`')
+PAY=$(curl -s -X POST $B/payments -H "$J" -H "$H" -H 'Idempotency-Key: fixture-rewards-inst-01' \
+  -d "{\"amountFils\":${NEXT% *},\"method\":\"card\",\"purpose\":\"installment\",\"reference\":\"${NEXT#* }\"}" \
+  | node -pe 'JSON.parse(require("fs").readFileSync(0)).data.id')
+curl -s -X POST -H "$H" $B/payments/$PAY/confirm > /dev/null
+curl -s -H "$H" $B/me/rewards > rewards_paid.json
+curl -s -X POST $B/me/rewards/redemptions -H "$J" -H "$H" -H 'Idempotency-Key: fixture-rewards-redeem-01' -d '{"itemId":"fuel-5"}' > rewards_redemption.json
+curl -s -H "$H" $B/me/rewards > rewards_redeemed.json
+curl -s -H "$H" $B/me/rewards/redemptions > rewards_redemptions.json
+```

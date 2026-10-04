@@ -7,6 +7,7 @@ import 'models/payment_price.dart';
 import 'models/tradein.dart';
 import '../features/assistant/assistant_models.dart';
 import '../features/claims/claims_models.dart';
+import '../features/rewards/rewards_models.dart';
 
 /// Everything the app needs from the backend. The API implementation calls the same
 /// endpoints as the Next.js web app, so both channels show identical data and pricing.
@@ -137,6 +138,19 @@ abstract interface class SahelRepository {
 
   /// ⚠️ Sandbox only: stands in for the insurer's claims team (next assessment step, or [to]).
   Future<Claim> advanceClaim(String claimId, {String? to});
+
+  /// IMTIAZ points (⚠️ sandbox, placeholder rates): balance, tier, history and earn rules, derived by the API.
+  Future<RewardsSummary> myRewards();
+
+  /// What points can be redeemed for, with `affordable` for this customer.
+  Future<RewardsCatalogue> rewardsCatalogue();
+
+  /// Redeem an item for a voucher code. The same [idempotencyKey] returns the original redemption; not enough points
+  /// throws ApiException(422, INSUFFICIENT_POINTS).
+  Future<RedemptionResult> redeemReward(String itemId, {required String idempotencyKey});
+
+  /// The customer's vouchers, newest first, codes masked.
+  Future<List<RewardRedemption>> myRedemptions();
 }
 
 class ApiSahelRepository implements SahelRepository {
@@ -378,4 +392,18 @@ class ApiSahelRepository implements SahelRepository {
   @override
   Future<Claim> advanceClaim(String claimId, {String? to}) async =>
       Claim.fromJson(await _api.post('/claims/${Uri.encodeComponent(claimId)}/advance', {'to': ?to}) as Json);
+
+  @override
+  Future<RewardsSummary> myRewards() async => RewardsSummary.fromJson(await _api.get('/me/rewards') as Json);
+
+  @override
+  Future<RewardsCatalogue> rewardsCatalogue() async => RewardsCatalogue.fromJson(await _api.get('/rewards/catalogue') as Json);
+
+  @override
+  Future<RedemptionResult> redeemReward(String itemId, {required String idempotencyKey}) async => RedemptionResult.fromJson(
+      await _api.post('/me/rewards/redemptions', {'itemId': itemId}, headers: {'Idempotency-Key': idempotencyKey}) as Json);
+
+  @override
+  Future<List<RewardRedemption>> myRedemptions() async =>
+      [for (final j in _items(await _api.get('/me/rewards/redemptions'))) RewardRedemption.fromJson(j as Json)];
 }
