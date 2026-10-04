@@ -12,6 +12,7 @@ import 'package:sahel/core/models/tradein.dart';
 import 'package:sahel/core/repository.dart';
 import 'package:sahel/features/assistant/assistant_models.dart';
 import 'package:sahel/features/claims/claims_models.dart';
+import 'package:sahel/features/rewards/rewards_models.dart';
 
 /// Recorded responses from the real shared API (apps/web/app/api/v1), refreshed by
 /// re-running the curl commands in test/fixtures/README.md.
@@ -479,4 +480,43 @@ class FakeSahelRepository implements SahelRepository {
     claimState = 'claim_approved';
     return _claim();
   }
+
+  // ---- IMTIAZ points (recorded in test/fixtures/README.md: opening ledger, pay an installment on time, redeem)
+
+  /// Recorded ledger: rewards (fresh session), rewards_paid (after an on-time installment) or rewards_redeemed.
+  String rewardsState = 'rewards';
+
+  /// Every redemption request (item, idempotency key), as sent.
+  final redeemed = <(String, String)>[];
+
+  /// Answers redemptions like the API does without enough points (422 INSUFFICIENT_POINTS).
+  bool rewardsInsufficient = false;
+
+  /// Catalogue items whose `affordable` is forced to false (as the API reports for a low balance).
+  final Set<String> unaffordable = {};
+
+  @override
+  Future<RewardsSummary> myRewards() async => RewardsSummary.fromJson(fixture(rewardsState) as Json);
+
+  @override
+  Future<RewardsCatalogue> rewardsCatalogue() async {
+    final j = Map<String, dynamic>.of(fixture('rewards_catalogue') as Json);
+    j['items'] = [
+      for (final i in j['items'] as List) {...i as Json, if (unaffordable.contains(i['id'])) 'affordable': false},
+    ];
+    return RewardsCatalogue.fromJson(j);
+  }
+
+  @override
+  Future<RedemptionResult> redeemReward(String itemId, {required String idempotencyKey}) async {
+    redeemed.add((itemId, idempotencyKey));
+    if (rewardsInsufficient) throw ApiException(422, 'INSUFFICIENT_POINTS', 'not enough points');
+    rewardsState = 'rewards_redeemed';
+    return RedemptionResult.fromJson(fixture('rewards_redemption') as Json);
+  }
+
+  @override
+  Future<List<RewardRedemption>> myRedemptions() async => rewardsState == 'rewards_redeemed'
+      ? [for (final j in fixture('rewards_redemptions')['items'] as List) RewardRedemption.fromJson(j as Json)]
+      : const [];
 }

@@ -16,6 +16,7 @@ import '../claims/my_claims.dart';
 import '../finance/application_screen.dart';
 import '../insurance/insurance_providers.dart';
 import '../insurance/policies.dart';
+import '../rewards/rewards_providers.dart';
 import '../settlement/settlement_panel.dart';
 import 'my_cards.dart';
 
@@ -37,6 +38,7 @@ class AccountScreen extends ConsumerWidget {
             ref.invalidate(myCardsProvider);
             ref.invalidate(myPoliciesProvider);
             ref.invalidate(myClaimsProvider);
+            ref.invalidate(myRewardsProvider);
           },
           child: ListView(padding: const EdgeInsets.all(SahelSpace.md), children: [
             ...switch (ref.watch(applicationsProvider)) {
@@ -49,7 +51,15 @@ class AccountScreen extends ConsumerWidget {
             const MyCardsSection(),
             const MyPoliciesSection(),
             const MyClaimsSection(),
-            SectionHeader(l.myInstallments, action: '★ ${l.rewardsPoints(context.number(me.rewardsPoints))}'),
+            // IMTIAZ points from GET /me/rewards (derived by the API); tapping opens the rewards screen.
+            SectionHeader(
+              l.myInstallments,
+              action: switch (ref.watch(myRewardsProvider)) {
+                AsyncData(:final value) => '★ ${l.rewardsPoints(context.number(value.balance))}',
+                _ => '★ ${l.rewOpen}',
+              },
+              onAction: () => context.push('/rewards'),
+            ),
             for (final c in me.contracts) ...[_ContractCard(c), const SizedBox(height: SahelSpace.sm)],
             SectionHeader(l.myGarage),
             for (final g in me.garage)

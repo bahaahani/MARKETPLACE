@@ -15,6 +15,7 @@ import { STRUCTURE_LABEL } from '@/lib/labels';
 import { resolveLocale, translator } from '@/lib/i18n';
 import { policyStore } from '@/lib/policy-store';
 import { claimStore } from '@/lib/claims-store';
+import { rewardsState, rewardsStore } from '@/lib/rewards-store';
 import { pageCustomerView } from '@/lib/session';
 
 // Personalized (customer data and due dates), so render per request.
@@ -48,7 +49,9 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
       <section aria-labelledby="inst">
         <div className="mb-3 flex items-baseline justify-between">
           <h1 id="inst" className="text-2xl font-bold">{tr.t('myInstallments')}</h1>
-          <span className="rounded-full bg-accent/15 px-3 py-1 text-sm font-semibold text-[#8a5c00]">★ {tr.t('rewardsPoints', { value: tr.num(me.rewardsPoints) })}</span>
+          <Link href={`/${tr.locale}/rewards`} className="rounded-full bg-accent/15 px-3 py-1 text-sm font-semibold text-[#8a5c00] hover:bg-accent/25" data-testid="account-rewards" aria-label={tr.t('rewOpen')}>
+            ★ {tr.t('rewardsPoints', { value: tr.num(rewardsStore.summary(me.customerId, rewardsState(me)).balance) })}
+          </Link>
         </div>
         <div className="space-y-3">
           {me.contracts.map((c) => (

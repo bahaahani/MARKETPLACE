@@ -26,3 +26,4 @@ export * from './payment-amounts';
 export * from './home-finance';
 export * from './tradein';
 export * from './claims';
+export * from './rewards';
