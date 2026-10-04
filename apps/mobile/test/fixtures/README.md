@@ -170,3 +170,28 @@ PAY=$(curl -s -X POST $B/payments -H "$J" -H "$H" -H 'Idempotency-Key: fixture-v
 curl -s -X POST -H "$H" $B/payments/$PAY/confirm > /dev/null
 curl -s -X POST -H "$H" $B/applications/$ID/accept > application_home_conventional_completed.json
 ```
+
+"Bid For Me" (crazy idea #1, ⚠️ sandbox), with the same `B`, `J` and `session()` as above. `config.json` and
+`config_onboarded.json` (above) also carry the `bids` form rules. In one session: an over-budget request (422), an SUV
+request, a bid from NMC and from TAC (dealer endpoints need no customer session), the board ranked by monthly and by
+extras, accepting TAC's bid, the list; then a second request, cancelled.
+
+```sh
+S=$(session); H="X-Sahel-Session: $S"
+curl -s -X POST $B/requests -H "$J" -H "$H" \
+  -d '{"bodyType":"suv","maxMonthlyFils":900000,"structure":"murabaha","tenureMonths":60,"downPaymentFils":3000000}' > bid_over_budget.json
+ID=$(curl -s -X POST $B/requests -H "$J" -H "$H" \
+  -d '{"bodyType":"suv","condition":"any","maxMonthlyFils":300000,"structure":"murabaha","tenureMonths":60,"downPaymentFils":3000000,"insurance":"takaful"}' \
+  | tee bid_request_open.json | node -pe 'JSON.parse(require("fs").readFileSync(0)).data.id')
+curl -s -X POST $B/dealer/nmc/requests/$ID/bids -H "$J" -d '{"vehicleId":"v-honda-crv-2026","discountFils":500000,"extras":["service-1y","window-tint"]}' > /dev/null
+curl -s -X POST $B/dealer/tac/requests/$ID/bids -H "$J" -d '{"vehicleId":"v-nissan-patrol-2021","discountFils":2925000,"extras":["service-3y","floor-mats"]}' > /dev/null
+curl -s -H "$H" "$B/requests/$ID" > bid_request_bids.json
+curl -s -H "$H" "$B/requests/$ID?sort=extras" > bid_request_bids_extras.json
+BID=$(node -pe 'JSON.parse(require("fs").readFileSync("bid_request_bids.json")).data.bids.find(b=>b.sellerId==="tac").id')
+curl -s -X POST $B/requests/$ID/accept -H "$J" -H "$H" -d "{\"bidId\":\"$BID\"}" > bid_request_accepted.json
+curl -s -H "$H" $B/me/requests > me_requests.json
+ID2=$(curl -s -X POST $B/requests -H "$J" -H "$H" \
+  -d '{"bodyType":"pickup","maxMonthlyFils":100000,"structure":"conventional","tenureMonths":48,"downPaymentFils":0,"insurance":"none"}' \
+  | node -pe 'JSON.parse(require("fs").readFileSync(0)).data.id')
+curl -s -X POST -H "$H" $B/requests/$ID2/cancel > bid_request_cancelled.json
+```

@@ -1379,5 +1379,270 @@
   },
   "claimSandboxNote": "Sandbox: claims are kept in memory and are not sent to any insurer.",
   "claimPhotosGallery": "Choose from gallery",
-  "claimPhotosCamera": "Take a photo"
+  "claimPhotosCamera": "Take a photo",
+  "bidEntryTitle": "Bid For Me",
+  "bidEntrySubtitle": "Tell dealers what you want and your monthly budget. They compete for you.",
+  "bidEntryCta": "Post a request",
+  "bidNewTitle": "Bid For Me: what are you looking for?",
+  "bidNewSubtitle": "Dealers see what you want, your first name and that you are pre-approved. Never your salary or CPR.",
+  "bidSectionCar": "The car",
+  "bidSectionFinance": "How you'll pay",
+  "bidAny": "Any",
+  "bidBodyType": "Body type",
+  "bidBodySedan": "Sedan",
+  "bidBodySuv": "SUV",
+  "bidBodyHatchback": "Hatchback",
+  "bidBodyPickup": "Pickup",
+  "bidBodyCoupe": "Coupe",
+  "bidCondition": "Condition",
+  "bidConditionAny": "New or used",
+  "bidMinYear": "Year from",
+  "bidMaxMileage": "Mileage up to",
+  "bidFuel": "Fuel",
+  "bidFuelPetrol": "Petrol",
+  "bidFuelHybrid": "Hybrid",
+  "bidFuelElectric": "Electric",
+  "bidSeats": "Seats",
+  "bidSeatsAtLeast": "{value}+ seats",
+  "@bidSeatsAtLeast": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "bidMaxMonthly": "Maximum monthly",
+  "bidMaxMonthlyHint": "Up to {amount} fits your pre-approval.",
+  "@bidMaxMonthlyHint": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "bidStructure": "Finance",
+  "bidDownPayment": "Cash down payment",
+  "bidUseTradeIn": "Add my trade-in offer ({amount})",
+  "@bidUseTradeIn": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "bidInsurance": "Insurance quote",
+  "bidInsuranceTakaful": "Takaful only",
+  "bidInsuranceAny": "Any insurer (cheapest)",
+  "bidInsuranceNone": "No insurance quote",
+  "bidPost": "Post my request",
+  "bidValidity": "Dealers can bid for {hours} hours.",
+  "@bidValidity": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "bidNoBudget": "Your pre-approval has no monthly headroom left, so dealers can't be asked to bid right now.",
+  "bidOpenExists": "You already have an open request.",
+  "bidViewOpen": "See your request",
+  "bidErrorOverBudget": "That monthly is above what your pre-approval allows. Lower it to post.",
+  "bidErrorAlreadyOpen": "You already have an open request. Accept a bid or cancel it first.",
+  "bidErrorNoTradeIn": "Your trade-in offer has expired. Get a new one or post without it.",
+  "bidRequestTitle": "Your Bid For Me request",
+  "bidStatusOpen": "Open",
+  "bidStatusClosed": "Closed",
+  "bidStatusCancelled": "Cancelled",
+  "bidStatusExpired": "Expired",
+  "bidExpiresAt": "Open until {time} (Bahrain time)",
+  "@bidExpiresAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "bidSummaryMonthly": "Up to {amount} a month",
+  "@bidSummaryMonthly": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "bidInstantTitle": "Instant matches",
+  "bidInstantSubtitle": "Cars from our catalogue that already fit, priced on your terms.",
+  "bidInstantEmpty": "No car in the catalogue fits yet. Dealers may still bid.",
+  "bidBidsTitle": "Dealer bids",
+  "bidBidsEmpty": "No bids yet. Dealers can see your request now; this page refreshes by itself.",
+  "bidSortBy": "Sort by",
+  "bidSortMonthly": "Lowest monthly",
+  "bidSortTotal": "Lowest total cost",
+  "bidSortExtras": "Most extras",
+  "bidMonthly": "{amount} / month",
+  "@bidMonthly": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "bidTotalCost": "Total cost {amount}",
+  "@bidTotalCost": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "bidDiscount": "Discount {amount}",
+  "@bidDiscount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "bidNetPrice": "Price {amount}",
+  "@bidNetPrice": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "bidDownPaymentValue": "{amount} down",
+  "@bidDownPaymentValue": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "bidInsuranceEstimate": "{insurer}: {amount} / year",
+  "@bidInsuranceEstimate": {
+    "placeholders": {
+      "insurer": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "bidExtras": "Extras",
+  "bidExtraService1y": "1 year free service",
+  "bidExtraService2y": "2 years free service",
+  "bidExtraService3y": "3 years free service",
+  "bidExtraWindowTint": "Window tint",
+  "bidExtraExtendedWarranty": "Extended warranty",
+  "bidExtraFreeRegistration": "Free registration",
+  "bidExtraFloorMats": "Floor mats",
+  "bidExtraFullTank": "Full tank",
+  "bidAccept": "Accept this bid",
+  "bidCancel": "Cancel request",
+  "bidAcceptedTitle": "You accepted {dealer}'s bid",
+  "@bidAcceptedTitle": {
+    "placeholders": {
+      "dealer": {
+        "type": "String"
+      }
+    }
+  },
+  "bidAcceptedBody": "The dealer will contact you. Apply for finance on this car when you're ready.",
+  "bidApplyCta": "Apply for finance on this car",
+  "bidStatusAccepted": "Accepted",
+  "bidStatusLost": "Not chosen",
+  "bidRank": "#{rank}",
+  "@bidRank": {
+    "placeholders": {
+      "rank": {
+        "type": "String"
+      }
+    }
+  },
+  "bidLiveRefresh": "Updates every {seconds} seconds",
+  "@bidLiveRefresh": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "bidViewCar": "View car",
+  "bidTradeInIncluded": "includes trade-in {amount}",
+  "@bidTradeInIncluded": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "bidSandboxNote": "Sandbox: requests and bids are kept in memory. The discount and extras are not yet carried into the finance application.",
+  "bidDealerNav": "Requests",
+  "bidDealerTitle": "Bid For Me requests",
+  "bidDealerSubtitle": "Customers who posted what they want. Bid a car from your stock: BCFC prices the monthly on the customer's terms.",
+  "bidDealerEmpty": "No open requests match your stock right now.",
+  "bidDealerCustomer": "{name} is looking for",
+  "@bidDealerCustomer": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "bidDealerPreApproved": "Pre-approved for this budget",
+  "bidDealerNotPreApproved": "Not pre-approved",
+  "bidDealerTerms": "{structure} · {months} months · {down} down",
+  "@bidDealerTerms": {
+    "placeholders": {
+      "structure": {
+        "type": "String"
+      },
+      "months": {
+        "type": "String"
+      },
+      "down": {
+        "type": "String"
+      }
+    }
+  },
+  "bidDealerBidCount": "{count} bids so far",
+  "@bidDealerBidCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "bidDealerVehicle": "Car from your stock",
+  "bidDealerDiscount": "Discount (BHD)",
+  "bidDealerMaxDiscount": "Up to {amount}",
+  "@bidDealerMaxDiscount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "bidDealerSubmit": "Send bid",
+  "bidDealerUpdate": "Update bid",
+  "bidDealerYourBid": "Your bid: {vehicle} at {amount} / month",
+  "@bidDealerYourBid": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "bidDealerWithinBudget": "Fits at list price",
+  "bidDealerOverBudget": "Over the maximum at list price",
+  "bidDealerErrorOverMonthly": "Over the customer's maximum monthly. Try a bigger discount or another car.",
+  "bidDealerErrorDownPayment": "The customer's down payment is below this car's minimum.",
+  "bidDealerErrorDiscount": "That discount is above the cap for this car.",
+  "bidDealerSent": "Bid sent",
+  "bidLeadSource": "Bid For Me"
 }

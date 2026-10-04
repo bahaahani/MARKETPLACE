@@ -8,6 +8,7 @@ import '../../core/providers.dart';
 import '../../core/theme/tokens.g.dart';
 import '../../widgets/common.dart';
 import '../../widgets/listings.dart';
+import '../bids/bids_providers.dart';
 import '../bundles/life_events_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -104,6 +105,8 @@ class _HomeBody extends ConsumerWidget {
         ),
         const SizedBox(height: SahelSpace.sm),
         const LifeEventsEntryCard(),
+        const SizedBox(height: SahelSpace.sm),
+        const BidForMeEntryCard(),
         const SizedBox(height: SahelSpace.sm),
         Row(children: [
           Expanded(child: OutlinedButton.icon(onPressed: () => context.push('/insurance'), icon: const Icon(Icons.shield_outlined), label: Text(l.navInsurance))),

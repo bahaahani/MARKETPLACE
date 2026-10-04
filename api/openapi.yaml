@@ -1135,6 +1135,152 @@ paths:
         '404': {description: CLAIM_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '409': {description: INVALID_TRANSITION, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '422': {description: INVALID_REQUEST (unknown status), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /requests:
+    post:
+      summary: |
+        "Bid For Me" (crazy idea #1, ⚠️ sandbox): the session customer posts what they want (criteria) and how they want
+        to pay; partner dealers bid for 72 hours (`expiresAt`). The maximum monthly must fit the customer's DBR headroom
+        (their pre-approval's maximum monthly installment): above it the request is REJECTED with 422 OVER_BUDGET (not
+        posted with a flag), so dealers never compete on offers BCFC could not finance. One open request per customer.
+        The response carries system `instantMatches`: catalogue cars that match and fit, priced with the shared engine
+        on the customer's terms, cheapest monthly first. Options and limits come from GET /config `bids`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [maxMonthlyFils, structure, tenureMonths]
+              properties:
+                bodyType: {enum: [any, sedan, suv, hatchback, pickup, coupe], default: any}
+                condition: {enum: [any, new, used], default: any}
+                minYear: {type: [integer, 'null'], description: 'Oldest model year (GET /config bids.minYear to maxYear); null for any'}
+                maxMileageKm: {type: [integer, 'null'], minimum: 0, maximum: 500000}
+                fuel: {enum: [any, petrol, hybrid, electric], default: any}
+                minSeats: {type: [integer, 'null'], description: 'One of bids.seatOptions; null for any'}
+                maxMonthlyFils: {type: integer, description: 'At least bids.minMonthlyFils and at most the DBR headroom (bids.maxMonthlyFils)'}
+                structure: {enum: [conventional, murabaha]}
+                tenureMonths: {type: integer, description: 'Vehicle tenure range (12 to 84)'}
+                downPaymentFils: {type: integer, minimum: 0, default: 0, description: Cash part of the down payment}
+                useTradeIn: {type: boolean, default: false, description: "Add the session's active trade-in offer to the down payment"}
+                insurance: {enum: [takaful, any, none], default: takaful, description: 'Motor insurance estimate on each offer: Takaful only, any insurer, or none'}
+      responses:
+        '201': {description: Posted (OPEN), content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/BidRequest'}}}}}}
+        '400': {description: BAD_JSON, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '409': {description: REQUEST_ALREADY_OPEN, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {description: 'INVALID_REQUEST, OVER_BUDGET (above the DBR headroom), or NO_TRADE_IN (useTradeIn without an active offer)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '429': {description: TOO_MANY_REQUESTS (sandbox cap per customer), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /me/requests:
+    get:
+      summary: "The session customer's Bid For Me requests, newest first (`open` is the id of the open one, if any)"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: {type: array, items: {$ref: '#/components/schemas/BidRequest'}}
+                      total: {type: integer}
+                      open: {type: [string, 'null']}
+  /requests/{id}:
+    get:
+      summary: |
+        One of the session customer's requests: criteria, terms, instant matches and the dealer bids ranked by `sort`
+        (live bids first, lost bids last). The apps poll it every `pollSeconds` while it is OPEN. Another customer's
+        request is 404. An OPEN request past `expiresAt` reads as EXPIRED (its bids LOST).
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {enum: [monthly, total, extras], default: monthly}}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/BidRequest'}}}}}}
+        '404': {description: REQUEST_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /requests/{id}/accept:
+    post:
+      summary: |
+        Accept a live bid: the request is CLOSED, the bid ACCEPTED and every other bid LOST. The dealer gets a lead
+        (source `bid`, first name and initial only) on its leads board. `accepted.applyHref` is the car page, where the
+        customer applies for finance as usual (⚠️ sandbox: the discount and extras are not carried into the application).
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, required: [bidId], properties: {bidId: {type: string}}}}}
+      responses:
+        '200': {description: Accepted, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/BidRequest'}}}}}}
+        '400': {description: BAD_JSON, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: 'REQUEST_NOT_FOUND, or BID_NOT_FOUND (unknown, replaced by a newer bid from the same dealer, or not live)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '409': {description: REQUEST_CLOSED (accepted or cancelled), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '410': {description: REQUEST_EXPIRED, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {description: INVALID_REQUEST (missing bidId), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /requests/{id}/cancel:
+    post:
+      summary: "Cancel an open request (CANCELLED; its live bids are LOST). Another customer's request is 404"
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: Cancelled, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/BidRequest'}}}}}}
+        '404': {description: REQUEST_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '409': {description: REQUEST_CLOSED, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '410': {description: REQUEST_EXPIRED, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /dealer/{sellerId}/requests:
+    get:
+      summary: |
+        Dealer portal (⚠️ sandbox, no staff login): open Bid For Me requests that at least one car of this dealer
+        matches (or that it already bid on), newest first. Data minimization: the criteria, the terms needed to price a
+        car, the customer's first name and whether they are pre-approved for the budget. Never the customer id, salary,
+        CPR, obligations, exact headroom, trade-in or other dealers' bids (only `bidCount`).
+      parameters: [{name: sellerId, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: {type: array, items: {$ref: '#/components/schemas/DealerBidRequest'}}
+                      total: {type: integer}
+        '404': {description: UNKNOWN_DEALER, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /dealer/{sellerId}/requests/{id}/bids:
+    post:
+      summary: |
+        Bid a car from this dealer's stock on an open request, with an optional discount (capped at the lower of
+        `bids.maxDiscountFils` and `bids.maxDiscountPct` of the price) and extras from the fixed list (one free-service
+        plan at most). The server prices the monthly with the shared engine on the customer's structure, tenure and down
+        payment and the discounted price; any monthly the client sends is ignored. One bid per dealer: a new bid
+        replaces the previous one (with a new id). Returns the request as this dealer sees it, with `myBid`.
+      parameters:
+        - {name: sellerId, in: path, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vehicleId]
+              properties:
+                vehicleId: {type: string}
+                discountFils: {type: integer, minimum: 0, default: 0}
+                extras: {type: array, items: {$ref: '#/components/schemas/BidExtra'}}
+      responses:
+        '201': {description: Bid placed, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/DealerBidRequest'}}}}}}
+        '400': {description: BAD_JSON, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: 'UNKNOWN_DEALER, REQUEST_NOT_FOUND, or VEHICLE_NOT_FOUND', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '409': {description: REQUEST_CLOSED, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '410': {description: REQUEST_EXPIRED, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422':
+          description: |
+            INVALID_REQUEST, VEHICLE_NOT_IN_INVENTORY (another dealer's car), CRITERIA_MISMATCH, INVALID_DISCOUNT,
+            DISCOUNT_TOO_HIGH, INVALID_EXTRAS, DOWN_PAYMENT_TOO_LOW (the customer's down payment is below the car's
+            minimum), OVER_MAX_MONTHLY (above the customer's maximum monthly)
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
 components:
   parameters:
     StaffRoleHeader:
@@ -1252,7 +1398,7 @@ components:
         vehicleId: {type: string}
         vehicleTitle: {type: string}
         customerName: {$ref: '#/components/schemas/Localized'}
-        source: {enum: [reserved, applied, viewed]}
+        source: {enum: [reserved, applied, viewed, bid], description: 'bid: an accepted Bid For Me bid'}
         status: {$ref: '#/components/schemas/LeadStatus'}
         preApproved: {type: boolean}
         createdAt: {type: string, format: date-time}
@@ -1645,6 +1791,7 @@ components:
         sandbox: {const: true}
         tradeIn: {$ref: '#/components/schemas/TradeInRules'}
         claims: {$ref: '#/components/schemas/ClaimRules'}
+        bids: {$ref: '#/components/schemas/BidRules'}
     InsuranceRules:
       type: object
       description: Travel and home insurance form rules and defaults (the quote endpoints still validate every request)
@@ -2007,3 +2154,176 @@ components:
         policeReportRequiredFor: {type: array, items: {$ref: '#/components/schemas/ClaimType'}}
         maxDaysSinceIncident: {type: integer}
         thirdPartyCoverTypes: {type: array, items: {$ref: '#/components/schemas/ClaimType'}, description: 'Types third-party-only cover accepts (with a third party involved)'}
+    BidExtra:
+      enum: [service-1y, service-2y, service-3y, window-tint, extended-warranty, free-registration, floor-mats, full-tank]
+    BidCriteria:
+      type: object
+      properties:
+        bodyType: {enum: [any, sedan, suv, hatchback, pickup, coupe]}
+        condition: {enum: [any, new, used]}
+        minYear: {type: [integer, 'null']}
+        maxMileageKm: {type: [integer, 'null']}
+        fuel: {enum: [any, petrol, hybrid, electric]}
+        minSeats: {type: [integer, 'null']}
+    BidVehicle:
+      type: object
+      properties:
+        id: {type: string}
+        title: {type: string}
+        make: {type: string}
+        model: {type: string}
+        trim: {type: string}
+        year: {type: integer}
+        condition: {enum: [new, used]}
+        mileageKm: {type: integer}
+        bodyType: {type: string}
+        fuel: {type: string}
+        seats: {type: integer}
+        accentHue: {type: integer}
+    BidPricing:
+      type: object
+      description: 'An offer priced by the server on the customer terms (shared pricing engine)'
+      properties:
+        listPriceFils: {type: integer}
+        discountFils: {type: integer}
+        priceFils: {type: integer, description: 'Price after the discount (the asset price financed)'}
+        downPaymentFils: {type: integer, description: "The customer's down payment, capped at this car's maximum"}
+        quote: {$ref: '#/components/schemas/FinanceQuote'}
+        monthlyFils: {type: integer}
+        totalCostFils: {type: integer, description: Down payment plus every installment}
+        insurance:
+          oneOf:
+            - type: 'null'
+            - type: object
+              description: '⚠️ Demo first-year comprehensive premium from the cheapest matching insurer'
+              properties:
+                insurerId: {type: string}
+                insurerName: {$ref: '#/components/schemas/Localized'}
+                takaful: {type: boolean}
+                annualPremiumFils: {type: integer}
+    Bid:
+      type: object
+      properties:
+        id: {type: string}
+        requestId: {type: string}
+        sellerId: {type: string}
+        seller: {type: object, properties: {id: {type: string}, name: {$ref: '#/components/schemas/Localized'}, type: {enum: [group, partner]}}}
+        vehicle: {$ref: '#/components/schemas/BidVehicle'}
+        extras: {type: array, items: {$ref: '#/components/schemas/BidExtra'}}
+        pricing: {$ref: '#/components/schemas/BidPricing'}
+        status: {enum: [ACTIVE, ACCEPTED, LOST]}
+        rank: {type: [integer, 'null'], description: "Customer view: position in the chosen ranking (null for a lost bid)"}
+        extrasScore: {type: integer, description: 'Customer view: free-service years plus one per other extra'}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    BidTerms:
+      type: object
+      properties:
+        maxMonthlyFils: {type: integer}
+        structure: {enum: [conventional, murabaha]}
+        tenureMonths: {type: integer}
+        cashDownPaymentFils: {type: integer}
+        tradeIn: {oneOf: [{type: 'null'}, {type: object, properties: {offerId: {type: string}, offerFils: {type: integer}, validUntil: {type: string, format: date}}}]}
+        downPaymentFils: {type: integer, description: Cash plus trade-in}
+        insurance: {enum: [takaful, any, none]}
+    BidRequest:
+      type: object
+      description: "⚠️ Sandbox Bid For Me request, as the customer who posted it sees it"
+      properties:
+        id: {type: string, description: 'breq_…'}
+        customerId: {type: string}
+        firstName: {$ref: '#/components/schemas/Localized'}
+        displayName: {$ref: '#/components/schemas/Localized'}
+        criteria: {$ref: '#/components/schemas/BidCriteria'}
+        terms: {$ref: '#/components/schemas/BidTerms'}
+        preApproved: {type: boolean}
+        status: {enum: [OPEN, CLOSED, CANCELLED, EXPIRED]}
+        instantMatches:
+          type: array
+          items:
+            type: object
+            properties:
+              vehicle: {$ref: '#/components/schemas/BidVehicle'}
+              seller: {type: object}
+              pricing: {$ref: '#/components/schemas/BidPricing'}
+              href: {type: string, description: 'Locale-free car page path, e.g. /cars/{id}'}
+        bids: {type: array, items: {$ref: '#/components/schemas/Bid'}}
+        sort: {enum: [monthly, total, extras]}
+        bidCount: {type: integer, description: Live bids}
+        canAccept: {type: boolean}
+        canCancel: {type: boolean}
+        accepted:
+          oneOf:
+            - type: 'null'
+            - type: object
+              properties:
+                bidId: {type: string}
+                vehicleId: {type: string}
+                sellerId: {type: string}
+                applyHref: {type: string, description: 'Locale-free car page path to apply for finance'}
+        acceptedBidId: {type: string}
+        pollSeconds: {type: integer}
+        createdAt: {type: string, format: date-time}
+        expiresAt: {type: string, format: date-time, description: '72 hours after posting'}
+        closedAt: {type: string, format: date-time}
+        sandbox: {const: true}
+    DealerBidRequest:
+      type: object
+      description: 'An open request as a dealer sees it (data minimization: no customer id, salary, CPR, obligations, headroom or trade-in)'
+      properties:
+        id: {type: string}
+        firstName: {$ref: '#/components/schemas/Localized'}
+        preApproved: {type: boolean, description: 'The customer was pre-approved for this budget when posting'}
+        criteria: {$ref: '#/components/schemas/BidCriteria'}
+        terms:
+          type: object
+          properties:
+            maxMonthlyFils: {type: integer}
+            structure: {enum: [conventional, murabaha]}
+            tenureMonths: {type: integer}
+            downPaymentFils: {type: integer}
+            insurance: {enum: [takaful, any, none]}
+        status: {enum: [OPEN]}
+        createdAt: {type: string, format: date-time}
+        expiresAt: {type: string, format: date-time}
+        bidCount: {type: integer}
+        myBid: {oneOf: [{type: 'null'}, {$ref: '#/components/schemas/Bid'}]}
+        matchingVehicles:
+          type: array
+          items:
+            type: object
+            properties:
+              vehicle: {$ref: '#/components/schemas/BidVehicle'}
+              listPricing: {oneOf: [{type: 'null'}, {$ref: '#/components/schemas/BidPricing'}]}
+              withinBudget: {type: boolean}
+              maxDiscountFils: {type: integer}
+    BidRules:
+      type: object
+      description: 'Bid For Me form rules for the session customer (GET /config bids). POST /requests still validates every request'
+      properties:
+        bodyTypes: {type: array, items: {type: string}}
+        conditions: {type: array, items: {enum: [any, new, used]}}
+        fuels: {type: array, items: {type: string}}
+        seatOptions: {type: array, items: {type: integer}}
+        mileageOptionsKm: {type: array, items: {type: integer}}
+        minYear: {type: integer}
+        maxYear: {type: integer}
+        structures: {type: array, items: {enum: [conventional, murabaha]}}
+        minTenureMonths: {type: integer}
+        maxTenureMonths: {type: integer}
+        tenureStepMonths: {type: integer}
+        defaultTenureMonths: {type: integer}
+        downPaymentStepFils: {type: integer}
+        maxCashDownPaymentFils: {type: integer}
+        minMonthlyFils: {type: integer}
+        maxMonthlyFils: {type: integer, description: "This customer's DBR headroom on the monthly step"}
+        monthlyStepFils: {type: integer}
+        defaultMonthlyFils: {type: integer}
+        canPost: {type: boolean}
+        insurancePreferences: {type: array, items: {enum: [takaful, any, none]}}
+        extras: {type: array, items: {$ref: '#/components/schemas/BidExtra'}}
+        maxDiscountFils: {type: integer}
+        maxDiscountPct: {type: integer}
+        validityHours: {type: integer}
+        pollSeconds: {type: integer}
+        tradeIn: {oneOf: [{type: 'null'}, {type: object, properties: {offerId: {type: string}, offerFils: {type: integer}, validUntil: {type: string, format: date}}}]}

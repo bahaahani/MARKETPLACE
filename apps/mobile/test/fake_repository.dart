@@ -11,6 +11,7 @@ import 'package:sahel/core/models/payment_price.dart';
 import 'package:sahel/core/models/tradein.dart';
 import 'package:sahel/core/repository.dart';
 import 'package:sahel/features/assistant/assistant_models.dart';
+import 'package:sahel/features/bids/bids_models.dart';
 import 'package:sahel/features/claims/claims_models.dart';
 
 /// Recorded responses from the real shared API (apps/web/app/api/v1), refreshed by
@@ -478,5 +479,53 @@ class FakeSahelRepository implements SahelRepository {
     // Only the approval was recorded; the assessment step in between is skipped here.
     claimState = 'claim_approved';
     return _claim();
+  }
+
+  // ---- Bid For Me (recorded in test/fixtures/README.md: post, two dealer bids, accept; a second request cancelled)
+
+  /// Every request posted, accepted bid and cancel, as sent.
+  final postedRequests = <Json>[];
+  final acceptedBids = <(String, String)>[];
+  final cancelledRequests = <String>[];
+  final requestedSorts = <String>[];
+
+  /// Recorded state of the request: bid_request_open, bid_request_bids or bid_request_accepted (null: none posted).
+  String? requestState;
+
+  BidRequest _request([String sort = 'monthly']) =>
+      BidRequest.fromJson(fixture(requestState == 'bid_request_bids' && sort == 'extras' ? 'bid_request_bids_extras' : requestState!) as Json);
+
+  @override
+  Future<BidRequest> createBidRequest(BidRequestDraft draft) async {
+    final body = draft.toJson();
+    postedRequests.add(body);
+    // Mirrors the API's DBR headroom check (packages/domain/src/bids.ts): above it is 422 OVER_BUDGET.
+    final rules = (await config()).bids!;
+    if (draft.maxMonthlyFils > rules.maxMonthlyFils) throw ApiException(422, 'OVER_BUDGET', 'above the DBR headroom');
+    requestState = 'bid_request_open';
+    return _request();
+  }
+
+  @override
+  Future<List<BidRequest>> myBidRequests() async => requestState == null ? const [] : [_request()];
+
+  @override
+  Future<BidRequest> bidRequest(String id, {String sort = 'monthly'}) async {
+    requestedSorts.add(sort);
+    if (requestState == null || _request().id != id) throw ApiException(404, 'REQUEST_NOT_FOUND', 'request not found');
+    return _request(sort);
+  }
+
+  @override
+  Future<BidRequest> acceptBid(String requestId, String bidId) async {
+    acceptedBids.add((requestId, bidId));
+    requestState = 'bid_request_accepted';
+    return _request();
+  }
+
+  @override
+  Future<BidRequest> cancelBidRequest(String requestId) async {
+    cancelledRequests.add(requestId);
+    return BidRequest.fromJson(fixture('bid_request_cancelled') as Json);
   }
 }

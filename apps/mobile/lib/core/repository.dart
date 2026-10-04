@@ -7,6 +7,7 @@ import 'models/payment_price.dart';
 import 'models/tradein.dart';
 import '../features/assistant/assistant_models.dart';
 import '../features/claims/claims_models.dart';
+import '../features/bids/bids_models.dart';
 
 /// Everything the app needs from the backend. The API implementation calls the same
 /// endpoints as the Next.js web app, so both channels show identical data and pricing.
@@ -137,6 +138,16 @@ abstract interface class SahelRepository {
 
   /// ⚠️ Sandbox only: stands in for the insurer's claims team (next assessment step, or [to]).
   Future<Claim> advanceClaim(String claimId, {String? to});
+
+  /// "Bid For Me" (⚠️ sandbox): post a request; the API checks the maximum monthly against the DBR headroom
+  /// (ApiException(422, OVER_BUDGET)) and returns instant matches.
+  Future<BidRequest> createBidRequest(BidRequestDraft draft);
+  Future<List<BidRequest>> myBidRequests();
+
+  /// One request with its bids ranked by [sort] (monthly, total or extras).
+  Future<BidRequest> bidRequest(String id, {String sort = 'monthly'});
+  Future<BidRequest> acceptBid(String requestId, String bidId);
+  Future<BidRequest> cancelBidRequest(String requestId);
 }
 
 class ApiSahelRepository implements SahelRepository {
@@ -378,4 +389,22 @@ class ApiSahelRepository implements SahelRepository {
   @override
   Future<Claim> advanceClaim(String claimId, {String? to}) async =>
       Claim.fromJson(await _api.post('/claims/${Uri.encodeComponent(claimId)}/advance', {'to': ?to}) as Json);
+
+  @override
+  Future<BidRequest> createBidRequest(BidRequestDraft draft) async => BidRequest.fromJson(await _api.post('/requests', draft.toJson()) as Json);
+
+  @override
+  Future<List<BidRequest>> myBidRequests() async => [for (final j in _items(await _api.get('/me/requests'))) BidRequest.fromJson(j as Json)];
+
+  @override
+  Future<BidRequest> bidRequest(String id, {String sort = 'monthly'}) async =>
+      BidRequest.fromJson(await _api.get('/requests/${Uri.encodeComponent(id)}', query: {'sort': sort}) as Json);
+
+  @override
+  Future<BidRequest> acceptBid(String requestId, String bidId) async =>
+      BidRequest.fromJson(await _api.post('/requests/${Uri.encodeComponent(requestId)}/accept', {'bidId': bidId}) as Json);
+
+  @override
+  Future<BidRequest> cancelBidRequest(String requestId) async =>
+      BidRequest.fromJson(await _api.post('/requests/${Uri.encodeComponent(requestId)}/cancel', const {}) as Json);
 }

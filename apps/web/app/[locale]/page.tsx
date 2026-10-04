@@ -85,6 +85,19 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
         </span>
       </Link>
 
+      <Link href={`/${tr.locale}/requests/new`} className="card flex items-center gap-4 p-5 transition hover:shadow-lg" data-testid="bid-entry">
+        <span aria-hidden className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-brand-soft text-2xl">
+          🏷️
+        </span>
+        <span className="flex-1">
+          <span className="block font-bold">{tr.t('bidEntryTitle')}</span>
+          <span className="block text-sm text-text-muted">{tr.t('bidEntrySubtitle')}</span>
+        </span>
+        <span className="font-semibold text-brand">
+          {tr.t('bidEntryCta')} <span className="inline-block rtl:rotate-180">→</span>
+        </span>
+      </Link>
+
       <Section title={tr.t('featuredCars')} href={`/${tr.locale}/cars?maxMonthlyFils=${pa.maxMonthlyFils}`} more={tr.t('seeAll')}>
         {cars.map((v) => (
           <VehicleCard key={v.id} v={v} tr={tr} />

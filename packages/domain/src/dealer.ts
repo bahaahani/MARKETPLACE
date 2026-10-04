@@ -123,7 +123,7 @@ export function dealerInventory(sellerId: string): DealerInventory {
 // Leads
 
 export type LeadStatus = 'NEW' | 'CONTACTED' | 'TEST_DRIVE' | 'OFFER_SENT' | 'WON' | 'LOST';
-export type LeadSource = 'reserved' | 'applied' | 'viewed';
+export type LeadSource = 'reserved' | 'applied' | 'viewed' | 'bid';
 
 export const LEAD_STATUSES: LeadStatus[] = ['NEW', 'CONTACTED', 'TEST_DRIVE', 'OFFER_SENT', 'WON', 'LOST'];
 
