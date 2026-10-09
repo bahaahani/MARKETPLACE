@@ -120,7 +120,13 @@ test('post a request, the dealer bids, accept, then apply at the discounted pric
 
   // The dealer's lead shows the list price against the bid price.
   await page.goto('/en/dealer/nmc');
-  const lead = page.getByTestId('leads-NEW').getByTestId('lead').filter({ hasText: 'Honda CR-V' }).filter({ has: page.getByTestId('lead-bid') });
+  // The dealer's board is shared by every browser project and spec, so pick the lead by its own bid price instead of
+  // the first CR-V lead (an earlier undiscounted lead may be listed before it).
+  const lead = page
+    .getByTestId('leads-NEW')
+    .getByTestId('lead')
+    .filter({ hasText: 'Honda CR-V' })
+    .filter({ has: page.getByTestId('lead-bid').filter({ hasText: `bid ${bhd0(14_400_000)}` }) });
   await expect(lead.first().getByTestId('lead-bid')).toContainText(`List ${bhd0(14_900_000)} · bid ${bhd0(14_400_000)}`);
   await expect(lead.first().getByTestId('lead-bid')).toContainText(`Discount ${bhd0(500_000)}`);
 });

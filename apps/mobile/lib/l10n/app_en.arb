@@ -2289,5 +2289,167 @@
         "type": "String"
       }
     }
-  }
+  },
+  "insMedLine": "Medical",
+  "insLifeLine": "Life",
+  "insMedTitle": "Medical insurance",
+  "insMedBody": "Health cover for you, your spouse and up to 5 children, for one year",
+  "insLifeTitle": "Life insurance",
+  "insLifeBody": "Term life cover with an optional critical illness rider, conventional or family takaful",
+  "insMedIndicative": "Indicative quote only. No medical underwriting happens here: the insurer confirms cover and price after reviewing your application.",
+  "insMedMembers": "Who is covered",
+  "insMedPrimaryDob": "Your date of birth",
+  "insMedSpouseDob": "Spouse date of birth",
+  "insMedAddSpouse": "Add spouse",
+  "insMedChildren": "Children (0 to 17)",
+  "insMedAddChild": "Add a child",
+  "insMedChildDob": "Child {n} date of birth",
+  "@insMedChildDob": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "insMedRemove": "Remove",
+  "insMedNationality": "Nationality",
+  "insMedBahraini": "Bahraini",
+  "insMedExpat": "Expatriate",
+  "insMedPlan": "Plan",
+  "insMedTierBasic": "Basic",
+  "insMedTierEnhanced": "Enhanced",
+  "insMedTierPremium": "Premium",
+  "insMedPreExisting": "A member has a pre-existing condition",
+  "insMedPreExistingHint": "This never leads to a decline. It adds an indicative surcharge, or the insurer reviews it first.",
+  "insMedAnnualLimit": "Annual limit {amount} per member",
+  "@insMedAnnualLimit": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "insMedCoPay": "{pct}% co-pay",
+  "@insMedCoPay": {
+    "placeholders": {
+      "pct": {
+        "type": "String"
+      }
+    }
+  },
+  "insMedNoCoPay": "No co-pay",
+  "insMedInpatient": "Inpatient",
+  "insMedOutpatient": "Outpatient",
+  "insMedDental": "Dental",
+  "insMedOptical": "Optical",
+  "insMedMaternity": "Maternity after {months} months",
+  "@insMedMaternity": {
+    "placeholders": {
+      "months": {
+        "type": "String"
+      }
+    }
+  },
+  "insMedNoMaternity": "No maternity cover",
+  "insMedMembersCount": "{count} members",
+  "@insMedMembersCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "insMedPerYear": "{amount} / year",
+  "@insMedPerYear": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "insMedSurcharge": "Includes a pre-existing surcharge of {amount}",
+  "@insMedSurcharge": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "insMedReferred": "Referred to the insurer: the price is confirmed after their review. Not for sale online.",
+  "insMedErrorMembers": "Check the members: valid dates of birth, adults aged 18 to 64, children aged 0 to 17 and up to 5 children.",
+  "insLifeIndicative": "Indicative quote only. No medical underwriting happens here: the insurer confirms cover and price after reviewing your application.",
+  "insLifeBeneficiaryNote": "Beneficiary names are not collected in this quote. They are collected when the policy is issued.",
+  "insLifeDob": "Date of birth",
+  "insLifeSmoker": "Smoker",
+  "insLifeSum": "Sum assured",
+  "insLifeTerm": "Term",
+  "insLifeTermYears": "{years} years",
+  "@insLifeTermYears": {
+    "placeholders": {
+      "years": {
+        "type": "String"
+      }
+    }
+  },
+  "insLifeTermHint": "The term must end by age {age}.",
+  "@insLifeTermHint": {
+    "placeholders": {
+      "age": {
+        "type": "String"
+      }
+    }
+  },
+  "insLifeRider": "Add critical illness rider",
+  "insLifeRiderShort": "Critical illness rider",
+  "insLifeFamilyTakaful": "Family takaful",
+  "insLifeConventional": "Conventional",
+  "insLifeAnnual": "{amount} / year",
+  "@insLifeAnnual": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "insLifeMonthly": "{amount} / month (for comparison)",
+  "@insLifeMonthly": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "insLifeTotal": "Total over {years} years: {amount}",
+  "@insLifeTotal": {
+    "placeholders": {
+      "years": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "insLifeSumAssured": "Sum assured {amount}",
+  "@insLifeSumAssured": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "insLifePolicyCover": "Sum assured {amount} · {years}-year term",
+  "@insLifePolicyCover": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "years": {
+        "type": "String"
+      }
+    }
+  },
+  "insLifeErrorAge": "Check the date of birth: life cover is for ages 18 to 65.",
+  "insLifeErrorSum": "Check the sum assured: BHD 10,000 to 500,000 in steps of BHD 5,000.",
+  "insLifeErrorTerm": "Check the term: 5 to 30 years, ending by age 70."
 }

@@ -5,6 +5,8 @@ import { motorQuotes, type MotorCover } from './insurance';
 import { bahrainToday, InsuranceQuoteError, oneYearEndIso, type InsuranceLine, INSURANCE_LINES, isSafeNonNegativeInt } from './insurance-common';
 import { DEMO_TRAVEL_PLANS, travelPremium, travelQuotes, withTravelDefaults, type TravelQuoteInput, type TravelRegion, type TravelTier } from './insurance-travel';
 import { homeQuotes, type HomeQuoteInput } from './insurance-home';
+import { medicalQuotes, withMedicalDefaults, type MedicalNationality, type MedicalQuoteInput, type MedicalTier, type PreExistingStatus } from './insurance-medical';
+import { lifeQuotes, withLifeDefaults, type LifeProductType, type LifeQuoteInput } from './insurance-life';
 import { DEMO_INSURERS } from './insurance';
 
 /**
@@ -29,12 +31,34 @@ export type PolicyCover =
       contentsSumInsuredFils: Fils;
       propertyId?: string;
       propertyTitle?: Localized;
+    }
+  | {
+      line: 'medical';
+      tier: MedicalTier;
+      nationality: MedicalNationality;
+      adults: number;
+      children: number;
+      annualLimitFils: Fils;
+      coPayPct: number;
+      preExistingStatus: PreExistingStatus;
+    }
+  | {
+      line: 'life';
+      productType: LifeProductType;
+      sumAssuredFils: Fils;
+      /** The policy period is one year (the annual premium); the term is the cover the customer plans for */
+      termYears: number;
+      smoker: boolean;
+      criticalIllnessRider: boolean;
+      ageAtStart: number;
     };
 
 export type PolicyQuoteRequest =
   | { line: 'motor'; insurerId: string; input: { vehicleValueFils: Fils; cover: MotorCover; agencyRepair?: boolean; reference: string } }
   | { line: 'travel'; insurerId: string; input: Partial<TravelQuoteInput> }
-  | { line: 'home'; insurerId: string; input: Partial<HomeQuoteInput> };
+  | { line: 'home'; insurerId: string; input: Partial<HomeQuoteInput> }
+  | { line: 'medical'; insurerId: string; input: Partial<MedicalQuoteInput> }
+  | { line: 'life'; insurerId: string; input: Partial<LifeQuoteInput> };
 
 /** A priced offer from one insurer, held so it can be paid and bound. */
 export interface PolicyQuote {
@@ -110,7 +134,7 @@ export class PolicyError extends Error {
   }
 }
 
-const LINE_CODE: Record<InsuranceLine, string> = { motor: 'MTR', travel: 'TRV', home: 'HOM' };
+const LINE_CODE: Record<InsuranceLine, string> = { motor: 'MTR', travel: 'TRV', home: 'HOM', medical: 'MED', life: 'LIF' };
 
 export function policyStatus(endDate: string, now: Date = new Date()): PolicyStatus {
   return endDate < bahrainToday(now) ? 'EXPIRED' : 'ACTIVE';
@@ -180,6 +204,53 @@ export function pricePolicyQuote(
           buildingSumInsuredFils: input.buildingSumInsuredFils,
           contentsSumInsuredFils: input.contentsSumInsuredFils,
           ...(input.propertyId ? { propertyId: input.propertyId, propertyTitle: input.propertyTitle } : {}),
+        },
+        startDate: today,
+        endDate: oneYearEndIso(today),
+      };
+    }
+    case 'medical': {
+      const q = medicalQuotes({ ...withMedicalDefaults(req.input), takafulOnly: false }, now).find((x) => x.insurerId === req.insurerId);
+      if (!q) throw notOffered();
+      // Referred quotes are indicative only: the insurer reviews the declaration first, so nothing is sold online.
+      if (!q.buyable) throw new InsuranceQuoteError('REFERRED_TO_INSURER', `${req.insurerId} refers quotes with pre-existing conditions to the insurer`);
+      return {
+        line: 'medical',
+        insurerId: q.insurerId,
+        insurerName: q.insurerName,
+        takaful: q.takaful,
+        premiumFils: q.annualPremiumFils,
+        cover: {
+          line: 'medical',
+          tier: q.tier,
+          nationality: q.nationality,
+          adults: q.adults,
+          children: q.children,
+          annualLimitFils: q.annualLimitFils,
+          coPayPct: q.coPayPct,
+          preExistingStatus: q.preExistingStatus,
+        },
+        startDate: today,
+        endDate: oneYearEndIso(today),
+      };
+    }
+    case 'life': {
+      const q = lifeQuotes({ ...withLifeDefaults(req.input), takafulOnly: false }, now).find((x) => x.insurerId === req.insurerId);
+      if (!q) throw notOffered();
+      return {
+        line: 'life',
+        insurerId: q.insurerId,
+        insurerName: q.insurerName,
+        takaful: q.takaful,
+        premiumFils: q.annualPremiumFils,
+        cover: {
+          line: 'life',
+          productType: q.productType,
+          sumAssuredFils: q.sumAssuredFils,
+          termYears: q.termYears,
+          smoker: q.smoker,
+          criticalIllnessRider: q.criticalIllnessRider,
+          ageAtStart: q.ageAtStart,
         },
         startDate: today,
         endDate: oneYearEndIso(today),

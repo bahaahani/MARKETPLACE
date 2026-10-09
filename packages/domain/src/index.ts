@@ -17,6 +17,8 @@ export * from './settlement';
 export * from './insurance-common';
 export * from './insurance-travel';
 export * from './insurance-home';
+export * from './insurance-medical';
+export * from './insurance-life';
 export * from './policies';
 export * from './customer';
 export * from './config';

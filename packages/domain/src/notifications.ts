@@ -182,7 +182,7 @@ function notLater(iso: string, now: Date): string {
   return Date.parse(iso) > now.getTime() ? now.toISOString() : iso;
 }
 
-const LINE_KEY: Record<InsuranceLine, string> = { motor: 'notifLineMotor', travel: 'notifLineTravel', home: 'notifLineHome' };
+const LINE_KEY: Record<InsuranceLine, string> = { motor: 'notifLineMotor', travel: 'notifLineTravel', home: 'notifLineHome', medical: 'insMedLine', life: 'insLifeLine' };
 const PRODUCT_KEY: Record<FinanceApplication['productLine'], string> = {
   vehicle: 'notifProductVehicle',
   personal: 'notifProductPersonal',

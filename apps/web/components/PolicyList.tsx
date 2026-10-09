@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { Policy } from '@sahel/domain';
-import { HOME_TYPE_LABEL, LINE_LABEL, POLICY_STATUS_LABEL, REGION_LABEL, TIER_LABEL } from '@/lib/insurance-labels';
+import { HOME_TYPE_LABEL, LINE_LABEL, MEDICAL_TIER_LABEL, POLICY_STATUS_LABEL, REGION_LABEL, TIER_LABEL } from '@/lib/insurance-labels';
 import type { Translator } from '@/lib/i18n';
 
 /** One line describing what a policy covers. */
@@ -16,6 +16,20 @@ function coverSummary(p: Policy, tr: Translator): string {
         c.propertyTitle ? c.propertyTitle[tr.locale] : HOME_TYPE_LABEL[c.propertyType] && tr.t(HOME_TYPE_LABEL[c.propertyType]!),
         c.buildingSumInsuredFils > 0 && tr.t('insBuildingCover', { amount: tr.money(c.buildingSumInsuredFils, 0) }),
         c.contentsSumInsuredFils > 0 && tr.t('insContentsCover', { amount: tr.money(c.contentsSumInsuredFils, 0) }),
+      ]
+        .filter(Boolean)
+        .join(' · ');
+    case 'medical':
+      return [
+        tr.t(MEDICAL_TIER_LABEL[c.tier]),
+        tr.t('insMedMembersCount', { count: c.adults + c.children }),
+        tr.t('insMedAnnualLimit', { amount: tr.money(c.annualLimitFils, 0) }),
+      ].join(' · ');
+    case 'life':
+      return [
+        tr.t(c.productType === 'family-takaful' ? 'insLifeFamilyTakaful' : 'insLifeConventional'),
+        tr.t('insLifePolicyCover', { amount: tr.money(c.sumAssuredFils, 0), years: c.termYears }),
+        c.criticalIllnessRider && tr.t('insLifeRiderShort'),
       ]
         .filter(Boolean)
         .join(' · ');

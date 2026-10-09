@@ -8,7 +8,7 @@ import '../../core/theme/tokens.g.dart';
 import '../../widgets/common.dart';
 import 'insurance_quotes.dart';
 
-/// Insurance hub: motor, travel and home, each comparing several insurers (Tasheelat Insurance is a broker).
+/// Insurance hub: motor, travel, home, medical and life, each comparing several insurers (Tasheelat Insurance is a broker).
 /// Same layout as the web /insurance page.
 class InsuranceScreen extends ConsumerStatefulWidget {
   const InsuranceScreen({super.key});
@@ -52,6 +52,20 @@ class _InsuranceScreenState extends ConsumerState<InsuranceScreen> {
           title: l.insHomeTitle,
           body: l.insHomeBody,
           onTap: () => context.push('/insurance/home'),
+        ),
+        _LineCard(
+          key: const Key('insurance-line-medical'),
+          icon: Icons.medical_services_outlined,
+          title: l.insMedTitle,
+          body: l.insMedBody,
+          onTap: () => context.push('/insurance/medical'),
+        ),
+        _LineCard(
+          key: const Key('insurance-line-life'),
+          icon: Icons.shield_outlined,
+          title: l.insLifeTitle,
+          body: l.insLifeBody,
+          onTap: () => context.push('/insurance/life'),
         ),
         const SizedBox(height: SahelSpace.md),
         AsyncView(

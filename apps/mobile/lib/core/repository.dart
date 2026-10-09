@@ -3,6 +3,7 @@ import 'models.dart';
 import 'models/bundles.dart';
 import 'models/config.dart';
 import 'models/insurance.dart';
+import 'models/insurance_medical_life.dart';
 import 'models/payment_price.dart';
 import 'models/tradein.dart';
 import '../features/assistant/assistant_models.dart';
@@ -106,6 +107,27 @@ abstract interface class SahelRepository {
     int? buildingSumInsuredFils,
     int? contentsSumInsuredFils,
     String? propertyId,
+    required bool takafulOnly,
+  });
+
+  /// Medical insurance comparison (indicative only). Invalid members throw ApiException(422, INVALID_MEMBERS).
+  Future<List<MedicalQuote>> medicalQuotes({
+    required String primaryDateOfBirth,
+    String? spouseDateOfBirth,
+    required List<String> childrenDatesOfBirth,
+    required String tier,
+    required String nationality,
+    required bool preExistingConditions,
+    required bool takafulOnly,
+  });
+
+  /// Term life insurance comparison (indicative only). Invalid age, sum or term throw ApiException(422).
+  Future<List<LifeQuote>> lifeQuotes({
+    required String dateOfBirth,
+    required bool smoker,
+    required int sumAssuredFils,
+    required int termYears,
+    required bool criticalIllnessRider,
     required bool takafulOnly,
   });
 
@@ -376,6 +398,48 @@ class ApiSahelRepository implements SahelRepository {
         'propertyId': ?propertyId,
         'takafulOnly': takafulOnly,
       }) as Json);
+
+  @override
+  Future<List<MedicalQuote>> medicalQuotes({
+    required String primaryDateOfBirth,
+    String? spouseDateOfBirth,
+    required List<String> childrenDatesOfBirth,
+    required String tier,
+    required String nationality,
+    required bool preExistingConditions,
+    required bool takafulOnly,
+  }) async {
+    final data = await _api.post('/insurance/medical-quotes', {
+      'primaryDateOfBirth': primaryDateOfBirth,
+      'spouseDateOfBirth': ?spouseDateOfBirth,
+      'childrenDatesOfBirth': childrenDatesOfBirth,
+      'tier': tier,
+      'nationality': nationality,
+      'preExistingConditions': preExistingConditions,
+      'takafulOnly': takafulOnly,
+    }) as Json;
+    return [for (final q in data['quotes'] as List) MedicalQuote.fromJson(q as Json)];
+  }
+
+  @override
+  Future<List<LifeQuote>> lifeQuotes({
+    required String dateOfBirth,
+    required bool smoker,
+    required int sumAssuredFils,
+    required int termYears,
+    required bool criticalIllnessRider,
+    required bool takafulOnly,
+  }) async {
+    final data = await _api.post('/insurance/life-quotes', {
+      'dateOfBirth': dateOfBirth,
+      'smoker': smoker,
+      'sumAssuredFils': sumAssuredFils,
+      'termYears': termYears,
+      'criticalIllnessRider': criticalIllnessRider,
+      'takafulOnly': takafulOnly,
+    }) as Json;
+    return [for (final q in data['quotes'] as List) LifeQuote.fromJson(q as Json)];
+  }
 
   @override
   Future<PolicyQuote> holdPolicyQuote({required String line, required String insurerId, required Json input}) async =>
