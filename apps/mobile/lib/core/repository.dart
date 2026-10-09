@@ -57,7 +57,8 @@ abstract interface class SahelRepository {
   Future<List<VirtualCard>> myCards();
 
   /// Apply for vehicle finance (vehicleId + downPaymentFils), home finance (propertyId + downPaymentFils)
-  /// or personal finance (amountFils). The API decides immediately.
+  /// or personal finance (amountFils). The API decides immediately. A vehicle application can name the customer's
+  /// accepted bid (requestId + bidId) and ask to count their trade-in (useTradeIn): the API checks both and prices it.
   Future<FinanceApplication> applyForFinance({
     required String productLine,
     required FinanceStructure structure,
@@ -66,6 +67,9 @@ abstract interface class SahelRepository {
     String? propertyId,
     int? downPaymentFils,
     int? amountFils,
+    String? requestId,
+    String? bidId,
+    bool useTradeIn = false,
     required String idempotencyKey,
   });
   Future<FinanceApplication> application(String id);
@@ -287,6 +291,9 @@ class ApiSahelRepository implements SahelRepository {
     String? propertyId,
     int? downPaymentFils,
     int? amountFils,
+    String? requestId,
+    String? bidId,
+    bool useTradeIn = false,
     required String idempotencyKey,
   }) async =>
       FinanceApplication.fromJson(await _api.post(
@@ -299,6 +306,9 @@ class ApiSahelRepository implements SahelRepository {
           'propertyId': ?propertyId,
           'downPaymentFils': ?downPaymentFils,
           'amountFils': ?amountFils,
+          'requestId': ?requestId,
+          'bidId': ?bidId,
+          if (useTradeIn) 'useTradeIn': true,
         },
         headers: {'Idempotency-Key': idempotencyKey},
       ) as Json);

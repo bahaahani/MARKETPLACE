@@ -68,6 +68,18 @@ export default async function CreditQueuePage({ params }: { params: Promise<{ lo
                       <dd className="font-semibold" data-testid="bo-amount">{tr.money(a.financedFils, 0)}</dd>
                       <dd className="text-xs text-text-muted">{tr.t('months', { value: a.tenureMonths })}</dd>
                     </div>
+                    {a.deal && (
+                      <div className="col-span-2 sm:col-span-3" data-testid="bo-deal">
+                        <dt className="text-xs text-text-muted">{tr.t('carryPricingTitle')}</dt>
+                        <dd className="font-semibold">
+                          {tr.t('carryLeadPrices', { list: tr.money(a.deal.listPriceFils, 0), price: tr.money(a.deal.priceFils, 0) })}
+                          {a.deal.discountFils > 0 && <span className="ms-1 font-normal text-islamic">({tr.t('carryLeadDiscount', { amount: tr.money(a.deal.discountFils, 0) })})</span>}
+                        </dd>
+                        {a.deal.tradeInCreditFils > 0 && (
+                          <dd className="text-xs font-normal text-text-muted">{tr.t('carryPricingTradeInNote', { amount: tr.money(a.deal.tradeInCreditFils, 0) })}</dd>
+                        )}
+                      </div>
+                    )}
                     <div>
                       <dt className="text-xs text-text-muted">{tr.t('boColMonthly')}</dt>
                       <dd className="font-semibold" data-testid="bo-monthly">{tr.money(a.monthlyFils)}</dd>

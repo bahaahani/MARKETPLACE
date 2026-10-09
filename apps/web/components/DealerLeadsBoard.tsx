@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { LEAD_STATUSES, nextLeadStatuses, type Lead, type LeadSource, type LeadStatus } from '@sahel/domain';
+import { formatBhd, LEAD_STATUSES, nextLeadStatuses, type Lead, type LeadSource, type LeadStatus } from '@sahel/domain';
 import { t, type AppLocale, type MessageKey } from '@sahel/i18n';
 
 export const LEAD_STATUS_LABEL: Record<LeadStatus, MessageKey> = {
@@ -67,6 +67,14 @@ export function DealerLeadsBoard({ locale, sellerId, initial }: { locale: AppLoc
                   <li key={l.id} className="card p-3 text-sm" data-testid="lead">
                     <p className="font-semibold">{l.customerName[locale]}</p>
                     <p className="text-xs text-text-muted">{l.vehicleTitle}</p>
+                    {l.bid && (
+                      <p className="mt-1 text-xs" data-testid="lead-bid">
+                        {tr('carryLeadPrices', { list: formatBhd(l.bid.listPriceFils, locale, { decimals: 0 }), price: formatBhd(l.bid.priceFils, locale, { decimals: 0 }) })}
+                        {l.bid.discountFils > 0 && (
+                          <span className="ms-1 text-islamic">({tr('carryLeadDiscount', { amount: formatBhd(l.bid.discountFils, locale, { decimals: 0 }) })})</span>
+                        )}
+                      </p>
+                    )}
                     <p className="mt-1 flex flex-wrap gap-1 text-xs">
                       <span className="rounded-full bg-brand-soft px-2 py-0.5 text-brand">{tr(SOURCE_LABEL[l.source])}</span>
                       {l.preApproved && <span className="rounded-full bg-islamic-soft px-2 py-0.5 text-islamic">{tr('dealerLeadPreApproved')}</span>}

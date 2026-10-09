@@ -4,7 +4,7 @@ import { serverPaymentPrice } from '@sahel/domain';
 import { t } from '@sahel/i18n';
 import Link from 'next/link';
 import { AcceptOffer } from '@/components/AcceptOffer';
-import { applicationTitle, DecisionCard, OfferSummary, Timeline } from '@/components/Application';
+import { applicationTitle, DecisionCard, OfferSummary, PricingBreakdown, Timeline } from '@/components/Application';
 import { ContinueFulfilment } from '@/components/HomeFinance';
 import { originations } from '@/lib/api';
 import { customerApplicationView } from '@/lib/home-finance';
@@ -41,6 +41,7 @@ export default async function ApplicationPage({ params }: { params: Promise<{ lo
         <DecisionCard app={app} tr={tr} />
         <div className="space-y-4 lg:sticky lg:top-20 lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <OfferSummary app={app} tr={tr} />
+          <PricingBreakdown app={app} tr={tr} />
           {app.status === 'APPROVED' && <AcceptOffer locale={tr.locale} applicationId={app.id} />}
           {valuation && (
             <section className="card space-y-3 p-5" data-testid="valuation-step" data-paid={valuationPaid}>

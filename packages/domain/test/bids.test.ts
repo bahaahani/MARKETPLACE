@@ -272,7 +272,7 @@ describe('Bid For Me: accept, cancel, expiry', () => {
     expect(appendLead(leads, lead).status).toBe('CONTACTED');
 
     const view = bidRequestView(request);
-    expect(view.accepted).toEqual({ bidId: patrol.id, vehicleId: 'v-nissan-patrol-2021', sellerId: 'tac', applyHref: '/cars/v-nissan-patrol-2021' });
+    expect(view.accepted).toEqual({ bidId: patrol.id, vehicleId: 'v-nissan-patrol-2021', sellerId: 'tac', applyHref: `/cars/v-nissan-patrol-2021?requestId=${request.id}&bidId=${patrol.id}`, validUntil: '2026-10-10T09:00:00.000Z' });
     expect(view.canAccept).toBe(false);
     expect(view.bids.find((b) => b.status === 'LOST')!.rank).toBeNull();
 

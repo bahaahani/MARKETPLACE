@@ -12,6 +12,9 @@ import 'bids_models.dart';
 /// The customer's "Bid For Me" requests, newest first.
 final myBidRequestsProvider = FutureProvider<List<BidRequest>>((ref) => ref.watch(repositoryProvider).myBidRequests());
 
+/// One of the customer's requests (GET /requests/{id}): the car page reads the accepted bid from it.
+final bidRequestProvider = FutureProvider.family<BidRequest, String>((ref, id) => ref.watch(repositoryProvider).bidRequest(id));
+
 // Labels only: the options themselves come from GET /config `bids`.
 
 String bidBodyLabel(AppLocalizations l, String v) => switch (v) {

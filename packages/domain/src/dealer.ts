@@ -1,3 +1,4 @@
+import type { BidExtra } from './bids';
 import type { Fils } from './money';
 import { SELLERS, VEHICLES, findVehicle } from './catalog';
 import type { CustomerOverview } from './account';
@@ -148,6 +149,15 @@ export function isLeadStatus(x: unknown): x is LeadStatus {
   return typeof x === 'string' && (LEAD_STATUSES as string[]).includes(x);
 }
 
+/** What a bid-sourced lead was won at (data the dealer set itself: no customer data). */
+export interface LeadBid {
+  listPriceFils: Fils;
+  /** Price after the dealer's discount */
+  priceFils: Fils;
+  discountFils: Fils;
+  extras: BidExtra[];
+}
+
 export interface Lead {
   id: string;
   sellerId: string;
@@ -159,6 +169,8 @@ export interface Lead {
   status: LeadStatus;
   /** Customer already holds a pre-approval that covers this car */
   preApproved: boolean;
+  /** Source 'bid' only: the list price versus the accepted bid price, with the extras */
+  bid?: LeadBid;
   createdAt: string;
   updatedAt: string;
 }

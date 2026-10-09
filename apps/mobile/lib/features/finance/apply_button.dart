@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/api/api_client.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/theme/tokens.g.dart';
 
-/// Terms to apply for. Vehicle: vehicleId + downPaymentFils. Home: propertyId + downPaymentFils. Personal: amountFils.
+/// Terms to apply for. Vehicle: vehicleId + downPaymentFils, and optionally the accepted bid (requestId + bidId) and
+/// useTradeIn (only named: the API prices them). Home: propertyId + downPaymentFils. Personal: amountFils.
 typedef ApplicationTerms = ({
   String productLine,
   FinanceStructure structure,
@@ -18,6 +20,9 @@ typedef ApplicationTerms = ({
   String? propertyId,
   int? downPaymentFils,
   int? amountFils,
+  String? requestId,
+  String? bidId,
+  bool useTradeIn,
 });
 
 /// "Apply for finance": POST /api/v1/applications (same API as the web), then opens /applications/:id.
@@ -39,6 +44,9 @@ class ApplyButton extends ConsumerStatefulWidget {
 class _ApplyButtonState extends ConsumerState<ApplyButton> {
   bool _busy = false;
   bool _error = false;
+
+  /// A bid or trade-in the API refused (BID_*, NO_TRADE_IN, TRADE_IN_*): says so instead of the generic error.
+  String? _refused;
   ApplicationTerms? _keyedTerms;
   String _key = '';
 
@@ -54,6 +62,7 @@ class _ApplyButtonState extends ConsumerState<ApplyButton> {
     setState(() {
       _busy = true;
       _error = false;
+      _refused = null;
     });
     try {
       final app = await ref.read(repositoryProvider).applyForFinance(
@@ -64,12 +73,26 @@ class _ApplyButtonState extends ConsumerState<ApplyButton> {
             propertyId: t.propertyId,
             downPaymentFils: t.downPaymentFils,
             amountFils: t.amountFils,
+            requestId: t.requestId,
+            bidId: t.bidId,
+            useTradeIn: t.useTradeIn,
             idempotencyKey: _idempotencyKey(t),
           );
       ref.invalidate(applicationsProvider);
       if (mounted) context.push('/applications/${app.id}');
-    } catch (_) {
-      if (mounted) setState(() => _error = true);
+    } catch (e) {
+      final code = e is ApiException ? e.code : '';
+      if (mounted) {
+        setState(() {
+          if (code.startsWith('BID_')) {
+            _refused = 'bid';
+          } else if (code.contains('TRADE_IN')) {
+            _refused = 'tradeIn';
+          } else {
+            _error = true;
+          }
+        });
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -86,6 +109,8 @@ class _ApplyButtonState extends ConsumerState<ApplyButton> {
           ? FilledButton(key: const Key('apply-finance'), onPressed: onPressed, child: label)
           : OutlinedButton(key: const Key('apply-finance'), onPressed: onPressed, child: label),
       if (_error) Text(l.errorGeneric, style: const TextStyle(color: SahelColors.danger)),
+      if (_refused == 'bid') Text(l.carryErrorBid, key: const Key('apply-error-bid'), style: const TextStyle(color: SahelColors.danger)),
+      if (_refused == 'tradeIn') Text(l.carryErrorTradeIn, key: const Key('apply-error-tradein'), style: const TextStyle(color: SahelColors.danger)),
       const SizedBox(height: 4),
       Text(l.applyConsent, style: const TextStyle(color: SahelColors.textMuted, fontSize: 11)),
     ]);

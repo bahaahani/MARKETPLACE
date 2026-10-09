@@ -461,6 +461,15 @@ paths:
         come from the catalog, never from the client. Structures per line come from the rate card: vehicle and personal
         (conventional, murabaha), home (conventional, ijara). A repeated Idempotency-Key from the same customer returns
         the original application; keys are scoped to the customer.
+
+        A vehicle application can carry a won Bid For Me bid (`requestId` + `bidId`) and the customer's trade-in
+        (`useTradeIn: true`). Neither is trusted: the server checks that the request belongs to the session customer,
+        is CLOSED with this bid accepted, the bid is for this car at its current price and is still held (7 days after
+        acceptance), and then prices the application at the bid's discounted price (never a client price). The
+        extras are recorded on the application. With `useTradeIn` the server takes the customer's active unexpired
+        offer, counts min(offer, maximum down payment) in the down payment (the customer can add cash on top, but
+        the down payment is never below the credit) and records it as a credit given at delivery. The response's
+        `pricing` shows the breakdown. Without them the application is priced exactly as before.
       parameters:
         - {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8}}
       requestBody:
@@ -478,12 +487,17 @@ paths:
                 downPaymentFils: {type: integer, minimum: 0, default: 0, description: Vehicle and home}
                 amountFils: {type: integer, minimum: 500000, description: Required for personal}
                 propertyId: {type: string, description: 'Required for home (a property for sale; the price comes from the catalog)'}
+                requestId: {type: string, description: 'Vehicle only, with bidId: the customer''s Bid For Me request whose accepted bid prices the application'}
+                bidId: {type: string, description: 'Vehicle only, with requestId: the accepted bid'}
+                useTradeIn: {type: boolean, description: 'Vehicle only: count the customer''s active trade-in offer in the down payment (credited at delivery)'}
       responses:
         '201': {description: Created and decided, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/FinanceApplication'}}}}}}
         '400': {$ref: '#/components/responses/Error'}
-        '404': {description: Unknown vehicleId or propertyId, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: 'Unknown vehicleId or propertyId, or BID_NOT_FOUND (no such request or bid for this customer)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '409': {description: 'BID_NOT_ACCEPTED: the request is not CLOSED with this bid accepted', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '410': {description: 'BID_EXPIRED (the accepted bid is no longer held) or TRADE_IN_EXPIRED (the trade-in offer has expired)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '422':
-          description: 'Invalid terms (INVALID_REQUEST: e.g. a structure the line does not offer, or a property for rent; or a quote rule such as TENURE_OUT_OF_RANGE, DOWN_PAYMENT_TOO_LOW)'
+          description: 'Invalid terms (INVALID_REQUEST: e.g. a structure the line does not offer, a property for rent, or a bid or trade-in on a non-vehicle application; BID_VEHICLE_MISMATCH: the bid is for another car or the price changed; NO_TRADE_IN or TRADE_IN_MISMATCH: no such active offer; or a quote rule such as TENURE_OUT_OF_RANGE, DOWN_PAYMENT_TOO_LOW)'
           content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
   /applications/{id}:
     get:
@@ -1357,7 +1371,8 @@ paths:
       summary: |
         Accept a live bid: the request is CLOSED, the bid ACCEPTED and every other bid LOST. The dealer gets a lead
         (source `bid`, first name and initial only) on its leads board. `accepted.applyHref` is the car page, where the
-        customer applies for finance as usual (⚠️ sandbox: the discount and extras are not carried into the application).
+        customer applies for finance with the accepted bid (`?requestId=&bidId=`): POST /applications prices it at the bid's
+        discounted price and records the extras. The lead carries the list price, the bid price and the extras.
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
       requestBody:
         required: true
@@ -1554,6 +1569,14 @@ components:
         source: {enum: [reserved, applied, viewed, bid], description: 'bid: an accepted Bid For Me bid'}
         status: {$ref: '#/components/schemas/LeadStatus'}
         preApproved: {type: boolean}
+        bid:
+          type: object
+          description: 'Source bid only: what the lead was won at (list price versus the dealer''s bid price)'
+          properties:
+            listPriceFils: {type: integer}
+            priceFils: {type: integer, description: Price after the dealer's discount}
+            discountFils: {type: integer}
+            extras: {type: array, items: {type: string}}
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}
     ConsentScope:
@@ -1695,6 +1718,36 @@ components:
             reference: {type: string, description: The property id}
             feePaid: {type: boolean, description: 'True once this customer has a captured valuation fee for the property: clients show "Continue" (accept again) instead of "Pay valuation fee"'}
         valuationPaymentId: {type: string, description: 'Conventional home finance: the captured valuation-fee payment that confirmed the valuation'}
+        source:
+          type: object
+          description: 'Vehicle only: the accepted Bid For Me bid the application is priced from (re-validated by the server)'
+          properties:
+            type: {const: bid}
+            requestId: {type: string}
+            bidId: {type: string}
+        tradeIn:
+          type: object
+          description: 'Vehicle only: the trade-in counted in the down payment, credited at delivery (sandbox)'
+          properties:
+            offerId: {type: string}
+            offerFils: {type: integer, description: The guaranteed instant offer}
+            creditFils: {type: integer, description: Part of the offer counted as down payment (never above the maximum down payment)}
+            capped: {type: boolean}
+        listPriceFils: {type: integer, description: 'Vehicle with a bid: the catalogue price before the discount (quote.assetPriceFils is after it)'}
+        extras: {type: array, items: {type: string}, description: 'The accepted bid''s extras (recorded, not financed)'}
+        pricing: {$ref: '#/components/schemas/ApplicationPricing'}
+    ApplicationPricing:
+      type: object
+      description: 'How the financed amount is made up, computed on the server (apps only render it). Without a bid or trade-in the list price is the asset price and nothing is discounted or credited.'
+      properties:
+        listPriceFils: {type: integer}
+        discountFils: {type: integer, description: Dealer discount from the accepted bid}
+        priceFils: {type: integer, description: Price after the discount (the asset price financed)}
+        tradeInCreditFils: {type: integer, description: Trade-in counted as down payment and credited at delivery}
+        downPaymentFils: {type: integer, description: Trade-in credit plus cash}
+        cashDownPaymentFils: {type: integer}
+        extras: {type: array, items: {type: string, enum: [service-1y, service-2y, service-3y, window-tint, extended-warranty, free-registration, floor-mats, full-tank]}}
+        financedFils: {type: integer}
     LifeEvent:
       type: object
       properties:
@@ -2023,6 +2076,15 @@ components:
         reasons: {type: array, items: {enum: [OK, DBR_EXCEEDED, AMOUNT_ABOVE_PREAPPROVAL, HIGH_DBR_UTILISATION]}}
         status: {$ref: '#/components/schemas/ApplicationStatus'}
         referredAt: {type: string, format: date-time}
+        deal:
+          type: object
+          description: 'Vehicle applications priced from an accepted bid or carrying a trade-in: list price versus the price financed'
+          properties:
+            fromBid: {type: boolean}
+            listPriceFils: {type: integer}
+            priceFils: {type: integer}
+            discountFils: {type: integer}
+            tradeInCreditFils: {type: integer}
         financials:
           type: object
           description: Credit officer only
@@ -2550,7 +2612,8 @@ components:
                 bidId: {type: string}
                 vehicleId: {type: string}
                 sellerId: {type: string}
-                applyHref: {type: string, description: 'Locale-free car page path to apply for finance'}
+                applyHref: {type: string, description: 'Locale-free car page path with the accepted bid (?requestId=&bidId=): applying there is priced from the bid'}
+                validUntil: {type: string, format: date-time, description: 'Until when the accepted price and extras can be used for a finance application (7 days after acceptance)'}
         acceptedBidId: {type: string}
         pollSeconds: {type: integer}
         createdAt: {type: string, format: date-time}

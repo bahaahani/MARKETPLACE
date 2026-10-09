@@ -2164,7 +2164,7 @@
       }
     }
   },
-  "bidSandboxNote": "Sandbox: requests and bids are kept in memory. The discount and extras are not yet carried into the finance application.",
+  "bidSandboxNote": "Sandbox: requests and bids are kept in memory. The accepted bid's discount and extras are carried into the finance application, which BCFC re-checks when you apply.",
   "bidDealerNav": "Requests",
   "bidDealerTitle": "Bid For Me requests",
   "bidDealerSubtitle": "Customers who posted what they want. Bid a car from your stock: BCFC prices the monthly on the customer's terms.",
@@ -2230,5 +2230,64 @@
   "bidDealerErrorDownPayment": "The customer's down payment is below this car's minimum.",
   "bidDealerErrorDiscount": "That discount is above the cap for this car.",
   "bidDealerSent": "Bid sent",
-  "bidLeadSource": "Bid For Me"
+  "bidLeadSource": "Bid For Me",
+  "carryBidTitle": "Your accepted bid from {dealer}",
+  "@carryBidTitle": {
+    "placeholders": {
+      "dealer": {
+        "type": "String"
+      }
+    }
+  },
+  "carryBidListPrice": "List price",
+  "carryBidDiscount": "Dealer discount",
+  "carryBidPrice": "Your bid price",
+  "carryBidExtras": "Extras included",
+  "carryBidValidUntil": "Price held until {date}",
+  "@carryBidValidUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "carryBidApplyNote": "Apply here and the finance is priced from your bid. BCFC checks the bid again when you apply.",
+  "carryBidUnavailable": "This bid cannot be used for this car, so the list price applies.",
+  "carryPricingTitle": "Price breakdown",
+  "carryPricingFromBid": "Priced from your accepted bid",
+  "carryPricingList": "List price",
+  "carryPricingDiscount": "Dealer discount",
+  "carryPricingPrice": "Price after discount",
+  "carryPricingTradeIn": "Trade-in credit",
+  "carryPricingCash": "Cash down payment",
+  "carryPricingTradeInNote": "Trade-in credit {amount}, credited at delivery.",
+  "@carryPricingTradeInNote": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "carryPricingExtras": "Extras from the dealer",
+  "carryErrorBid": "This bid can no longer be used for this car. Check your request or ask the dealer for a new bid.",
+  "carryErrorTradeIn": "Your trade-in offer is missing or has expired. Value your car again.",
+  "carryLeadPrices": "List {list} · bid {price}",
+  "@carryLeadPrices": {
+    "placeholders": {
+      "list": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "carryLeadDiscount": "Discount {amount}",
+  "@carryLeadDiscount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  }
 }

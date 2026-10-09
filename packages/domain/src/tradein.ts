@@ -476,11 +476,16 @@ export class SandboxTradeInStore {
   /** The customer's offer while it is valid; undefined otherwise (another customer's offer is never visible). */
   active(customerId: string): TradeInOffer | undefined {
     const o = this.offers.get(customerId);
-    if (o && !isOfferActive(o, this.clock())) {
-      this.offers.delete(customerId);
-      return undefined;
-    }
-    return o;
+    return o && isOfferActive(o, this.clock()) ? o : undefined;
+  }
+
+  /**
+   * The customer's latest offer even when it has expired (`active` false), so a finance application can tell an
+   * expired offer (TRADE_IN_EXPIRED) from no offer at all. Another customer's offer is never visible.
+   */
+  latest(customerId: string): { offer: TradeInOffer; active: boolean } | undefined {
+    const o = this.offers.get(customerId);
+    return o ? { offer: o, active: isOfferActive(o, this.clock()) } : undefined;
   }
 
   /** Withdraws the customer's offer. Returns whether there was an active one. */

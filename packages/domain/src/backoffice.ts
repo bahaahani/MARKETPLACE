@@ -12,6 +12,7 @@ import type {
   OriginationStructure,
   SandboxOriginationService,
 } from './origination';
+import { applicationPricing } from './origination';
 import type { Payment, PaymentMethod, SandboxPaymentGateway } from './payments';
 import type { Localized } from './types';
 
@@ -221,6 +222,8 @@ export interface ReferredApplication {
   status: ApplicationStatus;
   /** When it was referred */
   referredAt: string;
+  /** Vehicle applications priced from an accepted bid or a trade-in: list price versus the price financed */
+  deal?: { fromBid: boolean; listPriceFils: Fils; priceFils: Fils; discountFils: Fils; tradeInCreditFils: Fils };
   /** Raw salary and obligations: credit officers only */
   financials?: CustomerFinancials & { maxMonthlyFils: Fils; preApprovedLimitFils: Fils };
 }
@@ -252,6 +255,11 @@ export function referredApplicationView(app: FinanceApplication, role: StaffRole
     reasons: d?.reasons ?? [],
     status: app.status,
     referredAt,
+    ...(app.source || app.tradeIn
+      ? (({ listPriceFils, priceFils, discountFils, tradeInCreditFils }) => ({
+          deal: { fromBid: app.source !== undefined, listPriceFils, priceFils, discountFils, tradeInCreditFils },
+        }))(applicationPricing(app))
+      : {}),
     ...(can(role, 'applications.decide')
       ? {
           financials: {

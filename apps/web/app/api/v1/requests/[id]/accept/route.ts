@@ -5,8 +5,8 @@ import { withCustomer } from '@/lib/session';
 
 /**
  * POST /api/v1/requests/{id}/accept { bidId }: accept a live bid. The request closes, the other bids are LOST and the
- * dealer gets a lead. The response's `accepted.applyHref` links to the car page to apply for finance (⚠️ sandbox: the
- * discount and extras are not carried into the application).
+ * dealer gets a lead (with the list and bid price). The response's `accepted.applyHref` links to the car page with the
+ * accepted bid (requestId, bidId): applying there is priced from the bid, re-validated by POST /applications.
  */
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   return withCustomer(

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { findProperty, findVehicle, type ApplicationStep, type ApplicationView, type Decision, type DecisionReason } from '@sahel/domain';
 import type { MessageKey } from '@sahel/i18n';
 import type { Translator } from '@/lib/i18n';
+import { BID_EXTRA_LABEL } from '@/lib/bids-labels';
 import { STATUS_LABEL, STRUCTURE_LABEL } from '@/lib/labels';
 
 const OUTCOME: Record<Decision['outcome'], { title: MessageKey; body: MessageKey; tone: string }> = {
@@ -96,6 +97,49 @@ export function OfferSummary({ app, tr }: { app: ApplicationView; tr: Translator
         ))}
       </dl>
       <p className="mt-3 text-xs text-text-muted">{tr.t('illustrativeDisclaimer')}</p>
+    </section>
+  );
+}
+
+/**
+ * How the financed amount is made up, from the API's `pricing` (nothing is computed here): list price, the dealer's
+ * discount from an accepted bid, the trade-in credit (credited at delivery) and the extras. Only shown when the
+ * application carries a bid or a trade-in.
+ */
+export function PricingBreakdown({ app, tr }: { app: ApplicationView; tr: Translator }) {
+  const p = app.pricing;
+  if (!app.source && !app.tradeIn && p.discountFils === 0 && p.extras.length === 0) return null;
+  const row = (label: string, value: string, testid: string, strong = false) => (
+    <div key={testid} className={`flex items-baseline justify-between gap-2 ${strong ? 'font-bold' : ''}`}>
+      <dt className={strong ? '' : 'text-text-muted'}>{label}</dt>
+      <dd className="whitespace-nowrap font-semibold" data-testid={testid}>{value}</dd>
+    </div>
+  );
+  return (
+    <section className="card p-5" data-testid="pricing-breakdown" aria-labelledby="pricing-title">
+      <h2 id="pricing-title" className="text-lg font-bold">{tr.t('carryPricingTitle')}</h2>
+      {app.source && <p className="text-sm font-semibold text-islamic" data-testid="pricing-from-bid">{tr.t('carryPricingFromBid')}</p>}
+      <dl className="mt-3 space-y-1 text-sm">
+        {row(tr.t('carryPricingList'), tr.money(p.listPriceFils, 0), 'pricing-list')}
+        {p.discountFils > 0 && row(tr.t('carryPricingDiscount'), `−${tr.money(p.discountFils, 0)}`, 'pricing-discount')}
+        {row(tr.t('carryPricingPrice'), tr.money(p.priceFils, 0), 'pricing-price', true)}
+        {p.tradeInCreditFils > 0 && row(tr.t('carryPricingTradeIn'), `−${tr.money(p.tradeInCreditFils, 0)}`, 'pricing-tradein')}
+        {row(tr.t('carryPricingCash'), tr.money(p.cashDownPaymentFils, 0), 'pricing-cash')}
+        {row(tr.t('financedAmount'), tr.money(p.financedFils, 0), 'pricing-financed', true)}
+      </dl>
+      {p.tradeInCreditFils > 0 && (
+        <p className="mt-2 text-xs text-text-muted" data-testid="pricing-tradein-note">{tr.t('carryPricingTradeInNote', { amount: tr.money(p.tradeInCreditFils, 0) })}</p>
+      )}
+      {p.extras.length > 0 && (
+        <div className="mt-3">
+          <p className="text-xs text-text-muted">{tr.t('carryPricingExtras')}</p>
+          <ul className="mt-1 flex flex-wrap gap-1 text-xs" data-testid="pricing-extras">
+            {p.extras.map((x) => (
+              <li key={x} className="rounded-full bg-islamic-soft px-2 py-0.5 text-islamic">{tr.t(BID_EXTRA_LABEL[x])}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }
