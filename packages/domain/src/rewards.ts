@@ -283,10 +283,13 @@ export function rewardsLedger(input: RewardsInput, now: Date = new Date()): Rewa
     let contractId: string | undefined;
     let title = PURPOSE_TITLE[p.purpose];
     if (p.purpose === 'installment') {
-      const inst = installmentOf(p.reference, input.contracts);
+      const inst = installmentOf(p.reference, input.contracts, p.createdAt);
       const key = `installment:${p.reference}`;
-      if (!inst || earnedRefs.has(key)) continue;
-      earnedRefs.add(key);
+      // A part payment is not "the installment paid": it earns nothing and does not count for the streak, so paying
+      // 1 fils six times cannot buy the good-payer bonus (installment amounts are not server-bound yet).
+      if (!inst || earnedRefs.has(key) || p.amountFils < inst.amountFils) continue;
+      // Only a captured payment uses up the installment: a refunded one is reversed, and paying again earns.
+      if (p.status === 'CAPTURED') earnedRefs.add(key);
       onTime = bahrainDate(p.createdAt) <= inst.dueDate;
       contractId = inst.contract.id;
       points = pointsForAmount(Math.min(p.amountFils, inst.amountFils), onTime ? REWARDS_EARN_RATES.installment : REWARDS_LATE_INSTALLMENT_RATE);
@@ -304,7 +307,7 @@ export function rewardsLedger(input: RewardsInput, now: Date = new Date()): Rewa
     } else {
       const key = `${p.purpose}:${p.reference}`;
       if (earnedRefs.has(key)) continue;
-      earnedRefs.add(key);
+      if (p.status === 'CAPTURED') earnedRefs.add(key);
       points = pointsForAmount(p.amountFils, REWARDS_EARN_RATES[p.purpose]);
     }
     if (points <= 0) continue;
@@ -358,7 +361,11 @@ export function rewardsLedger(input: RewardsInput, now: Date = new Date()): Rewa
     }
     steps.push(...(streakSteps.get(c.id) ?? []).sort((a, b) => a.n - b.n));
     let streak = 0;
+    let previousN = 0;
     for (const s of steps) {
+      // A skipped installment (paid later, refunded or not paid at all) breaks the run.
+      if (s.n !== previousN + 1) streak = 0;
+      previousN = s.n;
       streak = s.onTime ? streak + 1 : 0;
       if (streak > 0 && streak % REWARDS_STREAK_LENGTH === 0) {
         out.push({
@@ -397,13 +404,16 @@ function scheduleOf(c: Contract) {
   return buildSchedule(c.quote, new Date(startOfDayIso(c.startDate)), 0, new Date(0));
 }
 
-/** The installment a payment reference `{contractId}-{n}` names, if it is not already paid in the contract history. */
-function installmentOf(reference: string, contracts: readonly Contract[]) {
+/** The installment a payment reference `{contractId}-{n}` names, if it is not already paid in the contract history or settled away. */
+function installmentOf(reference: string, contracts: readonly Contract[], paidAt: string) {
   const m = /^(.+)-(\d+)$/.exec(reference);
   if (!m) return undefined;
   const contract = contracts.find((c) => c.id === m[1]);
   const n = Number(m[2]);
   if (!contract || !Number.isSafeInteger(n) || n <= contract.installmentsPaid) return undefined;
+  // Once a contract is settled early nothing more is due on it: a payment after that earns nothing (one made before
+  // the settlement keeps its points).
+  if (contract.settlement && paidAt > contract.settlement.settledAt) return undefined;
   const inst = scheduleOf(contract)[n - 1];
   return inst ? { contract, n, dueDate: inst.dueDate, amountFils: inst.amountFils } : undefined;
 }
@@ -630,7 +640,7 @@ export class SandboxRewardsStore {
       return { redemption: publicRedemption(existing, true), balance: this.summary(customerId, state).balance, replayed: true };
     }
     const item = findRewardItem(itemId);
-    if (!item) throw new RewardsError('ITEM_NOT_FOUND', `unknown reward ${itemId}`);
+    if (!item) throw new RewardsError('ITEM_NOT_FOUND', `unknown reward ${itemId.slice(0, 64)}`);
     const list = this.redemptions.get(customerId) ?? [];
     if (list.length >= REWARDS_MAX_REDEMPTIONS) throw new RewardsError('TOO_MANY_REDEMPTIONS', `sandbox limit of ${REWARDS_MAX_REDEMPTIONS} redemptions`);
     const { balance } = this.summary(customerId, state);

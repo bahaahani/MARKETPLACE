@@ -3,6 +3,7 @@ import {
   bhd,
   buildSchedule,
   demoCustomer,
+  formatDisplayDate,
   maskVoucherCode,
   pointsForAmount,
   REWARDS_AUTOPAY_BONUS,
@@ -162,6 +163,58 @@ describe('rewards earn rules (⚠️ placeholder rates)', () => {
     expect(late.filter((e) => e.contractId === 'c-1002' && e.source === 'good_payer_streak')).toEqual([]);
   });
 
+  it('does not let skipped installments, part payments or a refunded first payment game the streak', () => {
+    const fivePaid: Contract = { ...personal, installmentsPaid: 5 };
+    const contracts = [crv, fivePaid];
+    const schedule = buildSchedule(personal.quote, new Date(`${personal.startDate}T00:00:00Z`));
+    const onTimePay = (n: number, over: Partial<Payment> = {}) =>
+      payment({ id: `n${n}-${over.id ?? ''}`, reference: `c-1002-${n}`, amountFils: schedule[n - 1]!.amountFils, createdAt: `${schedule[n - 1]!.dueDate}T06:00:00.000Z`, ...over });
+    const streakIds = (e: RewardsEntry[]) => e.filter((x) => x.contractId === 'c-1002' && x.source === 'good_payer_streak');
+    // 5 paid in the history, then 8 to 12 paid on time while 6 and 7 never were: the run does not bridge the gap
+    const skipped = ledger({ contracts, payments: [8, 9, 10, 11, 12].map((n) => onTimePay(n)) });
+    expect(streakIds(skipped)).toEqual([]);
+    // Control: 6 to 11 in a row does pay the bonus
+    expect(streakIds(ledger({ contracts, payments: [6, 7, 8, 9, 10, 11].map((n) => onTimePay(n)) }))).toHaveLength(1);
+    // Six part payments of 1 fils are not six installments paid
+    const parts = ledger({ contracts, payments: [6, 7, 8, 9, 10, 11].map((n) => onTimePay(n, { amountFils: 1 })) });
+    expect(streakIds(parts)).toEqual([]);
+    expect(parts.filter((e) => e.source === 'payment')).toEqual([]);
+    // A part payment does not use up the installment: paying it in full afterwards still earns
+    const later = ledger({ contracts, payments: [onTimePay(6, { id: 'part', amountFils: 1 }), onTimePay(6, { id: 'full', createdAt: `${schedule[5]!.dueDate}T07:00:00.000Z` })] });
+    expect(later.filter((e) => e.source === 'payment')).toHaveLength(1);
+    // A refunded first payment is reversed (net zero); paying the installment again earns
+    const refunded = payment({ id: 'rf1', status: 'REFUNDED' });
+    const again = payment({ id: 'rf2', createdAt: new Date(NOW.getTime() + 60_000).toISOString() });
+    const e = ledger({ payments: [refunded, again] });
+    expect(byId(e, 'rev:rf1')).toBeDefined();
+    expect(byId(e, 'pay:rf2')?.points).toBe(pointsForAmount(next.amountFils, REWARDS_EARN_RATES.installment));
+    expect(rewardsSummary(state({ payments: [refunded, again] }), NOW).balance - rewardsSummary(state(), NOW).balance).toBe(byId(e, 'pay:rf2')!.points);
+  });
+
+  it('earns nothing for an installment paid after the contract was settled early; earlier payments keep their points', () => {
+    const settledAt = '2026-10-02T09:00:00.000Z';
+    const settled: Contract = { ...crv, settlement: { paymentId: 'pay_s', amountFils: bhd(9_000), settledAt, settledOn: '2026-10-02' } };
+    const contracts = [settled, personal];
+    const before = payment({ id: 'before', createdAt: '2026-10-01T09:00:00.000Z' });
+    const after = payment({ id: 'after', reference: `c-1001-${next.number + 1}`, createdAt: '2026-10-03T09:00:00.000Z' });
+    const e = ledger({ contracts, payments: [before, after] });
+    expect(byId(e, 'pay:before')).toBeDefined();
+    expect(byId(e, 'pay:after')).toBeUndefined();
+  });
+
+  it('a refund after the points were spent leaves a negative balance, so nothing is affordable (no free voucher)', () => {
+    const premium = payment({ id: 'prem', purpose: 'insurance_premium', reference: 'pq_1', amountFils: bhd(200), status: 'REFUNDED' });
+    const spent = [{ id: 'r1', itemId: 'fuel-5', itemName: { en: 'f', ar: 'f' }, pointsCost: 1_500, createdAt: NOW.toISOString() }];
+    const input = { ...state({ openingPoints: 1_500, contracts: [], payments: [premium], policies: [{ paymentId: 'prem' }] }), redemptions: spent };
+    const sum = rewardsSummary(input, NOW);
+    expect(sum.balance).toBe(0);
+    expect(sum.tierPoints).toBe(0);
+    const worse = rewardsSummary({ ...input, openingPoints: 1_000 }, NOW);
+    expect(worse.balance).toBe(-500);
+    // Nothing is affordable while the balance is negative
+    expect(REWARDS_CATALOGUE.every((i) => worse.balance < i.pointsCost)).toBe(true);
+  });
+
   it('keeps the autopay bonus once observed, even after autopay is turned off', () => {
     const off = demo.contracts.map((c) => ({ ...c, autopay: false }));
     expect(ledger({ contracts: off }).some((e) => e.source === 'autopay')).toBe(false);
@@ -258,6 +311,12 @@ describe('SandboxRewardsStore (redemptions)', () => {
     expect(err(() => s.redeem('a', state(), { itemId: 'partner-coffee', idempotencyKey: 'redeem-0001' })).code).toBe('IDEMPOTENCY_KEY_REUSED');
   });
 
+  it('does not echo an oversized itemId back in the error', () => {
+    const e = err(() => store().redeem('a', state(), { itemId: 'x'.repeat(100_000), idempotencyKey: 'redeem-9999' }));
+    expect(e.code).toBe('ITEM_NOT_FOUND');
+    expect(e.message.length).toBeLessThan(200);
+  });
+
   it('refuses an insufficient balance (422), an unknown item (404) and a missing key (400)', () => {
     const s = store();
     const poor = state({ openingPoints: 100, contracts: [] });
@@ -301,5 +360,15 @@ describe('SandboxRewardsStore (redemptions)', () => {
 
   it('masks all but the last 4 characters', () => {
     expect(maskVoucherCode('IMZ-7KQ2-ABCD-9XYZ')).toBe('IMZ-••••-••••-9XYZ');
+  });
+});
+
+describe('dates are shown on the Bahrain calendar day', () => {
+  it('shows an instant near midnight on its Asia/Bahrain day and a plain date as is', () => {
+    // 21:30 UTC on 8 Oct is 00:30 on 9 Oct in Bahrain, whatever the server's time zone is
+    expect(formatDisplayDate('2026-10-08T21:30:00.000Z', 'en')).toBe('9 Oct 2026');
+    expect(formatDisplayDate('2026-10-08T20:59:00.000Z', 'en')).toBe('8 Oct 2026');
+    expect(formatDisplayDate('2026-10-09', 'en')).toBe('9 Oct 2026');
+    expect(formatDisplayDate('2026-10-09', 'ar')).toMatch(/9/);
   });
 });

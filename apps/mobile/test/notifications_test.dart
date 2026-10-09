@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sahel/app.dart';
+import 'package:sahel/core/format.dart';
 import 'package:sahel/core/models.dart';
 import 'package:sahel/core/providers.dart';
 import 'package:sahel/features/finance/application_screen.dart';
@@ -34,7 +37,41 @@ Future<void> reveal(WidgetTester tester, Finder target, {bool up = false}) async
 
 AppNotification applicationNotification(NotificationInbox inbox) => inbox.items.firstWhere((n) => n.type == 'application_update');
 
+/// The recorded inbox with its first notification marked mandatory (an overdue notice).
+class _MandatoryRepo extends FakeSahelRepository {
+  @override
+  Future<NotificationInbox> notifications() async {
+    final json = jsonDecode(jsonEncode(fixture('notifications'))) as Json;
+    ((json['items'] as List).first as Json)['mandatory'] = true;
+    return NotificationInbox.fromJson(json);
+  }
+}
+
 void main() {
+  test('Bahrain calendar day: an instant near midnight UTC is already the next day in Bahrain, whatever the device zone', () {
+    expect(bahrainCalendarDay(DateTime.utc(2026, 10, 8, 21, 30)), DateTime(2026, 10, 9));
+    expect(bahrainCalendarDay(DateTime.utc(2026, 10, 8, 20, 59)), DateTime(2026, 10, 8));
+    expect(bahrainCalendarDay(DateTime.parse('2026-12-31T21:00:00Z')), DateTime(2027, 1, 1));
+  });
+
+  testWidgets('a mandatory (overdue) notice has no dismiss button; the others do', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [repositoryProvider.overrideWithValue(_MandatoryRepo())],
+      child: const SahelApp(initialLocation: '/notifications'),
+    ));
+    await tester.pumpAndSettle();
+    final items = inboxFixture('notifications').items;
+    final first = items.first;
+    expect(find.byKey(Key('notif-${first.id}')), findsOneWidget);
+    expect(find.byKey(Key('notif-dismiss-${first.id}')), findsNothing);
+    final other = items[1];
+    await reveal(tester, find.byKey(Key('notif-${other.id}')));
+    expect(find.byKey(Key('notif-dismiss-${other.id}')), findsOneWidget);
+  });
+
   test('API contract: notification fixtures parse', () {
     final inbox = inboxFixture('notifications');
     expect(inbox.unreadCount, inbox.total);

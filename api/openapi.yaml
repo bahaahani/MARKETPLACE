@@ -929,6 +929,7 @@ paths:
       responses:
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/AssistantReply'}}}}}}
         '400': {description: BAD_JSON, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '413': {description: 'PAYLOAD_TOO_LARGE (body over 8 KiB, refused before it is parsed)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '422': {description: 'TEXT_REQUIRED, TEXT_TOO_LONG (over 500 characters), INVALID_REQUEST (locale or persona)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '429':
           description: RATE_LIMITED (more than 20 messages a minute in this session)
@@ -1034,7 +1035,8 @@ paths:
       summary: |
         The session customer's IMTIAZ points (⚠️ sandbox: every rate, bonus and threshold is a placeholder). Derived on
         every read from what the customer already has (never written by the payment flow): the opening balance (the
-        demo `rewardsPoints` on GET /me), captured payments by purpose (installments on time earn the most; a premium
+        demo `rewardsPoints` on GET /me), captured payments by purpose (installments on time earn the most, and only a payment that covers the scheduled
+        installment counts, never one made after the contract was settled;  a premium
         only once it issued a policy; deposits and valuation fees once per reference; early settlement earns nothing),
         a welcome bonus on the first card, an autopay bonus per contract, good-payer streak bonuses from consecutive
         on-time installments, reversals for refunded payments, and redemptions. The tier is from the points earned in the
@@ -1103,6 +1105,7 @@ paths:
         '200': {description: 'Replayed (same Idempotency-Key): the original redemption', content: {application/json: {schema: {type: object}}}}
         '400': {description: 'BAD_JSON, or INVALID_REQUEST (missing Idempotency-Key or itemId)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '404': {description: ITEM_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '413': {description: 'PAYLOAD_TOO_LARGE (body over 4 KiB)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '409': {description: 'IDEMPOTENCY_KEY_REUSED (the key was used for another item)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '422': {description: INSUFFICIENT_POINTS, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '429': {description: TOO_MANY_REDEMPTIONS (sandbox cap per customer), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
@@ -1248,11 +1251,13 @@ paths:
     post:
       summary: |
         Remove one notification from the inbox. It stays dismissed when derived again; a new period (next installment,
-        new claim status, new expiry date) is a new id. Returns the inbox
+        new claim status, new expiry date) is a new id. A mandatory notice (overdue payment) cannot be dismissed
+        (422 MANDATORY_CATEGORY). Returns the inbox
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
       responses:
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/NotificationInbox'}}}}}}
         '404': {description: NOTIFICATION_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '422': {description: 'MANDATORY_CATEGORY (an overdue-payment notice is required and stays in the inbox)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /me/notification-preferences:
     get:
       summary: "The session customer's channel switches per category, mandatory categories and quiet hours (Asia/Bahrain). Defaults until changed"
@@ -1287,6 +1292,7 @@ paths:
       responses:
         '200': {description: Saved, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/NotificationPreferences'}}}}}}
         '400': {description: BAD_JSON, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '413': {description: 'PAYLOAD_TOO_LARGE (body over 16 KiB)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '422': {description: 'INVALID_REQUEST (unknown category or channel, non-boolean, bad time), or MANDATORY_CATEGORY', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /requests:
     post:

@@ -206,6 +206,11 @@ test.describe('API', () => {
       expect((await mandatory.json()).error.code).toBe('MANDATORY_CATEGORY');
       expect((await a.put('/api/v1/me/notification-preferences', { data: { quietHours: { start: '25:00' } } })).status()).toBe(422);
       expect((await a.put('/api/v1/me/notification-preferences', { data: '[]' as unknown as object })).status()).toBe(400);
+      expect((await a.put('/api/v1/me/notification-preferences', { data: JSON.stringify({ pad: 'x'.repeat(100_000) }), headers: { 'Content-Type': 'application/json' } })).status()).toBe(413);
+      // CORS: the preflight of the PUT (and DELETE) routes must allow the method, or a cross-origin client cannot save.
+      const preflight = await a.fetch('/api/v1/me/notification-preferences', { method: 'OPTIONS', headers: { Origin: 'http://localhost:9', 'Access-Control-Request-Method': 'PUT' } });
+      expect(preflight.headers()['access-control-allow-methods']).toMatch(/\bPUT\b/);
+      expect(preflight.headers()['access-control-allow-methods']).toMatch(/\bDELETE\b/);
       const ok = await a.put('/api/v1/me/notification-preferences', { data: { categories: [{ category: 'cards', channels: { whatsapp: true } }] } });
       expect(ok.status()).toBe(200);
       const prefs = (await ok.json()).data as { categories: { category: string; mandatory: boolean; channels: Record<string, boolean> }[] };

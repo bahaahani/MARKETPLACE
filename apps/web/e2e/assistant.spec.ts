@@ -92,6 +92,10 @@ test('assistant API: validation, input cap, per-session rate limit (429 + Retry-
     expect((await (await post({ text: '', locale: 'en' })).json()).error.code).toBe('TEXT_REQUIRED');
     expect((await (await post({ text: 'x'.repeat(501), locale: 'en' })).json()).error.code).toBe('TEXT_TOO_LONG');
     expect((await api.post('/api/v1/assistant/messages', { data: '[1]', headers: { 'Content-Type': 'application/json' } })).status()).toBe(400);
+    // A huge body is refused (413) before it is parsed, not read in full and answered with a validation error.
+    const huge = await api.post('/api/v1/assistant/messages', { data: JSON.stringify({ text: 'x'.repeat(200_000), locale: 'en' }), headers: { 'Content-Type': 'application/json' } });
+    expect(huge.status()).toBe(413);
+    expect((await huge.json()).error.code).toBe('PAYLOAD_TOO_LARGE');
 
     // Mobile-style header session: its own conversation and its own rate limit.
     const first = await post({ text: 'متى القسط الجاي', locale: 'en' }, { 'X-Sahel-Session': 'new' });

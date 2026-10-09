@@ -26,11 +26,21 @@ int? parseBhdInput(String text) {
   return fils <= _maxSafeInteger ? fils : null;
 }
 
+/// The Asia/Bahrain calendar day (UTC+3, no daylight saving) of an instant, as a date-only [DateTime].
+DateTime bahrainCalendarDay(DateTime instant) {
+  final b = instant.toUtc().add(const Duration(hours: 3));
+  return DateTime(b.year, b.month, b.day);
+}
+
 extension Fmt on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);
   String get lang => Localizations.localeOf(this).languageCode;
   String money(int fils, {int decimals = 3}) => formatBhd(fils, lang, decimals: decimals);
   String number(int n) => NumberFormat.decimalPattern('en').format(n);
   String date(DateTime d) => DateFormat.yMMMd(lang).format(d);
+
+  /// An API instant shown on its Asia/Bahrain calendar day (UTC+3, no daylight saving), not the device's, so it
+  /// matches the web.
+  String bahrainDate(DateTime instant) => date(bahrainCalendarDay(instant));
   String loc(Localized l) => l.of(lang);
 }

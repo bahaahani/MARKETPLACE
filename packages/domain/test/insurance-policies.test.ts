@@ -195,7 +195,9 @@ describe('policy binding', () => {
 
   async function pay(gateway: SandboxPaymentGateway, amountFils: number, reference: string, opts: { capture?: boolean; purpose?: Payment['purpose'] } = {}) {
     const p = await gateway.createCharge({ amountFils, method: 'benefitpay', purpose: opts.purpose ?? 'insurance_premium', reference, idempotencyKey: `key-${reference}-${amountFils}-${opts.purpose ?? ''}` });
-    return opts.capture === false ? p : gateway.confirm(p.id);
+    // The gateway stamps the real time; the policy store runs on the pinned clock (NOW), so stamp NOW as well.
+    const stamped = { ...p, createdAt: NOW.toISOString() };
+    return opts.capture === false ? stamped : { ...(await gateway.confirm(p.id)), createdAt: stamped.createdAt };
   }
 
   it('re-prices the chosen insurer server-side', () => {
@@ -264,7 +266,7 @@ describe('policy binding', () => {
     expect(payment.status).toBe('INITIATED');
     expect(code(() => store.confirm(CUSTOMER, payment))).toBe('PAYMENT_NOT_CAPTURED');
     // ...and binds once it is captured
-    expect(store.confirm(CUSTOMER, await gateway.confirm(payment.id)).status).toBe('ACTIVE');
+    expect(store.confirm(CUSTOMER, { ...(await gateway.confirm(payment.id)), createdAt: payment.createdAt }).status).toBe('ACTIVE');
   });
 
   it('refuses the wrong purpose, reference, customer or a missing payment', async () => {
@@ -287,7 +289,7 @@ describe('policy binding', () => {
     const second = await gateway.confirm(
       (await gateway.createCharge({ amountFils: q.premiumFils, method: 'card', purpose: 'insurance_premium', reference: q.id, idempotencyKey: 'second-payment' })).id,
     );
-    expect(code(() => store.confirm(CUSTOMER, second))).toBe('ALREADY_BOUND');
+    expect(code(() => store.confirm(CUSTOMER, { ...second, createdAt: NOW.toISOString() }))).toBe('ALREADY_BOUND');
   });
 
   it('refuses a payment made after the quote expired (410)', async () => {

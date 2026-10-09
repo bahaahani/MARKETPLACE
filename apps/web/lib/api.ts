@@ -62,17 +62,48 @@ export function handleError(e: unknown) {
     return problem(e.code === 'NOT_FOUND' ? 404 : e.code === 'NOT_APPROVED' ? 409 : 422, e.code, e.message);
   }
   if (isError(e, ApplicationTransitionError, 'ApplicationTransitionError')) return problem(409, 'INVALID_TRANSITION', e.message);
+  if (isError(e, PayloadTooLargeError, 'PayloadTooLargeError')) return problem(413, 'PAYLOAD_TOO_LARGE', e.message);
   if (e instanceof SyntaxError) return problem(400, 'BAD_JSON', 'request body must be valid JSON');
   console.error(e);
   return problem(500, 'INTERNAL', 'unexpected error');
 }
 
+/** The request body is bigger than the route accepts (413). */
+export class PayloadTooLargeError extends Error {
+  constructor(public readonly maxBytes: number) {
+    super(`request body must be at most ${maxBytes} bytes`);
+    this.name = 'PayloadTooLargeError';
+  }
+}
+
+/** Reads the body as text, refusing more than `maxBytes` (by Content-Length first, then while streaming). */
+async function readLimitedText(req: Request, maxBytes: number): Promise<string> {
+  const declared = Number(req.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > maxBytes) throw new PayloadTooLargeError(maxBytes);
+  if (!req.body) return '';
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > maxBytes) {
+      await reader.cancel().catch(() => {});
+      throw new PayloadTooLargeError(maxBytes);
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString('utf8');
+}
+
 /**
  * Reads a JSON request body that must be an object. `null`, arrays and other JSON values are rejected like
- * malformed JSON (400 BAD_JSON) instead of failing later with a TypeError (500).
+ * malformed JSON (400 BAD_JSON) instead of failing later with a TypeError (500). With `maxBytes`, a bigger body is
+ * refused early (413 PAYLOAD_TOO_LARGE) before it is parsed.
  */
-export async function jsonBody<T extends object>(req: Request, opts: { optional?: boolean } = {}): Promise<T> {
-  const text = await req.text();
+export async function jsonBody<T extends object>(req: Request, opts: { optional?: boolean; maxBytes?: number } = {}): Promise<T> {
+  const text = opts.maxBytes === undefined ? await req.text() : await readLimitedText(req, opts.maxBytes);
   if (opts.optional && !text.trim()) return {} as T;
   const body: unknown = JSON.parse(text);
   if (typeof body !== 'object' || body === null || Array.isArray(body)) throw new SyntaxError('request body must be a JSON object');

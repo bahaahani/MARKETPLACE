@@ -132,6 +132,22 @@ const UTTERANCES: [string, AssistantIntent, IntentSlots?][] = [
   ['شو رأيك بالطقس', 'unknown'],
 ];
 
+describe('invisible characters and digits do not confuse the rules', () => {
+  it('ignores zero-width and bidi characters inside words (they are not word breaks)', () => {
+    expect(normalizeText('bal\u200Bance')).toBe('balance');
+    expect(normalizeText('اقس\u200Dاط\u200F')).toBe(normalizeText('اقساط'));
+    expect(detectIntent('how much do I owe, bal\u200Bance?').intent).toBe('outstanding_balance');
+    expect(detectIntent('كم باقي\u200C علي').intent).toBe('outstanding_balance');
+  });
+
+  it('answers in English when the text is English with Arabic-Indic digits', () => {
+    expect(detectLanguage('show me an SUV under ٢٠٠', 'ar')).toBe('en');
+    expect(detectLanguage('٢٠٠', 'ar')).toBe('ar');
+    expect(detectLanguage('٢٠٠', 'en')).toBe('en');
+    expect(detectLanguage('أبي سيارة تحت ٢٠٠', 'en')).toBe('ar');
+  });
+});
+
 describe('intent detection (EN / AR utterance table)', () => {
   it('has at least 40 utterances, in both languages', () => {
     expect(UTTERANCES.length).toBeGreaterThanOrEqual(40);
@@ -319,6 +335,9 @@ describe('privacy: no raw PII in replies or memory', () => {
     expect(redactPii('BHD 4,320.000 due 2026-10-07, ref c-1001-settle')).toBe('BHD 4,320.000 due 2026-10-07, ref c-1001-settle');
     expect(redactPii('card 5123 4567 8901 2345 and mail a.b@x.bh')).toBe('card [•••] and mail [•••]');
     expect(redactPii('CPR ٨٨٠٤١٢٣٤٥ ok')).toBe('CPR [•••] ok');
+    // A CPR split with dots, slashes or underscores is still a CPR; amounts, dates and versions are not
+    expect(redactPii('cpr 880.412.345 / 880/412/345 / 880_412_345')).toBe('cpr [•••] / [•••] / [•••]');
+    expect(redactPii('BHD 13,444.175 on 03.10.2026, 1.5 and 20.5')).toBe('BHD 13,444.175 on 03.10.2026, 1.5 and 20.5');
   });
 });
 

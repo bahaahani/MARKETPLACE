@@ -14,7 +14,7 @@ export const REDACTED = '[•••]';
 
 const PII = new RegExp(
   [
-    /(?<!\d)(?:\d[ -]?){8,}\d(?!\d)/.source, // CPR, card number, phone
+    /(?<!\d)(?:\d[ ._/-]?){8,}\d(?!\d)/.source, // CPR, card number, phone (digits split by space, dash, dot, slash or underscore)
     /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}/u.source, // e-mail
     /\b[A-Z]{2}\d{2}[A-Z]{4}[\dA-Z]{10,30}\b/.source, // IBAN
   ].join('|'),

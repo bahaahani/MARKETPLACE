@@ -143,15 +143,17 @@ export function NotificationsInbox({ locale, initial }: { locale: AppLocale; ini
                           {tr('notifMarkRead')}
                         </button>
                       )}
-                      <button
-                        type="button"
-                        className="text-xs text-text-muted underline hover:text-text"
-                        onClick={() => post(`${encodeURIComponent(n.id)}/dismiss`)}
-                        aria-label={`${tr('notifDismiss')}: ${n.title[locale]}`}
-                        data-testid="notif-dismiss"
-                      >
-                        {tr('notifDismiss')}
-                      </button>
+                      {!n.mandatory && (
+                        <button
+                          type="button"
+                          className="text-xs text-text-muted underline hover:text-text"
+                          onClick={() => post(`${encodeURIComponent(n.id)}/dismiss`)}
+                          aria-label={`${tr('notifDismiss')}: ${n.title[locale]}`}
+                          data-testid="notif-dismiss"
+                        >
+                          {tr('notifDismiss')}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </li>

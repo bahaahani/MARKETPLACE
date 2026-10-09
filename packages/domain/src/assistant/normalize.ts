@@ -39,7 +39,9 @@ export function normalizeArabic(s: string): string {
 
 /** Normalized form used for matching. Keeps letters, digits, "." and "," inside numbers, and single spaces. */
 export function normalizeText(s: string): string {
-  const t = normalizeArabic(toLatinDigits(s.normalize('NFKC'))).toLowerCase();
+  // Invisible format characters (zero-width space / joiner / non-joiner, bidi marks, BOM) are removed, not turned into
+  // spaces: "اقســاط" typed with a joiner, or "bal\u200Bance", must still match the same keyword.
+  const t = normalizeArabic(toLatinDigits(s.normalize('NFKC')).replace(/\p{Cf}/gu, '')).toLowerCase();
   return t
     .replace(/(\d)[,](?=\d{3}\b)/g, '$1') // 1,500 -> 1500
     .replace(/[^\p{L}\p{N}.\s-]/gu, ' ')
@@ -49,7 +51,8 @@ export function normalizeText(s: string): string {
     .trim();
 }
 
-const ARABIC_LETTER = /[؀-ۿ]/g;
+// Arabic-script LETTERS only: the Arabic-Indic digits sit in the same block but say nothing about the language.
+const ARABIC_LETTER = /(?=\p{L})\p{Script=Arabic}/gu;
 const LATIN_LETTER = /[a-z]/gi;
 
 /**

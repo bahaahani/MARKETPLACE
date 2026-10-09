@@ -107,7 +107,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                 child: ListTile(
                   key: Key('rew-entry-${e.id}'),
                   title: Text(context.loc(e.title)),
-                  subtitle: Text(context.date(e.at.toLocal())),
+                  subtitle: Text(context.bahrainDate(e.at)),
                   trailing: Directionality(
                     textDirection: TextDirection.ltr,
                     child: Text(

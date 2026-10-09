@@ -17,7 +17,7 @@ export function GET(req: Request) {
 export function PUT(req: Request) {
   return withCustomer(
     req,
-    async (s) => ok(notificationPreferencesView(notificationStore.updatePreferences(s.customerId, await jsonBody(req)))),
+    async (s) => ok(notificationPreferencesView(notificationStore.updatePreferences(s.customerId, await jsonBody(req, { maxBytes: 16 * 1024 })))),
     handleNotificationError,
   );
 }

@@ -21,7 +21,7 @@ export function POST(req: Request) {
   return withCustomer(
     req,
     async (s) => {
-      const body = await jsonBody<{ itemId?: unknown; idempotencyKey?: unknown }>(req);
+      const body = await jsonBody<{ itemId?: unknown; idempotencyKey?: unknown }>(req, { maxBytes: 4 * 1024 });
       const idempotencyKey = req.headers.get('Idempotency-Key') ?? body.idempotencyKey;
       const result = rewardsStore.redeem(s.customerId, rewardsState(s.customer), { itemId: body.itemId, idempotencyKey });
       return ok(result, { status: result.replayed ? 200 : 201 });

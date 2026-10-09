@@ -3,6 +3,7 @@ import en from '../../i18n/en.json';
 import ar from '../../i18n/ar.json';
 import {
   applyForCard,
+  assertDismissible,
   bhd,
   buildPreApproval,
   defaultNotificationPreferences,
@@ -339,6 +340,18 @@ describe('ids, text and inbox', () => {
     const next = contract('2026-11-05', { nextInstallment: { number: 9, dueDate: '2026-11-05', amountFils: bhd(91.234), status: 'due' } });
     const nov = notificationInbox(deriveNotifications(src({ contracts: [next] }), at('2026-11-03T09:00:00Z')), store.state('cus_a'), prefs, text, at('2026-11-03T09:00:00Z'));
     expect(nov.items.find((i) => i.type === 'installment_due')).toMatchObject({ id: 'installment_due.c-9.9', read: false });
+  });
+
+  it('an overdue (mandatory) notice cannot be dismissed: the inbox keeps showing it', () => {
+    const store = new SandboxNotificationStore();
+    const ds = deriveNotifications(src({ contracts: [contract('2026-10-01')] }), NOW);
+    const overdue = byType(ds, 'installment_overdue')!;
+    expect(() => assertDismissible(overdue)).toThrow(expect.objectContaining({ code: 'MANDATORY_CATEGORY' }));
+    expect(() => assertDismissible({ id: 'x', category: 'payments' })).not.toThrow();
+    // Even if a dismissal got into the store, a mandatory notice stays
+    store.dismiss('cus_a', overdue.id);
+    const inbox = notificationInbox(ds, store.state('cus_a'), defaultNotificationPreferences(), text, NOW);
+    expect(inbox.items.map((i) => i.id)).toContain(overdue.id);
   });
 
   it('per-customer isolation: one customer reading or dismissing never changes another inbox', () => {
