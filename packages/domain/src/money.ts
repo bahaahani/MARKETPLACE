@@ -33,3 +33,17 @@ export function formatBhd(
   }).format(toBhd(fils));
   return locale === 'ar' ? `${n} د.ب.` : `BHD ${n}`;
 }
+
+/**
+ * A date for display, e.g. "12 Oct 2026". A plain calendar date (YYYY-MM-DD) is shown as is; an ISO instant is shown on
+ * its Asia/Bahrain calendar day (UTC+3), never the server's or the device's, so web and mobile agree near midnight.
+ */
+export function formatDisplayDate(value: string, locale: Locale): string {
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-BH-u-nu-latn' : 'en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: dateOnly ? 'UTC' : 'Asia/Bahrain',
+  }).format(new Date(dateOnly ? `${value}T00:00:00Z` : value));
+}

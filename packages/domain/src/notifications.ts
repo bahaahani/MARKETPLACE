@@ -689,7 +689,8 @@ export function notificationInbox(
 ): NotificationInbox {
   const deferredUntil = quietHoursEnd(prefs.quietHours, now);
   const items: AppNotification[] = drafts
-    .filter((d) => !state.isDismissed(d.id))
+    // Mandatory notices (overdue payments) cannot be dismissed: the inbox always shows them.
+    .filter((d) => MANDATORY_NOTIFICATION_CATEGORIES.includes(d.category) || !state.isDismissed(d.id))
     .map((d) => ({
       id: d.id,
       type: d.type,
@@ -715,6 +716,13 @@ export function notificationInbox(
         a.id.localeCompare(b.id),
     );
   return { items, unreadCount: items.filter((i) => !i.read).length, total: items.length, timeZone: NOTIFICATION_TIME_ZONE };
+}
+
+/** Throws MANDATORY_CATEGORY when the notification may not be dismissed (see MANDATORY_NOTIFICATION_CATEGORIES). */
+export function assertDismissible(d: Pick<NotificationDraft, 'id' | 'category'>): void {
+  if (MANDATORY_NOTIFICATION_CATEGORIES.includes(d.category)) {
+    throw new NotificationError('MANDATORY_CATEGORY', `${d.category} notifications are required and cannot be dismissed`);
+  }
 }
 
 /** Well-formed notification id (what deriveNotifications produces), so junk never reaches the store. */

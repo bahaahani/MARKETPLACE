@@ -7,7 +7,13 @@ import 'notifications_models.dart';
 /// The inbox (GET /me/notifications). Read / dismiss answer with the new inbox, which replaces it.
 class NotificationsNotifier extends AsyncNotifier<NotificationInbox> {
   @override
-  Future<NotificationInbox> build() => ref.watch(repositoryProvider).notifications();
+  Future<NotificationInbox> build() {
+    // The API derives the inbox from the customer's contracts and cards, so reload whenever those do (checkout and
+    // settlement reload /me, a card application reloads My cards), like the web header bell does on every navigation.
+    ref.watch(meProvider);
+    ref.watch(myCardsProvider);
+    return ref.watch(repositoryProvider).notifications();
+  }
 
   Future<void> _apply(Future<NotificationInbox> Function() call) async {
     try {

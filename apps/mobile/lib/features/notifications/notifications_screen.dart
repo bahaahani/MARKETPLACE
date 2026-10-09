@@ -122,7 +122,8 @@ class _NotificationTile extends ConsumerWidget {
               const Spacer(),
               if (!n.read)
                 TextButton(key: Key('notif-read-${n.id}'), onPressed: () => notifier.markRead(n.id), child: Text(l.notifMarkRead)),
-              TextButton(key: Key('notif-dismiss-${n.id}'), onPressed: () => notifier.dismiss(n.id), child: Text(l.notifDismiss)),
+              if (!n.mandatory)
+                TextButton(key: Key('notif-dismiss-${n.id}'), onPressed: () => notifier.dismiss(n.id), child: Text(l.notifDismiss)),
             ]),
           ]),
         ),

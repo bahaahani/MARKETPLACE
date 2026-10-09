@@ -20,11 +20,20 @@ const nextConfig: NextConfig = {
         source: '/api/:path*',
         headers: [
           { key: 'Access-Control-Allow-Origin', value: '*' },
-          { key: 'Access-Control-Allow-Methods', value: 'GET,POST,PATCH,OPTIONS' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET,POST,PUT,PATCH,DELETE,OPTIONS' },
           { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Idempotency-Key, Authorization, X-Sahel-Session' },
           // ⚠️ Sandbox customer session for the app (apps/web/lib/session.ts).
           { key: 'Access-Control-Expose-Headers', value: 'X-Sahel-Session' },
         ],
+      },
+      {
+        // Per-customer answers (balances, voucher codes, the session id header) must never sit in a shared cache.
+        source: '/api/v1/:area(me|rewards|assistant)/:path*',
+        headers: [{ key: 'Cache-Control', value: 'private, no-store' }],
+      },
+      {
+        source: '/api/v1/me',
+        headers: [{ key: 'Cache-Control', value: 'private, no-store' }],
       },
     ];
   },

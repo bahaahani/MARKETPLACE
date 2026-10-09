@@ -82,6 +82,9 @@ test('rewards API: idempotent redemption, insufficient balance, validation, priv
       a.post('/api/v1/me/rewards/redemptions', { data: { itemId }, headers: key ? { 'Idempotency-Key': key } : {} });
     const first = await redeem('takaful-15', 'e2e-rewards-0001');
     expect(first.status()).toBe(201);
+    // The only response with a full voucher code (and the session id) is never cacheable.
+    expect(first.headers()['cache-control']).toBe('private, no-store');
+    expect((await a.get('/api/v1/me/rewards')).headers()['cache-control']).toBe('private, no-store');
     const r1 = (await first.json()).data;
     const replay = await redeem('takaful-15', 'e2e-rewards-0001');
     expect(replay.status()).toBe(200);
@@ -91,6 +94,8 @@ test('rewards API: idempotent redemption, insufficient balance, validation, priv
     expect((await redeem('takaful-15')).status()).toBe(400);
     expect((await redeem('nope', 'e2e-rewards-0002')).status()).toBe(404);
     expect((await a.post('/api/v1/me/rewards/redemptions', { data: '[1]', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'e2e-rewards-0003' } })).status()).toBe(400);
+    const huge = await a.post('/api/v1/me/rewards/redemptions', { data: JSON.stringify({ itemId: 'x'.repeat(200_000) }), headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'e2e-rewards-0004' } });
+    expect(huge.status()).toBe(413);
 
     // Spend down until the balance no longer covers the item: 422, and nothing is taken.
     let status = 201;

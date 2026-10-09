@@ -21,7 +21,8 @@ export function POST(req: Request) {
   return withCustomer(
     req,
     async (s) => {
-      const body = await jsonBody<Body>(req);
+      // 500 characters are at most ~2 KB of JSON: bigger bodies are refused (413) before they are read in full.
+      const body = await jsonBody<Body>(req, { maxBytes: 8 * 1024 });
       return ok(await assistant.handle(s.customerId, body, assistantContext(s)));
     },
     handleAssistantError,
