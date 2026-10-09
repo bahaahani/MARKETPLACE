@@ -303,10 +303,15 @@ class InstantMatch {
 }
 
 class BidAccepted {
-  const BidAccepted({required this.bidId, required this.vehicleId, required this.applyHref});
+  const BidAccepted({required this.bidId, required this.vehicleId, required this.applyHref, required this.validUntil});
   final String bidId;
   final String vehicleId;
+
+  /// Car page path with the accepted bid (?requestId=&bidId=): applying there is priced from the bid
   final String applyHref;
+
+  /// Until when the accepted price and extras can be used for a finance application
+  final DateTime validUntil;
 }
 
 /// A request as the customer who posted it sees it (GET /requests/{id}).
@@ -362,7 +367,14 @@ class BidRequest {
       canCancel: j['canCancel'] as bool,
       pollSeconds: j['pollSeconds'] as int,
       expiresAt: DateTime.parse(j['expiresAt'] as String),
-      accepted: a == null ? null : BidAccepted(bidId: a['bidId'] as String, vehicleId: a['vehicleId'] as String, applyHref: a['applyHref'] as String),
+      accepted: a == null
+          ? null
+          : BidAccepted(
+              bidId: a['bidId'] as String,
+              vehicleId: a['vehicleId'] as String,
+              applyHref: a['applyHref'] as String,
+              validUntil: DateTime.parse(a['validUntil'] as String),
+            ),
     );
   }
 }

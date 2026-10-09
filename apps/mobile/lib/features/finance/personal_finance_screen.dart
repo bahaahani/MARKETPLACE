@@ -117,6 +117,9 @@ class _PersonalFinanceBodyState extends ConsumerState<_PersonalFinanceBody> {
                         propertyId: null,
                         downPaymentFils: null,
                         amountFils: _amount,
+                        requestId: null,
+                        bidId: null,
+                        useTradeIn: false,
                       )
                     : null,
               ),

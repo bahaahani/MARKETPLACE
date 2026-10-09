@@ -231,3 +231,28 @@ ID2=$(curl -s -X POST $B/requests -H "$J" -H "$H" \
   | node -pe 'JSON.parse(require("fs").readFileSync(0)).data.id')
 curl -s -X POST -H "$H" $B/requests/$ID2/cancel > bid_request_cancelled.json
 ```
+
+The winning bid and the trade-in carried into the finance application (⚠️ sandbox), with the same `B`, `J` and
+`session()` as above, in its own session: NMC's CR-V bid (BHD 500 off, two extras) is accepted (the request now carries
+`accepted.applyHref` with `?requestId=&bidId=` and `accepted.validUntil`), a forged bid is refused (404 `BID_NOT_FOUND`),
+then the application is priced from the bid, and from the bid plus the trade-in of the My Garage CR-V (the credit is the
+down payment `GET /me/trade-in` gives for the car).
+
+```sh
+S=$(session); H="X-Sahel-Session: $S"
+ID=$(curl -s -X POST $B/requests -H "$J" -H "$H" \
+  -d '{"bodyType":"suv","condition":"any","maxMonthlyFils":300000,"structure":"murabaha","tenureMonths":60,"downPaymentFils":3000000,"insurance":"takaful"}' \
+  | node -pe 'JSON.parse(require("fs").readFileSync(0)).data.id')
+curl -s -X POST $B/dealer/nmc/requests/$ID/bids -H "$J" -d '{"vehicleId":"v-honda-crv-2026","discountFils":500000,"extras":["service-1y","window-tint"]}' > /dev/null
+BID=$(curl -s -H "$H" "$B/requests/$ID" | node -pe 'JSON.parse(require("fs").readFileSync(0)).data.bids[0].id')
+curl -s -X POST $B/requests/$ID/accept -H "$J" -H "$H" -d "{\"bidId\":\"$BID\"}" > bid_request_accepted_crv.json
+curl -s -X POST $B/applications -H "$J" -H "$H" -H 'Idempotency-Key: fixture-carry-forged' \
+  -d "{\"productLine\":\"vehicle\",\"structure\":\"murabaha\",\"vehicleId\":\"v-honda-crv-2026\",\"downPaymentFils\":3000000,\"tenureMonths\":60,\"requestId\":\"$ID\",\"bidId\":\"bid_forged\"}" > application_bid_forged.json
+curl -s -X POST $B/applications -H "$J" -H "$H" -H 'Idempotency-Key: fixture-carry-bid-01' \
+  -d "{\"productLine\":\"vehicle\",\"structure\":\"murabaha\",\"vehicleId\":\"v-honda-crv-2026\",\"downPaymentFils\":3000000,\"tenureMonths\":60,\"requestId\":\"$ID\",\"bidId\":\"$BID\"}" > application_crv_bid.json
+curl -s -X POST $B/trade-in/valuations -H "$J" -H "$H" \
+  -d '{"garageVehicleId":"v-honda-crv-2026","mileageKm":27850,"condition":"good","accidentHistory":false}' > /dev/null
+DOWN=$(curl -s -H "$H" "$B/me/trade-in?vehicleId=v-honda-crv-2026" | node -pe 'JSON.parse(require("fs").readFileSync(0)).data.forVehicle.downPaymentFils')
+curl -s -X POST $B/applications -H "$J" -H "$H" -H 'Idempotency-Key: fixture-carry-bid-ti' \
+  -d "{\"productLine\":\"vehicle\",\"structure\":\"murabaha\",\"vehicleId\":\"v-honda-crv-2026\",\"downPaymentFils\":$DOWN,\"tenureMonths\":60,\"requestId\":\"$ID\",\"bidId\":\"$BID\",\"useTradeIn\":true}" > application_crv_bid_tradein.json
+```

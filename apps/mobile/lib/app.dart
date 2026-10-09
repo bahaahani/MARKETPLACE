@@ -47,7 +47,11 @@ GoRouter buildRouter({String initialLocation = '/'}) => GoRouter(
               GoRoute(
                 path: '/cars',
                 builder: (_, s) => CarsScreen(initialMaxMonthlyFils: int.tryParse(s.uri.queryParameters['maxMonthlyFils'] ?? '')),
-                routes: [GoRoute(path: ':id', builder: (_, s) => CarDetailScreen(id: s.pathParameters['id']!))],
+                routes: [GoRoute(path: ':id', builder: (_, s) => CarDetailScreen(
+                      id: s.pathParameters['id']!,
+                      requestId: s.uri.queryParameters['requestId'],
+                      bidId: s.uri.queryParameters['bidId'],
+                    ))],
               ),
             ]),
             StatefulShellBranch(routes: [

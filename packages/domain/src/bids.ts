@@ -27,7 +27,9 @@ import type { BodyType, FuelType, Localized, Seller, Vehicle, VehicleCondition }
  * trade-in or customer id.
  *
  * ⚠️ SANDBOX: requests and bids live in memory; any visitor can act as any dealer; the accepted bid becomes a dealer
- * lead and a link to the car page (the discount and extras are not yet carried into the finance application).
+ * lead (with the list and bid price) and a link to the car page. The finance application on that car is priced from the
+ * bid, re-validated by the server (application-carry.ts): the discount lowers the financed price and the extras are
+ * recorded on the application.
  */
 
 // ---------------------------------------------------------------------------------------------
@@ -49,6 +51,8 @@ export const BID_MAX_CASH_DOWN_PAYMENT_FILS: Fils = bhd(100_000);
 export const BID_INSTANT_MATCH_LIMIT = 5;
 /** Oldest minimum model year offered: this many years before the current Bahrain year. */
 export const BID_MAX_AGE_YEARS = 10;
+/** ⚠️ VERIFY: how long after acceptance the dealer keeps the accepted price and extras for a finance application. */
+export const BID_ACCEPTED_VALIDITY_DAYS = 7;
 /** How often the apps refresh an open request's bids board. */
 export const BID_POLL_SECONDS = 5;
 /** ⚠️ Sandbox cap on requests kept per customer. */
@@ -517,9 +521,14 @@ export interface BidRequestView extends Omit<BidRequest, 'bids'> {
   canAccept: boolean;
   canCancel: boolean;
   /** After acceptance: the car and the link to apply for finance on it (the existing car page) */
-  accepted: { bidId: string; vehicleId: string; sellerId: string; applyHref: string } | null;
+  accepted: { bidId: string; vehicleId: string; sellerId: string; applyHref: string; validUntil: string } | null;
   pollSeconds: number;
   sandbox: true;
+}
+
+/** ISO timestamp until which an accepted bid's price and extras can be used for a finance application. */
+export function bidAcceptedUntil(r: Pick<BidRequest, 'closedAt' | 'createdAt'>): string {
+  return new Date(Date.parse(r.closedAt ?? r.createdAt) + BID_ACCEPTED_VALIDITY_DAYS * 24 * 3600 * 1000).toISOString();
 }
 
 export function bidRequestView(r: BidRequest, sort: BidSort = 'monthly'): BidRequestView {
@@ -534,7 +543,16 @@ export function bidRequestView(r: BidRequest, sort: BidSort = 'monthly'): BidReq
     bidCount: r.bids.filter((b) => b.status === 'ACTIVE').length,
     canAccept: r.status === 'OPEN' && r.bids.some((b) => b.status === 'ACTIVE'),
     canCancel: r.status === 'OPEN',
-    accepted: acc ? { bidId: acc.id, vehicleId: acc.vehicle.id, sellerId: acc.sellerId, applyHref: `/cars/${acc.vehicle.id}` } : null,
+    accepted: acc
+      ? {
+          bidId: acc.id,
+          vehicleId: acc.vehicle.id,
+          sellerId: acc.sellerId,
+          // The car page prices the application from this bid; the server re-validates it when the customer applies.
+          applyHref: `/cars/${acc.vehicle.id}?requestId=${encodeURIComponent(r.id)}&bidId=${encodeURIComponent(acc.id)}`,
+          validUntil: bidAcceptedUntil(r),
+        }
+      : null,
     pollSeconds: BID_POLL_SECONDS,
     sandbox: true,
   };
@@ -610,6 +628,7 @@ export function leadFromAcceptedBid(r: BidRequest, bid: Bid, now: Date = new Dat
     source: 'bid',
     status: 'NEW',
     preApproved: r.preApproved,
+    bid: { listPriceFils: bid.pricing.listPriceFils, priceFils: bid.pricing.priceFils, discountFils: bid.pricing.discountFils, extras: [...bid.extras] },
     createdAt: at,
     updatedAt: at,
   };

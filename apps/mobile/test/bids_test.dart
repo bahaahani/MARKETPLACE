@@ -73,7 +73,7 @@ void main() {
 
     final accepted = request('bid_request_accepted');
     expect(accepted.status, 'CLOSED');
-    expect(accepted.accepted!.applyHref, '/cars/v-nissan-patrol-2021');
+    expect(accepted.accepted!.applyHref, '/cars/v-nissan-patrol-2021?requestId=${accepted.id}&bidId=${accepted.accepted!.bidId}');
     expect(accepted.bids.map((b) => b.status).toSet(), {'ACCEPTED', 'LOST'});
     expect(accepted.canAccept, isFalse);
     expect(request('bid_request_cancelled').status, 'CANCELLED');

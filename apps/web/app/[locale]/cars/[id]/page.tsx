@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { findVehicle, RESERVATION_DEPOSIT_FILS, VEHICLES } from '@sahel/domain';
 import { LOCALES } from '@sahel/i18n';
 import { CarApplyButton, FinanceSelectionProvider } from '@/components/ApplyFinance';
 import { AssetArt } from '@/components/AssetArt';
+import { AcceptedBidBanner } from '@/components/CarBid';
 import { InsuranceQuotes } from '@/components/InsuranceQuotes';
 import { TradeInFinance } from '@/components/TradeIn';
 import { resolveLocale, translator } from '@/lib/i18n';
@@ -67,6 +69,12 @@ export default async function CarDetail({ params }: { params: Promise<{ locale: 
               </div>
               <p className="mt-2 text-xs text-text-muted">{tr.t('applyConsent')}</p>
             </div>
+            {/* "Bid For Me": the accepted bid in the link (?requestId=&bidId=) prices the application; read client-side, the page is static. */}
+            <Suspense fallback={null}>
+              <div className="px-5 pb-5 empty:hidden">
+                <AcceptedBidBanner locale={tr.locale} vehicleId={v.id} />
+              </div>
+            </Suspense>
           </div>
           <InsuranceQuotes locale={tr.locale} vehicleValueFils={v.priceFils} reference={v.id} />
         </div>

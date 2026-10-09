@@ -9,6 +9,7 @@ import '../../core/providers.dart';
 import '../../core/theme/tokens.g.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../widgets/common.dart';
+import '../bids/bids_providers.dart' show bidExtraLabel;
 import '../checkout/checkout_screen.dart';
 import '../checkout/payment_price.dart';
 
@@ -66,6 +67,10 @@ class _ApplicationScreenState extends ConsumerState<ApplicationScreen> {
             if (app.decision != null) _DecisionCard(app),
             const SizedBox(height: SahelSpace.md),
             _OfferSummary(app.quote, productLine: app.productLine),
+            if (app.hasBreakdown) ...[
+              const SizedBox(height: SahelSpace.md),
+              _PricingBreakdown(app),
+            ],
             if (app.nextAction?.type == 'PAY_VALUATION_FEE') ...[
               const SizedBox(height: SahelSpace.md),
               _ValuationStep(app.nextAction!, onContinue: _busy ? null : _accept, onReturnFromCheckout: _reload),
@@ -226,6 +231,50 @@ class _OfferSummary extends StatelessWidget {
           if (q.rateBasis != 'apr') KeyValueRow(l.aprEquivalent, '${q.aprPct}%'),
           const SizedBox(height: SahelSpace.sm),
           Text(l.illustrativeDisclaimer, style: const TextStyle(color: SahelColors.textMuted, fontSize: 11)),
+        ]),
+      ),
+    );
+  }
+}
+
+/// How the financed amount is made up, from the API's `pricing` (nothing is computed here): list price, the dealer's
+/// discount from an accepted bid, the trade-in credit (credited at delivery) and the bid's extras.
+class _PricingBreakdown extends StatelessWidget {
+  const _PricingBreakdown(this.app);
+  final FinanceApplication app;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final p = app.pricing!;
+    String m(int fils) => context.money(fils, decimals: 0);
+    return Card(
+      key: const Key('pricing-breakdown'),
+      child: Padding(
+        padding: const EdgeInsets.all(SahelSpace.md),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(l.carryPricingTitle, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          if (app.fromBid)
+            Text(l.carryPricingFromBid, key: const Key('pricing-from-bid'), style: const TextStyle(color: SahelColors.islamic, fontWeight: FontWeight.w600, fontSize: 13)),
+          const SizedBox(height: SahelSpace.sm),
+          KeyValueRow(l.carryPricingList, m(p.listPriceFils)),
+          if (p.discountFils > 0) KeyValueRow(l.carryPricingDiscount, '−${m(p.discountFils)}'),
+          KeyValueRow(l.carryPricingPrice, m(p.priceFils)),
+          if (p.tradeInCreditFils > 0) KeyValueRow(l.carryPricingTradeIn, '−${m(p.tradeInCreditFils)}'),
+          KeyValueRow(l.carryPricingCash, m(p.cashDownPaymentFils)),
+          KeyValueRow(l.financedAmount, m(p.financedFils)),
+          if (p.tradeInCreditFils > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: SahelSpace.xs),
+              child: Text(l.carryPricingTradeInNote(m(p.tradeInCreditFils)),
+                  key: const Key('pricing-tradein-note'), style: const TextStyle(color: SahelColors.textMuted, fontSize: 11)),
+            ),
+          if (p.extras.isNotEmpty) ...[
+            const SizedBox(height: SahelSpace.sm),
+            Text(l.carryPricingExtras, style: const TextStyle(color: SahelColors.textMuted, fontSize: 12)),
+            PillRow([for (final x in p.extras) Pill(bidExtraLabel(l, x), color: SahelColors.islamic, background: SahelColors.islamicSoft)],
+                compact: true),
+          ],
         ]),
       ),
     );

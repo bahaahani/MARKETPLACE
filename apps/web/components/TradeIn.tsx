@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
-import { formatBhd, NUMBER_LOCALE, type TradeInApplication, type TradeInCondition, type TradeInOffer, type TradeInRules, type TradeInStep } from '@sahel/domain';
+import { financeLimits, formatBhd, NUMBER_LOCALE, type TradeInApplication, type TradeInCondition, type TradeInOffer, type TradeInRules, type TradeInStep } from '@sahel/domain';
 import { t, type AppLocale, type MessageKey } from '@sahel/i18n';
+import { useAcceptedBid, useTradeInChoice } from './ApplyFinance';
 import { FinanceCalculator } from './FinanceCalculator';
 
 type Tr = (k: MessageKey, v?: Record<string, string | number>) => string;
@@ -271,12 +272,20 @@ export function TradeInForm({
 /**
  * The car page's finance calculator, with "Use my trade-in (BHD X)" when the session customer has an active offer.
  * Using it restarts the calculator from the down payment GET /api/v1/me/trade-in?vehicleId= returns:
- * min(offer, maximum down payment). It does not change the apply flow. ⚠️ Sandbox: credited at delivery.
+ * min(offer, maximum down payment), and "Apply for finance" then sends `useTradeIn: true`, so the server records the
+ * credit on the application. With an accepted bid (car page link from "Bid For Me") the calculator prices the bid's
+ * discounted price. ⚠️ Sandbox: credited at delivery.
  */
 export function TradeInFinance({ locale, vehicleId, assetPriceFils }: { locale: AppLocale; vehicleId: string; assetPriceFils: number }) {
   const { tr, money } = helpers(locale);
   const [use, setUse] = useState<TradeInApplication | null>(null);
   const [applied, setApplied] = useState(false);
+  const bid = useAcceptedBid();
+  const { setUseTradeIn } = useTradeInChoice();
+  // The price actually financed: the accepted bid's, else the list price.
+  const priceFils = bid?.priceFils ?? assetPriceFils;
+  const limits = financeLimits('vehicle', priceFils);
+  const startDown = use ? Math.min(use.downPaymentFils, Math.floor(limits.maxDownPaymentFils / limits.downPaymentStepFils) * limits.downPaymentStepFils) : 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -300,7 +309,7 @@ export function TradeInFinance({ locale, vehicleId, assetPriceFils }: { locale: 
           {applied ? (
             <p className="text-sm font-semibold text-success" data-testid="tradein-applied">{tr('tradeApplied', { amount: money(use.downPaymentFils) })}</p>
           ) : (
-            <button type="button" className="btn btn-primary w-full" onClick={() => setApplied(true)} data-testid="tradein-use-button">
+            <button type="button" className="btn btn-primary w-full" onClick={() => { setApplied(true); setUseTradeIn?.(true); }} data-testid="tradein-use-button">
               {tr('tradeUseMine', { amount: money(use.offerFils) })}
             </button>
           )}
@@ -310,11 +319,11 @@ export function TradeInFinance({ locale, vehicleId, assetPriceFils }: { locale: 
         </section>
       )}
       <FinanceCalculator
-        key={applied && use ? 'trade-in' : 'listing'}
+        key={`${applied && use ? 'trade-in' : 'listing'}-${priceFils}`}
         locale={locale}
         productLine="vehicle"
-        assetPriceFils={assetPriceFils}
-        initialDownPaymentFils={applied && use ? use.downPaymentFils : undefined}
+        assetPriceFils={priceFils}
+        initialDownPaymentFils={applied && use ? startDown : undefined}
       />
     </div>
   );

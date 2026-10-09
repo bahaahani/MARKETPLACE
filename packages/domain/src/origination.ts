@@ -1,6 +1,7 @@
 import type { Fils } from './money';
 import { bhd } from './money';
 import { maxMonthlyInstallment, preApprove, type CustomerFinancials } from './affordability';
+import type { BidExtra } from './bids';
 import { quoteFinance, type FinanceQuote } from './pricing';
 import { DBR_CAP_PCT, RATE_CARDS } from './rates';
 import type { FinanceStructure, ProductLine } from './types';
@@ -193,6 +194,24 @@ export interface CreditReview {
   reviewedAt: string;
 }
 
+/** Where a vehicle application's price came from: an accepted "Bid For Me" bid, re-validated by the server. */
+export interface ApplicationSource {
+  type: 'bid';
+  requestId: string;
+  bidId: string;
+}
+
+/** The customer's trade-in offer carried into a vehicle application (⚠️ sandbox: credited at delivery). */
+export interface ApplicationTradeIn {
+  offerId: string;
+  /** The guaranteed instant offer */
+  offerFils: Fils;
+  /** Part of the offer counted as down payment: never above the car's maximum down payment */
+  creditFils: Fils;
+  /** The offer is above the maximum down payment: the rest is not used */
+  capped: boolean;
+}
+
 export interface FinanceApplication {
   id: string;
   customerId: string;
@@ -213,6 +232,52 @@ export interface FinanceApplication {
   updatedAt: string;
   /** Conventional home finance: the captured TRESCO valuation-fee payment that confirmed the valuation */
   valuationPaymentId?: string;
+  /** Vehicle only: the accepted bid this application is priced from (the quote uses the bid's discounted price) */
+  source?: ApplicationSource;
+  /** Vehicle only: the trade-in credited at delivery, counted in the quote's down payment */
+  tradeIn?: ApplicationTradeIn;
+  /** Vehicle only, with a bid: the catalogue price before the dealer's discount (the quote's asset price is after it) */
+  listPriceFils?: Fils;
+  /** The accepted bid's extras (recorded, not financed) */
+  extras?: BidExtra[];
+}
+
+/**
+ * How the financed amount is made up, computed on the server so the apps only render it. Without a bid or a trade-in
+ * the list price is the asset price, nothing is discounted or credited, and the financed amount is the usual one.
+ */
+export interface ApplicationPricing {
+  /** Catalogue price (personal finance: the amount asked for) */
+  listPriceFils: Fils;
+  /** Dealer discount from the accepted bid */
+  discountFils: Fils;
+  /** Price after the discount: the asset price financed */
+  priceFils: Fils;
+  /** Trade-in counted as down payment, credited at delivery */
+  tradeInCreditFils: Fils;
+  /** The whole down payment (trade-in credit plus cash) */
+  downPaymentFils: Fils;
+  /** The part of the down payment paid in cash */
+  cashDownPaymentFils: Fils;
+  /** Extras the dealer added (free service, tint, ...) */
+  extras: BidExtra[];
+  financedFils: Fils;
+}
+
+export function applicationPricing(app: Pick<FinanceApplication, 'quote' | 'listPriceFils' | 'tradeIn' | 'extras'>): ApplicationPricing {
+  const q = app.quote;
+  const listPriceFils = app.listPriceFils ?? q.assetPriceFils;
+  const tradeInCreditFils = app.tradeIn?.creditFils ?? 0;
+  return {
+    listPriceFils,
+    discountFils: listPriceFils - q.assetPriceFils,
+    priceFils: q.assetPriceFils,
+    tradeInCreditFils,
+    downPaymentFils: q.downPaymentFils,
+    cashDownPaymentFils: q.downPaymentFils - tradeInCreditFils,
+    extras: [...(app.extras ?? [])],
+    financedFils: q.financedFils,
+  };
 }
 
 /**
@@ -314,11 +379,11 @@ export function applicationNextAction(app: FinanceApplication, evidence: Fulfilm
 }
 
 /** API representation: the application plus its timeline steps (and the customer's next action, if any). */
-export type ApplicationView = FinanceApplication & { steps: ApplicationStep[]; nextAction?: ApplicationNextAction };
+export type ApplicationView = FinanceApplication & { steps: ApplicationStep[]; pricing: ApplicationPricing; nextAction?: ApplicationNextAction };
 
 export function applicationView(app: FinanceApplication, evidence: FulfilmentEvidence = {}): ApplicationView {
   const nextAction = applicationNextAction(app, evidence);
-  return { ...app, steps: applicationSteps(app), ...(nextAction ? { nextAction } : {}) };
+  return { ...app, steps: applicationSteps(app), pricing: applicationPricing(app), ...(nextAction ? { nextAction } : {}) };
 }
 
 export class OriginationError extends Error {
@@ -346,6 +411,15 @@ export interface ApplicationRequest {
   reference: string;
   /** Client-generated; repeated requests with the same key return the same application */
   idempotencyKey: string;
+  /**
+   * Vehicle only, set by the server after it re-validated an accepted bid (resolveVehicleCarry): `assetPriceFils` is
+   * then the bid's discounted price and `listPriceFils` the catalogue price. Never filled from client input.
+   */
+  source?: ApplicationSource;
+  listPriceFils?: Fils;
+  extras?: BidExtra[];
+  /** Vehicle only, set by the server from the customer's active offer; `downPaymentFils` already includes the credit */
+  tradeIn?: ApplicationTradeIn;
 }
 
 export function validateApplicationRequest(req: ApplicationRequest): void {
@@ -359,6 +433,14 @@ export function validateApplicationRequest(req: ApplicationRequest): void {
     throw new OriginationError('INVALID_REQUEST', 'idempotencyKey is required (min 8 chars)');
   }
   if (typeof req.reference !== 'string' || !req.reference) throw new OriginationError('INVALID_REQUEST', 'reference is required');
+  const carries = req.source !== undefined || req.tradeIn !== undefined || req.listPriceFils !== undefined || (req.extras?.length ?? 0) > 0;
+  if (carries && req.productLine !== 'vehicle') throw new OriginationError('INVALID_REQUEST', 'a bid or trade-in can only go with vehicle finance');
+  if (req.listPriceFils !== undefined && !(Number.isSafeInteger(req.listPriceFils) && req.listPriceFils >= req.assetPriceFils)) {
+    throw new OriginationError('INVALID_REQUEST', 'listPriceFils must be a whole number of fils, not below the asset price');
+  }
+  if (req.tradeIn && !(Number.isSafeInteger(req.tradeIn.creditFils) && req.tradeIn.creditFils >= 0 && req.tradeIn.creditFils <= req.downPaymentFils)) {
+    throw new OriginationError('INVALID_REQUEST', 'the trade-in credit must be part of the down payment');
+  }
   if (req.productLine === 'personal' && req.assetPriceFils < MIN_PERSONAL_FINANCE_FILS) {
     throw new OriginationError('INVALID_REQUEST', `personal finance starts at ${MIN_PERSONAL_FINANCE_FILS} fils`);
   }
@@ -406,6 +488,10 @@ export class SandboxOriginationService {
       idempotencyKey: req.idempotencyKey,
       createdAt: now,
       updatedAt: now,
+      ...(req.source ? { source: { ...req.source } } : {}),
+      ...(req.tradeIn ? { tradeIn: { ...req.tradeIn } } : {}),
+      ...(req.listPriceFils !== undefined && req.listPriceFils !== req.assetPriceFils ? { listPriceFils: req.listPriceFils } : {}),
+      ...(req.extras?.length ? { extras: [...req.extras] } : {}),
     };
     this.byId.set(id, app);
     this.byKey.set(scopedKey(customerId, req.idempotencyKey), id);

@@ -41,6 +41,8 @@ class FakeSahelRepository implements SahelRepository {
       'application_reviewed',
       'application_home_ijara',
       'application_home_conventional',
+      'application_crv_bid',
+      'application_crv_bid_tradein',
     ])
       _app(n).id: n,
   };
@@ -193,6 +195,9 @@ class FakeSahelRepository implements SahelRepository {
     String? propertyId,
     int? downPaymentFils,
     int? amountFils,
+    String? requestId,
+    String? bidId,
+    bool useTradeIn = false,
     required String idempotencyKey,
   }) async {
     applied.add({
@@ -203,11 +208,18 @@ class FakeSahelRepository implements SahelRepository {
       'propertyId': propertyId,
       'downPaymentFils': downPaymentFils,
       'amountFils': amountFils,
+      'requestId': requestId,
+      'bidId': bidId,
+      'useTradeIn': useTradeIn,
       'idempotencyKey': idempotencyKey,
     });
+    // Mirrors the API (packages/domain/src/application-carry.ts): a bid or trade-in is checked on the server.
+    if (bidId == 'bid_forged') throw ApiException(404, 'BID_NOT_FOUND', 'no such accepted bid on your requests');
     if (productLine == 'personal') return _app('application_personal');
     // Recorded for p-amwaj-apt-2br with an onboarded customer (BHD 5,000 salary).
     if (productLine == 'home') return _app(structure == FinanceStructure.ijara ? 'application_home_ijara' : 'application_home_conventional');
+    // Recorded for the NMC CR-V bid (BHD 500 off, two extras): with the trade-in of the My Garage CR-V, or without.
+    if (bidId != null) return _app(useTradeIn ? 'application_crv_bid_tradein' : 'application_crv_bid');
     return _app(vehicleId == 'v-cadillac-escalade-2026' ? 'application_declined' : 'application_crv');
   }
 

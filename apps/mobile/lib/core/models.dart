@@ -552,12 +552,26 @@ class FinanceApplication {
     this.decision,
     this.review,
     this.nextAction,
+    this.pricing,
+    this.fromBid = false,
   });
 
   final String id;
   final String productLine;
   final FinanceStructure structure;
   final FinanceQuote quote;
+
+  /// How the financed amount is made up (list price, bid discount, trade-in credit, extras), computed by the API.
+  final ApplicationPricing? pricing;
+
+  /// Priced from an accepted "Bid For Me" bid
+  final bool fromBid;
+
+  /// Show the price breakdown: only when a bid or a trade-in changed the usual list-price application.
+  bool get hasBreakdown {
+    final p = pricing;
+    return p != null && (fromBid || p.discountFils > 0 || p.tradeInCreditFils > 0 || p.extras.isNotEmpty);
+  }
 
   /// Vehicle id for cars, property id for home finance, "personal" for personal finance
   final String reference;
@@ -587,6 +601,44 @@ class FinanceApplication {
         decision: j['decision'] == null ? null : ApplicationDecision.fromJson(j['decision'] as Json),
         review: j['review'] == null ? null : CreditReview.fromJson(j['review'] as Json),
         nextAction: j['nextAction'] == null ? null : ApplicationNextAction.fromJson(j['nextAction'] as Json),
+        pricing: j['pricing'] == null ? null : ApplicationPricing.fromJson(j['pricing'] as Json),
+        fromBid: j['source'] != null,
+      );
+}
+
+/// The price breakdown of an application, as the API computed it (nothing is calculated in the app).
+class ApplicationPricing {
+  const ApplicationPricing({
+    required this.listPriceFils,
+    required this.discountFils,
+    required this.priceFils,
+    required this.tradeInCreditFils,
+    required this.downPaymentFils,
+    required this.cashDownPaymentFils,
+    required this.extras,
+    required this.financedFils,
+  });
+
+  final int listPriceFils;
+  final int discountFils;
+  final int priceFils;
+  final int tradeInCreditFils;
+  final int downPaymentFils;
+  final int cashDownPaymentFils;
+
+  /// Bid extras ('service-1y', 'window-tint', ...)
+  final List<String> extras;
+  final int financedFils;
+
+  factory ApplicationPricing.fromJson(Json j) => ApplicationPricing(
+        listPriceFils: j['listPriceFils'] as int,
+        discountFils: j['discountFils'] as int,
+        priceFils: j['priceFils'] as int,
+        tradeInCreditFils: j['tradeInCreditFils'] as int,
+        downPaymentFils: j['downPaymentFils'] as int,
+        cashDownPaymentFils: j['cashDownPaymentFils'] as int,
+        extras: [for (final x in j['extras'] as List) x as String],
+        financedFils: j['financedFils'] as int,
       );
 }
 

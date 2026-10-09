@@ -78,7 +78,7 @@ test('customer posts a request, a dealer bids in the portal, the customer accept
   const accepted = page.getByTestId('bid-accepted');
   await expect(accepted).toContainText("You accepted Tasheelat Automotive's bid");
   await expect(board.getByTestId('request-status')).toHaveAttribute('data-status', 'CLOSED');
-  await expect(accepted.getByTestId('bid-apply-link')).toHaveAttribute('href', '/en/cars/v-nissan-patrol-2021');
+  await expect(accepted.getByTestId('bid-apply-link')).toHaveAttribute('href', /^\/en\/cars\/v-nissan-patrol-2021\?requestId=breq_.+&bidId=bid_/);
   await expect(board.getByTestId('bid-cancel')).toHaveCount(0);
 
   // The request left the dealer's open list, and the accepted bid is a lead on the dealer's board.
@@ -91,7 +91,7 @@ test('customer posts a request, a dealer bids in the portal, the customer accept
 
   // "Apply for finance on this car" opens the existing car page.
   await accepted.getByTestId('bid-apply-link').click();
-  await expect(page).toHaveURL(/\/en\/cars\/v-nissan-patrol-2021$/);
+  await expect(page).toHaveURL(/\/en\/cars\/v-nissan-patrol-2021\?requestId=breq_.+&bidId=bid_/);
 });
 
 test('one open request at a time; cancel closes it (Arabic, RTL)', async ({ page }) => {
@@ -154,7 +154,7 @@ test('Bid For Me API: validation, privacy and ownership', async ({ playwright, b
   expect((await other.post(`/api/v1/requests/${id}/accept`, { data: { bidId: newer } })).status()).toBe(404);
   const acc = await customer.post(`/api/v1/requests/${id}/accept`, { data: { bidId: newer } });
   expect(acc.status()).toBe(200);
-  expect((await acc.json()).data.accepted.applyHref).toBe('/cars/v-honda-crv-2026');
+  expect((await acc.json()).data.accepted.applyHref).toMatch(/^\/cars\/v-honda-crv-2026\?requestId=.+&bidId=.+/);
   expect((await customer.post(bids, { data: { vehicleId: 'v-honda-crv-2026' } })).status()).toBe(409);
   const mine = (await (await customer.get('/api/v1/me/requests')).json()).data;
   expect(mine.items[0].status).toBe('CLOSED');
