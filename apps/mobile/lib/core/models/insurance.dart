@@ -136,7 +136,7 @@ class HomeQuotes {
       );
 }
 
-/// What a policy covers. Fields depend on [line] (motor, travel or home).
+/// What a policy covers. Fields depend on [line] (motor, travel, home, medical or life).
 class PolicyCover {
   const PolicyCover({
     required this.line,
@@ -150,6 +150,11 @@ class PolicyCover {
     this.buildingSumInsuredFils,
     this.contentsSumInsuredFils,
     this.propertyTitle,
+    this.annualLimitFils,
+    this.productType,
+    this.sumAssuredFils,
+    this.termYears,
+    this.criticalIllnessRider,
   });
 
   final String line;
@@ -168,6 +173,17 @@ class PolicyCover {
   final int? contentsSumInsuredFils;
   final Localized? propertyTitle;
 
+  /// Medical: annual limit per member (tier, adults and children are shared with travel)
+  final int? annualLimitFils;
+
+  /// Life: conventional or family-takaful
+  final String? productType;
+  final int? sumAssuredFils;
+
+  /// Life: the term recorded on the one-year policy
+  final int? termYears;
+  final bool? criticalIllnessRider;
+
   factory PolicyCover.fromJson(Json j) => PolicyCover(
         line: j['line'] as String,
         motorCover: j['line'] == 'motor' ? j['cover'] as String? : null,
@@ -180,6 +196,11 @@ class PolicyCover {
         buildingSumInsuredFils: j['buildingSumInsuredFils'] as int?,
         contentsSumInsuredFils: j['contentsSumInsuredFils'] as int?,
         propertyTitle: j['propertyTitle'] == null ? null : Localized.fromJson(j['propertyTitle'] as Json),
+        annualLimitFils: j['annualLimitFils'] as int?,
+        productType: j['productType'] as String?,
+        sumAssuredFils: j['sumAssuredFils'] as int?,
+        termYears: j['termYears'] as int?,
+        criticalIllnessRider: j['criticalIllnessRider'] as bool?,
       );
 }
 

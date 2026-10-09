@@ -3,9 +3,9 @@
  * ⚠️ Sandbox: Tasheelat Insurance acts as a broker; insurers, rates and rules are illustrative demo data.
  */
 
-export type InsuranceLine = 'motor' | 'travel' | 'home';
+export type InsuranceLine = 'motor' | 'travel' | 'home' | 'medical' | 'life';
 
-export const INSURANCE_LINES: InsuranceLine[] = ['motor', 'travel', 'home'];
+export const INSURANCE_LINES: InsuranceLine[] = ['motor', 'travel', 'home', 'medical', 'life'];
 
 export type InsuranceQuoteErrorCode =
   | 'INVALID_REQUEST'
@@ -14,7 +14,12 @@ export type InsuranceQuoteErrorCode =
   | 'INVALID_TRAVELLERS'
   | 'INVALID_SUM_INSURED'
   | 'PROPERTY_NOT_FOUND'
-  | 'PROPERTY_NOT_INSURABLE';
+  | 'PROPERTY_NOT_INSURABLE'
+  | 'INVALID_MEMBERS'
+  | 'INVALID_AGE'
+  | 'INVALID_SUM_ASSURED'
+  | 'INVALID_TERM'
+  | 'REFERRED_TO_INSURER';
 
 /** Invalid quote input (HTTP 422). */
 export class InsuranceQuoteError extends Error {
@@ -63,4 +68,20 @@ export function oneYearEndIso(start: string): string {
 
 export function isSafeNonNegativeInt(n: unknown): n is number {
   return typeof n === 'number' && Number.isSafeInteger(n) && n >= 0;
+}
+
+/** Whole years of age on `today` (both YYYY-MM-DD, Bahrain dates) for someone born on `dateOfBirth`. */
+export function ageOnIso(dateOfBirth: string, today: string): number {
+  const [by, bm, bd] = dateOfBirth.split('-').map(Number) as [number, number, number];
+  const [ty, tm, td] = today.split('-').map(Number) as [number, number, number];
+  return ty - by - (tm < bm || (tm === bm && td < bd) ? 1 : 0);
+}
+
+/** Date of birth of someone who turns exactly `age` today (a starting point for forms). */
+export function dateOfBirthForAge(age: number, today: string): string {
+  const [ty, tm, td] = today.split('-').map(Number) as [number, number, number];
+  // 29 Feb minus whole years may not exist: use 28 Feb then, which still gives the same age today.
+  const d = new Date(Date.UTC(ty - age, tm - 1, td));
+  if (d.getUTCMonth() !== tm - 1) d.setUTCDate(0);
+  return d.toISOString().slice(0, 10);
 }

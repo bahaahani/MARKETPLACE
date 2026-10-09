@@ -6,6 +6,7 @@ import 'package:sahel/core/models.dart';
 import 'package:sahel/core/models/bundles.dart';
 import 'package:sahel/core/models/config.dart';
 import 'package:sahel/core/models/insurance.dart';
+import 'package:sahel/core/models/insurance_medical_life.dart';
 import 'package:sahel/core/models/payment_price.dart';
 
 import 'package:sahel/core/models/tradein.dart';
@@ -360,21 +361,91 @@ class FakeSahelRepository implements SahelRepository {
     });
   }
 
+  /// Every medical / life quote request, as sent.
+  final medicalRequests = <Map<String, Object?>>[];
+  final lifeRequests = <Map<String, Object?>>[];
+
+  /// My policies includes the medical and life policies bought in the recorded session.
+  bool insuranceShelf = false;
+
+  @override
+  Future<List<MedicalQuote>> medicalQuotes({
+    required String primaryDateOfBirth,
+    String? spouseDateOfBirth,
+    required List<String> childrenDatesOfBirth,
+    required String tier,
+    required String nationality,
+    required bool preExistingConditions,
+    required bool takafulOnly,
+  }) async {
+    medicalRequests.add({
+      'primaryDateOfBirth': primaryDateOfBirth,
+      'spouseDateOfBirth': spouseDateOfBirth,
+      'childrenDatesOfBirth': childrenDatesOfBirth,
+      'tier': tier,
+      'nationality': nationality,
+      'preExistingConditions': preExistingConditions,
+      'takafulOnly': takafulOnly,
+    });
+    // Mirrors the API's 422 for more than 5 children (recorded fixture: Enhanced, Bahraini, 2 adults, 1 child).
+    if (childrenDatesOfBirth.length > 5) throw ApiException(422, 'INVALID_MEMBERS', 'at most 5 children');
+    return [
+      for (final j in fixture(preExistingConditions ? 'medical_quotes_pre_existing' : 'medical_quotes')['quotes'] as List)
+        if (!takafulOnly || (j as Json)['takaful'] == true) MedicalQuote.fromJson(j as Json),
+    ];
+  }
+
+  @override
+  Future<List<LifeQuote>> lifeQuotes({
+    required String dateOfBirth,
+    required bool smoker,
+    required int sumAssuredFils,
+    required int termYears,
+    required bool criticalIllnessRider,
+    required bool takafulOnly,
+  }) async {
+    lifeRequests.add({
+      'dateOfBirth': dateOfBirth,
+      'smoker': smoker,
+      'sumAssuredFils': sumAssuredFils,
+      'termYears': termYears,
+      'criticalIllnessRider': criticalIllnessRider,
+      'takafulOnly': takafulOnly,
+    });
+    return [
+      for (final j in fixture('life_quotes')['quotes'] as List)
+        if (!takafulOnly || (j as Json)['takaful'] == true) LifeQuote.fromJson(j as Json),
+    ];
+  }
+
+  /// The recorded quote for the line (medical and life have their own recordings; the others use the travel one).
+  static String _quoteFixture(String line) => switch (line) {
+        'medical' => 'policy_quote_medical',
+        'life' => 'policy_quote_life',
+        _ => 'policy_quote_travel',
+      };
+
   @override
   Future<PolicyQuote> holdPolicyQuote({required String line, required String insurerId, required Json input}) async {
     heldQuotes.add({'line': line, 'insurerId': insurerId, 'input': input});
-    return PolicyQuote.fromJson(fixture('policy_quote_travel') as Json);
+    return PolicyQuote.fromJson(fixture(_quoteFixture(line)) as Json);
   }
 
   @override
   Future<Policy> confirmPolicy({required String paymentId, required String quoteId}) async {
     confirmedPolicies.add((paymentId, quoteId));
+    // The policy recorded for the held quote that was paid.
+    for (final n in ['medical', 'life']) {
+      if ((fixture('policy_quote_$n') as Json)['id'] == quoteId) return Policy.fromJson(fixture('policy_$n') as Json);
+    }
     return Policy.fromJson(fixture('policy_travel') as Json);
   }
 
   @override
-  Future<List<Policy>> myPolicies() async =>
-      [for (final j in fixture(motorCover ? 'me_policies_motor' : 'me_policies')['items'] as List) Policy.fromJson(j as Json)];
+  Future<List<Policy>> myPolicies() async => [
+        for (final j in fixture(insuranceShelf ? 'me_policies_shelf' : motorCover ? 'me_policies_motor' : 'me_policies')['items'] as List)
+          Policy.fromJson(j as Json),
+      ];
 
   // ---- Config
 

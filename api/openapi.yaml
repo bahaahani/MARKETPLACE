@@ -645,6 +645,83 @@ paths:
         '422':
           description: INVALID_REQUEST, INVALID_SUM_INSURED, PROPERTY_NOT_FOUND, PROPERTY_NOT_INSURABLE
           content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+  /insurance/medical-quotes:
+    post:
+      summary: |
+        Medical insurance comparison for one year, cheapest first (⚠️ demo insurers, illustrative prices).
+        INDICATIVE only: no medical underwriting happens here. Premium = the insurer's adult base rate for the tier
+        × the sum of the members' age-band percentages × the nationality percentage, rounded to the fils once.
+        A pre-existing conditions declaration never declines anyone: each insurer either adds an indicative surcharge
+        (`preExistingStatus: surcharge`) or refers the quote to the insurer (`referred`, `buyable: false`).
+        Ages are computed on the Bahrain date.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [primaryDateOfBirth, nationality]
+              properties:
+                primaryDateOfBirth: {type: string, format: date, description: 'The primary member, aged 18 to 64'}
+                spouseDateOfBirth: {type: string, format: date, description: 'Optional, aged 18 to 64'}
+                childrenDatesOfBirth: {type: array, maxItems: 5, items: {type: string, format: date}, description: 'Aged 0 to 17'}
+                tier: {$ref: '#/components/schemas/MedicalTier'}
+                nationality: {enum: [bahraini, expat]}
+                preExistingConditions: {type: boolean, default: false}
+                takafulOnly: {type: boolean}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      quotes: {type: array, items: {$ref: '#/components/schemas/MedicalQuote'}}
+        '400': {$ref: '#/components/responses/Error'}
+        '422':
+          description: INVALID_REQUEST, INVALID_MEMBERS
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+  /insurance/life-quotes:
+    post:
+      summary: |
+        Term life insurance comparison, cheapest first (⚠️ demo insurers, illustrative prices, indicative only).
+        Conventional or family takaful. The level annual premium is paid for a one-year policy period and the term
+        is recorded; `monthlyPremiumFils` is a comparison figure and `totalPremiumsFils` is the annual premium
+        × the term. Beneficiary names are not collected in the quote; they are collected at issuance.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dateOfBirth, sumAssuredFils, termYears]
+              properties:
+                dateOfBirth: {type: string, format: date, description: 'Aged 18 to 65 on the Bahrain date'}
+                smoker: {type: boolean, default: false}
+                sumAssuredFils: {type: integer, description: '1,000,000 to 50,000,000 fils (BHD 10,000 to 500,000) in steps of 500,000 fils'}
+                termYears: {type: integer, minimum: 5, maximum: 30, description: 'Age at start plus term must not exceed 70'}
+                criticalIllnessRider: {type: boolean, default: false}
+                takafulOnly: {type: boolean}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      quotes: {type: array, items: {$ref: '#/components/schemas/LifeQuote'}}
+        '400': {$ref: '#/components/responses/Error'}
+        '422':
+          description: INVALID_REQUEST, INVALID_AGE, INVALID_SUM_ASSURED, INVALID_TERM
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
   /policies/quotes:
     post:
       summary: |
@@ -659,11 +736,12 @@ paths:
               type: object
               required: [line, insurerId, input]
               properties:
-                line: {enum: [motor, travel, home]}
+                line: {enum: [motor, travel, home, medical, life]}
                 insurerId: {type: string}
                 input:
                   description: |
-                    The same body as the line's quote endpoint (travel-quotes or home-quotes). For motor:
+                    The same body as the line's quote endpoint (travel-quotes, home-quotes, medical-quotes or life-quotes).
+                    A medical quote that is referred to the insurer (pre-existing conditions) is not sold: 422 REFERRED_TO_INSURER. For motor:
                     vehicleValueFils, cover (comprehensive or third-party), agencyRepair and reference (plate or vehicle id).
                   type: object
       responses:
@@ -1807,6 +1885,44 @@ components:
         premiumFils: {type: integer}
         medicalCoverFils: {type: integer, description: Emergency medical cover per traveller}
         schengenCompliant: {type: boolean}
+    MedicalTier:
+      enum: [basic, enhanced, premium]
+    MedicalQuote:
+      type: object
+      properties:
+        insurerId: {type: string}
+        insurerName: {$ref: '#/components/schemas/Localized'}
+        takaful: {type: boolean}
+        tier: {$ref: '#/components/schemas/MedicalTier'}
+        nationality: {enum: [bahraini, expat]}
+        adults: {type: integer}
+        children: {type: integer}
+        annualPremiumFils: {type: integer, description: Indicative premium for all members for one year}
+        annualLimitFils: {type: integer, description: Annual limit per member}
+        coPayPct: {type: integer}
+        inpatient: {type: boolean}
+        outpatient: {type: boolean}
+        maternityWaitingMonths: {type: integer, nullable: true, description: 'Null when maternity is not covered'}
+        dental: {type: boolean}
+        optical: {type: boolean}
+        preExistingStatus: {enum: [none, surcharge, referred]}
+        preExistingSurchargeFils: {type: integer, description: Part of the premium that is the pre-existing conditions surcharge}
+        buyable: {type: boolean, description: False when the quote is referred to the insurer}
+    LifeQuote:
+      type: object
+      properties:
+        insurerId: {type: string}
+        insurerName: {$ref: '#/components/schemas/Localized'}
+        takaful: {type: boolean}
+        productType: {enum: [conventional, family-takaful]}
+        ageAtStart: {type: integer}
+        smoker: {type: boolean}
+        sumAssuredFils: {type: integer}
+        termYears: {type: integer}
+        criticalIllnessRider: {type: boolean}
+        annualPremiumFils: {type: integer, description: Level annual premium (family takaful - annual contribution)}
+        monthlyPremiumFils: {type: integer, description: Annual premium / 12 rounded to the fils (comparison only)}
+        totalPremiumsFils: {type: integer, description: Annual premium × term}
     HomeInput:
       type: object
       properties:
@@ -1833,16 +1949,18 @@ components:
       description: |
         What is covered. motor: cover, vehicleValueFils, agencyRepair, reference. travel: region, tier, adults,
         children, days, medicalCoverFils. home: propertyType, buildingSumInsuredFils, contentsSumInsuredFils,
-        propertyId and propertyTitle (when linked to a listing).
+        propertyId and propertyTitle (when linked to a listing). medical: tier, nationality, adults, children,
+        annualLimitFils, coPayPct, preExistingStatus (dates of birth are never stored). life: productType,
+        sumAssuredFils, termYears, smoker, criticalIllnessRider, ageAtStart (the policy period is one year; the term is recorded).
       required: [line]
       properties:
-        line: {enum: [motor, travel, home]}
+        line: {enum: [motor, travel, home, medical, life]}
     PolicyQuote:
       type: object
       properties:
         id: {type: string, description: 'pq_… (use it as the payment reference)'}
         customerId: {type: string}
-        line: {enum: [motor, travel, home]}
+        line: {enum: [motor, travel, home, medical, life]}
         insurerId: {type: string}
         insurerName: {$ref: '#/components/schemas/Localized'}
         takaful: {type: boolean}
@@ -1859,7 +1977,7 @@ components:
         id: {type: string}
         policyNumber: {type: string, description: 'Sandbox numbers start with SBX-'}
         customerId: {type: string}
-        line: {enum: [motor, travel, home]}
+        line: {enum: [motor, travel, home, medical, life]}
         insurerId: {type: string}
         insurerName: {$ref: '#/components/schemas/Localized'}
         takaful: {type: boolean}
@@ -1947,7 +2065,7 @@ components:
         bids: {$ref: '#/components/schemas/BidRules'}
     InsuranceRules:
       type: object
-      description: Travel and home insurance form rules and defaults (the quote endpoints still validate every request)
+      description: Travel, home, medical and life insurance form rules and defaults (the quote endpoints still validate every request)
       properties:
         travel:
           type: object
@@ -1972,6 +2090,30 @@ components:
             buildingMaxFils: {type: integer}
             contentsMinFils: {type: integer}
             contentsMaxFils: {type: integer}
+        medical:
+          type: object
+          properties:
+            tiers: {type: array, items: {$ref: '#/components/schemas/MedicalTier'}}
+            nationalities: {type: array, items: {enum: [bahraini, expat]}}
+            adultMinAge: {type: integer}
+            adultMaxAge: {type: integer}
+            childMaxAge: {type: integer}
+            maxChildren: {type: integer}
+            defaultPrimaryAge: {type: integer}
+        life:
+          type: object
+          properties:
+            minAge: {type: integer}
+            maxAge: {type: integer}
+            maxEndAge: {type: integer, description: Age at start plus term cannot exceed this}
+            defaultAge: {type: integer}
+            minSumAssuredFils: {type: integer}
+            maxSumAssuredFils: {type: integer}
+            sumAssuredStepFils: {type: integer}
+            defaultSumAssuredFils: {type: integer}
+            minTermYears: {type: integer}
+            maxTermYears: {type: integer}
+            defaultTermYears: {type: integer}
     CreditReview:
       type: object
       description: A credit officer's decision on a referred application, as the customer sees it (who and the note stay in the audit log)

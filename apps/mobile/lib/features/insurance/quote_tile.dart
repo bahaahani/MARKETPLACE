@@ -15,6 +15,7 @@ class InsurerQuoteTile extends StatelessWidget {
     required this.details,
     required this.price,
     required this.onBuy,
+    this.buyable = true,
   });
 
   final String insurerId;
@@ -24,23 +25,28 @@ class InsurerQuoteTile extends StatelessWidget {
   final String price;
   final VoidCallback? onBuy;
 
+  /// False for an offer that cannot be bought online (e.g. referred to the insurer): no "Buy" action is shown.
+  final bool buyable;
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      title: Row(children: [
-        Flexible(child: Text(context.loc(insurerName), style: const TextStyle(fontWeight: FontWeight.w600))),
-        if (takaful) ...[const SizedBox(width: 6), Pill(l.takaful, color: SahelColors.islamic, background: SahelColors.islamicSoft)],
+      // A Wrap, not a Row: a long price column can leave very little width for the name and the badge.
+      title: Wrap(spacing: 6, runSpacing: 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        Text(context.loc(insurerName), style: const TextStyle(fontWeight: FontWeight.w600)),
+        if (takaful) Pill(l.takaful, color: SahelColors.islamic, background: SahelColors.islamicSoft),
       ]),
       subtitle: Text(details.join(' · ')),
       trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
         Text(price, style: const TextStyle(fontWeight: FontWeight.bold)),
-        InkWell(
-          key: Key('buy-$insurerId'),
-          onTap: onBuy,
-          child: Text(l.buyPolicy, style: const TextStyle(color: SahelColors.brand, fontWeight: FontWeight.w600)),
-        ),
+        if (buyable)
+          InkWell(
+            key: Key('buy-$insurerId'),
+            onTap: onBuy,
+            child: Text(l.buyPolicy, style: const TextStyle(color: SahelColors.brand, fontWeight: FontWeight.w600)),
+          ),
       ]),
     );
   }

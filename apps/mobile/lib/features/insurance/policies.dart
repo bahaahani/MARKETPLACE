@@ -40,6 +40,16 @@ class PolicyCard extends StatelessWidget {
             tierLabel(l, c.tier ?? ''),
             l.insTravellersCount('${(c.adults ?? 0) + (c.children ?? 0)}'),
           ].join(' · '),
+        'medical' => [
+            medicalTierLabel(l, c.tier ?? ''),
+            l.insMedMembersCount('${(c.adults ?? 0) + (c.children ?? 0)}'),
+            l.insMedAnnualLimit(context.money(c.annualLimitFils ?? 0, decimals: 0)),
+          ].join(' · '),
+        'life' => [
+            c.productType == 'family-takaful' ? l.insLifeFamilyTakaful : l.insLifeConventional,
+            l.insLifePolicyCover(context.money(c.sumAssuredFils ?? 0, decimals: 0), '${c.termYears ?? 0}'),
+            if (c.criticalIllnessRider == true) l.insLifeRiderShort,
+          ].join(' · '),
         _ => [
             c.propertyTitle != null ? context.loc(c.propertyTitle!) : propertyTypeLabel(l, c.propertyType ?? ''),
             if ((c.buildingSumInsuredFils ?? 0) > 0) l.insBuildingCover(context.money(c.buildingSumInsuredFils!, decimals: 0)),

@@ -26,6 +26,30 @@ import {
   type TravelRegion,
   type TravelTier,
 } from './insurance-travel';
+import {
+  LIFE_DEFAULT_AGE,
+  LIFE_DEFAULT_SUM_ASSURED_FILS,
+  LIFE_DEFAULT_TERM_YEARS,
+  LIFE_MAX_AGE,
+  LIFE_MAX_END_AGE,
+  LIFE_MAX_SUM_ASSURED_FILS,
+  LIFE_MAX_TERM_YEARS,
+  LIFE_MIN_AGE,
+  LIFE_MIN_SUM_ASSURED_FILS,
+  LIFE_MIN_TERM_YEARS,
+  LIFE_SUM_ASSURED_STEP_FILS,
+} from './insurance-life';
+import {
+  MEDICAL_ADULT_MAX_AGE,
+  MEDICAL_ADULT_MIN_AGE,
+  MEDICAL_CHILD_MAX_AGE,
+  MEDICAL_DEFAULT_PRIMARY_AGE,
+  MEDICAL_MAX_CHILDREN,
+  MEDICAL_NATIONALITIES,
+  MEDICAL_TIERS,
+  type MedicalNationality,
+  type MedicalTier,
+} from './insurance-medical';
 import { claimRules, type ClaimRules } from './claims';
 
 /**
@@ -101,7 +125,7 @@ export function personalFinanceRange(preApproval: PreApproval): PersonalFinanceR
   };
 }
 
-/** Travel and home insurance form rules (the API still validates every request). */
+/** Travel, home, medical and life insurance form rules (the API still validates every request). */
 export interface InsuranceRules {
   travel: {
     regions: TravelRegion[];
@@ -124,6 +148,29 @@ export interface InsuranceRules {
     buildingMaxFils: Fils;
     contentsMinFils: Fils;
     contentsMaxFils: Fils;
+  };
+  medical: {
+    tiers: MedicalTier[];
+    nationalities: MedicalNationality[];
+    adultMinAge: number;
+    adultMaxAge: number;
+    childMaxAge: number;
+    maxChildren: number;
+    defaultPrimaryAge: number;
+  };
+  life: {
+    minAge: number;
+    maxAge: number;
+    /** Cover must end by this age: age at start + term cannot exceed it */
+    maxEndAge: number;
+    defaultAge: number;
+    minSumAssuredFils: Fils;
+    maxSumAssuredFils: Fils;
+    sumAssuredStepFils: Fils;
+    defaultSumAssuredFils: Fils;
+    minTermYears: number;
+    maxTermYears: number;
+    defaultTermYears: number;
   };
 }
 
@@ -149,6 +196,28 @@ export function insuranceRules(): InsuranceRules {
       buildingMaxFils: HOME_BUILDING_MAX_FILS,
       contentsMinFils: HOME_CONTENTS_MIN_FILS,
       contentsMaxFils: HOME_CONTENTS_MAX_FILS,
+    },
+    medical: {
+      tiers: [...MEDICAL_TIERS],
+      nationalities: [...MEDICAL_NATIONALITIES],
+      adultMinAge: MEDICAL_ADULT_MIN_AGE,
+      adultMaxAge: MEDICAL_ADULT_MAX_AGE,
+      childMaxAge: MEDICAL_CHILD_MAX_AGE,
+      maxChildren: MEDICAL_MAX_CHILDREN,
+      defaultPrimaryAge: MEDICAL_DEFAULT_PRIMARY_AGE,
+    },
+    life: {
+      minAge: LIFE_MIN_AGE,
+      maxAge: LIFE_MAX_AGE,
+      maxEndAge: LIFE_MAX_END_AGE,
+      defaultAge: LIFE_DEFAULT_AGE,
+      minSumAssuredFils: LIFE_MIN_SUM_ASSURED_FILS,
+      maxSumAssuredFils: LIFE_MAX_SUM_ASSURED_FILS,
+      sumAssuredStepFils: LIFE_SUM_ASSURED_STEP_FILS,
+      defaultSumAssuredFils: LIFE_DEFAULT_SUM_ASSURED_FILS,
+      minTermYears: LIFE_MIN_TERM_YEARS,
+      maxTermYears: LIFE_MAX_TERM_YEARS,
+      defaultTermYears: LIFE_DEFAULT_TERM_YEARS,
     },
   };
 }

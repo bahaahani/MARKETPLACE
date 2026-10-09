@@ -87,6 +87,8 @@ const INS_LINE: Record<InsuranceLine, Localized> = {
   motor: { en: 'Motor', ar: 'تأمين السيارة' },
   travel: { en: 'Travel', ar: 'تأمين السفر' },
   home: { en: 'Home', ar: 'تأمين المنزل' },
+  medical: { en: 'Medical', ar: 'التأمين الطبي' },
+  life: { en: 'Life', ar: 'التأمين على الحياة' },
 };
 const CARD_STATUS: Record<string, Localized> = {
   ACTIVE: { en: 'active', ar: 'فعّالة' },

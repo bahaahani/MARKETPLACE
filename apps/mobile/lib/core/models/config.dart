@@ -4,6 +4,7 @@
 import '../../features/bids/bids_models.dart';
 import '../../features/claims/claims_models.dart';
 import '../models.dart';
+import 'insurance_medical_life.dart';
 import 'tradein.dart';
 
 class CalculatorRules {
@@ -135,6 +136,8 @@ class ClientConfig {
     required this.reservationDepositFils,
     required this.travel,
     required this.home,
+    required this.medical,
+    required this.life,
     required this.claims,
     this.tradeIn,
     this.bids,
@@ -147,6 +150,8 @@ class ClientConfig {
   final int reservationDepositFils;
   final TravelRules travel;
   final HomeRules home;
+  final MedicalRules medical;
+  final LifeRules life;
 
   /// Motor claim (FNOL) form rules
   final ClaimRules claims;
@@ -167,6 +172,8 @@ class ClientConfig {
       reservationDepositFils: j['reservationDepositFils'] as int,
       travel: TravelRules.fromJson((j['insurance'] as Json)['travel'] as Json),
       home: HomeRules.fromJson((j['insurance'] as Json)['home'] as Json),
+      medical: MedicalRules.fromJson((j['insurance'] as Json)['medical'] as Json),
+      life: LifeRules.fromJson((j['insurance'] as Json)['life'] as Json),
       claims: ClaimRules.fromJson(j['claims'] as Json),
       tradeIn: j['tradeIn'] == null ? null : TradeInRules.fromJson(j['tradeIn'] as Json),
       bids: j['bids'] == null ? null : BidRules.fromJson(j['bids'] as Json),

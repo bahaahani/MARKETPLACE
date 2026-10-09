@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   addDaysIso,
   bahrainToday,
@@ -182,6 +182,13 @@ describe('home quotes', () => {
 
 describe('policy binding', () => {
   const CUSTOMER = 'demo-customer';
+  // The payment gateway stamps payments with the system clock: pin it near the store's clock (NOW) so a quote
+  // does not look expired on the day the tests run.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => vi.useRealTimers());
   const travelReq: PolicyQuoteRequest = { line: 'travel', insurerId: 'pearl-takaful', input: trip };
 
   function setup() {
