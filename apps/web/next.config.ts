@@ -66,6 +66,8 @@ const nextConfig: NextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self), payment=(self), usb=(), serial=()' },
         ],
       },
+      // Universal links: Apple fetches this extensionless file and expects application/json (see docs/15-mobile-release.md).
+      { source: '/.well-known/apple-app-site-association', headers: [{ key: 'Content-Type', value: 'application/json' }] },
       { source: '/api/:path*', headers: [{ key: 'Content-Security-Policy', value: API_CSP }] },
       { source: `/api/v1/:path((?!(?:${PUBLIC_API})(?:/|$)).*)`, headers: NO_STORE },
       { source: `/:locale(en|ar)/:area(${PRIVATE_AREAS})/:path*`, headers: [...NO_STORE, ...NOINDEX] },
