@@ -3,7 +3,10 @@ import Link from 'next/link';
 import { customerCardOffers, type CardDeclineReason } from '@sahel/domain';
 import { t, type MessageKey } from '@sahel/i18n';
 import { CardArt } from '@/components/CardArt';
+import { JsonLd } from '@/components/JsonLd';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { pageMetadata } from '@/lib/seo';
+import { cardsLd } from '@/lib/structured-data';
 import { pageCustomer } from '@/lib/session';
 
 const INELIGIBLE_TEXT: Record<CardDeclineReason, MessageKey> = {
@@ -12,7 +15,8 @@ const INELIGIBLE_TEXT: Record<CardDeclineReason, MessageKey> = {
 };
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return { title: t(resolveLocale((await params).locale), 'cardsTitle') };
+  const locale = resolveLocale((await params).locale);
+  return pageMetadata({ locale, path: '/cards', title: t(locale, 'seoCardsTitle'), description: t(locale, 'seoCardsDescription') });
 }
 
 export default async function CardsPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -21,6 +25,7 @@ export default async function CardsPage({ params }: { params: Promise<{ locale: 
   const offers = customerCardOffers(await pageCustomer());
   return (
     <div>
+      <JsonLd data={cardsLd(tr.locale)} />
       <h1 className="text-2xl font-bold">{tr.t('cardsTitle')}</h1>
       <p className="mb-6 text-text-muted">{tr.t('applyInstantly')}</p>
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

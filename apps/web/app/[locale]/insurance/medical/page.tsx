@@ -4,12 +4,14 @@ import { bahrainToday, dateOfBirthForAge, MEDICAL_DEFAULT_PRIMARY_AGE } from '@s
 import { t } from '@sahel/i18n';
 import { MedicalQuotes } from '@/components/MedicalQuotes';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { pageMetadata } from '@/lib/seo';
 
 // Default dates of birth depend on today's date in Bahrain, so render per request.
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return { title: t(resolveLocale((await params).locale), 'insMedTitle') };
+  const locale = resolveLocale((await params).locale);
+  return pageMetadata({ locale, path: '/insurance/medical', title: t(locale, 'insMedTitle'), description: t(locale, 'seoMedicalDescription') });
 }
 
 export default async function MedicalInsurancePage({ params }: { params: Promise<{ locale: string }> }) {

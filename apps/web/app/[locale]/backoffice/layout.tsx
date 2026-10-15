@@ -4,9 +4,13 @@ import { BackOfficeSignOut } from '@/components/BackOffice';
 import { pageStaffSession } from '@/lib/backoffice-api';
 import { BACKOFFICE_NAV, ROLE_LABEL } from '@/lib/backoffice-labels';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { privateMetadata } from '@/lib/seo';
 
 // The staff session comes from a cookie, so render per request.
 export const dynamic = 'force-dynamic';
+
+// Staff area: never indexed. Also X-Robots-Tag in next.config.ts and disallowed in robots.ts.
+export const metadata = privateMetadata;
 
 /**
  * Back-office chrome (staff tool, web only). ⚠️ Sandbox: the person picks a role (no staff login). Production

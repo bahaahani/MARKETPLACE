@@ -4,12 +4,14 @@ import { addDaysIso, bahrainToday, TRAVEL_DEFAULT_START_IN_DAYS, TRAVEL_DEFAULT_
 import { t } from '@sahel/i18n';
 import { TravelQuotes } from '@/components/TravelQuotes';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { pageMetadata } from '@/lib/seo';
 
 // Default trip dates depend on today's date in Bahrain, so render per request.
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return { title: t(resolveLocale((await params).locale), 'insTravelTitle') };
+  const locale = resolveLocale((await params).locale);
+  return pageMetadata({ locale, path: '/insurance/travel', title: t(locale, 'insTravelTitle'), description: t(locale, 'seoTravelDescription') });
 }
 
 export default async function TravelInsurancePage({ params }: { params: Promise<{ locale: string }> }) {

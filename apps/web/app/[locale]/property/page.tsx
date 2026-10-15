@@ -4,9 +4,11 @@ import { PROPERTIES, searchProperties, type PropertyPurpose } from '@sahel/domai
 import { t } from '@sahel/i18n';
 import { PropertyCard } from '@/components/Listings';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { pageMetadata } from '@/lib/seo';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return { title: t(resolveLocale((await params).locale), 'navProperty') };
+  const locale = resolveLocale((await params).locale);
+  return pageMetadata({ locale, path: '/property', title: t(locale, 'seoPropertyTitle'), description: t(locale, 'seoPropertyDescription') });
 }
 
 export default async function PropertyPage({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ purpose?: string }> }) {

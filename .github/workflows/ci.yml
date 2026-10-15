@@ -5,6 +5,15 @@ on:
     branches: [main, 'claude/**']
   pull_request:
 
+# Read-only token for every job; no job deploys or publishes anything.
+permissions:
+  contents: read
+
+# A newer push to the same branch or pull request replaces the run in progress.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   web-and-domain:
     runs-on: ubuntu-latest
@@ -18,12 +27,36 @@ jobs:
       - name: Shared files are up to date
         run: npm run gen && git diff --exit-code
       - run: npm test -w @sahel/domain
+      - name: Unit tests of the web helpers (JSON-LD escaping, origin allow-list, cross-site guard)
+        run: npm test -w @sahel/web
       - run: npm run typecheck -w @sahel/domain
       - run: npm run typecheck -w @sahel/web
       - run: npm run build -w @sahel/web
-      - run: npx playwright install --with-deps chromium
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install Chromium and its system dependencies
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - name: System dependencies only (browser restored from cache)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
         working-directory: apps/web
       - run: npm run test:e2e -w @sahel/web
+      - name: Upload Playwright report and test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-${{ github.run_id }}
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
 
   mobile:
     runs-on: ubuntu-latest
@@ -35,6 +68,39 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          cache: true
+      - name: Cache pub packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('apps/mobile/pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
+
+  # Reports only (continue-on-error): known vulnerabilities in production npm dependencies and outdated Dart packages.
+  # Fix or accept findings in a pull request; they do not block merges yet.
+  dependency-reports:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: npm audit (production dependencies, high and above)
+        run: npm audit --omit=dev --audit-level=high
+        continue-on-error: true
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: apps/mobile
+      - name: flutter pub outdated
+        run: flutter pub outdated
+        working-directory: apps/mobile
+        continue-on-error: true

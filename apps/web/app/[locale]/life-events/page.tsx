@@ -3,9 +3,11 @@ import { LIFE_EVENTS } from '@sahel/domain';
 import { t } from '@sahel/i18n';
 import { LifeEventTile } from '@/components/BundlesLifeEvent';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { pageMetadata } from '@/lib/seo';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return { title: t(resolveLocale((await params).locale), 'lifeEventsTitle') };
+  const locale = resolveLocale((await params).locale);
+  return pageMetadata({ locale, path: '/life-events', title: t(locale, 'seoLifeEventsTitle'), description: t(locale, 'seoLifeEventsDescription') });
 }
 
 export default async function LifeEventsPage({ params }: { params: Promise<{ locale: string }> }) {

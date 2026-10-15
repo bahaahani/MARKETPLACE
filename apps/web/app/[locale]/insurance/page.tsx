@@ -4,13 +4,15 @@ import { findVehicle } from '@sahel/domain';
 import { t, type MessageKey } from '@sahel/i18n';
 import { InsuranceQuotes } from '@/components/InsuranceQuotes';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { pageMetadata } from '@/lib/seo';
 import { pageCustomerView } from '@/lib/session';
 
 // Personalized (customer data and due dates), so render per request.
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return { title: t(resolveLocale((await params).locale), 'navInsurance') };
+  const locale = resolveLocale((await params).locale);
+  return pageMetadata({ locale, path: '/insurance', title: t(locale, 'seoInsuranceTitle'), description: t(locale, 'seoInsuranceDescription') });
 }
 
 const LINES: { id: 'motor' | 'travel' | 'home' | 'medical' | 'life'; icon: string; title: MessageKey; body: MessageKey; href: string }[] = [

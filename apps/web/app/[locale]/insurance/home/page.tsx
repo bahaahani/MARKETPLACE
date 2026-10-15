@@ -4,9 +4,11 @@ import { findProperty } from '@sahel/domain';
 import { t } from '@sahel/i18n';
 import { HomeQuotes } from '@/components/HomeQuotes';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { pageMetadata } from '@/lib/seo';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return { title: t(resolveLocale((await params).locale), 'insHomeTitle') };
+  const locale = resolveLocale((await params).locale);
+  return pageMetadata({ locale, path: '/insurance/home', title: t(locale, 'insHomeTitle'), description: t(locale, 'seoHomeInsuranceDescription') });
 }
 
 /** Home insurance. `?propertyId=` links the quote to a property listing (sums insured suggested from it). */

@@ -5,6 +5,8 @@ const port = Number(process.env.PORT ?? 3100);
 export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
+  // CI uploads playwright-report/ and test-results/ as artifacts when a run fails.
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: `http://localhost:${port}`,
     // Use a preinstalled Chromium when provided (e.g. CI images); otherwise Playwright's own.

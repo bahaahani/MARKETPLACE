@@ -3,13 +3,16 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { findVehicle, RESERVATION_DEPOSIT_FILS, VEHICLES } from '@sahel/domain';
-import { LOCALES } from '@sahel/i18n';
+import { LOCALES, t } from '@sahel/i18n';
 import { CarApplyButton, FinanceSelectionProvider } from '@/components/ApplyFinance';
 import { AssetArt } from '@/components/AssetArt';
 import { AcceptedBidBanner } from '@/components/CarBid';
 import { InsuranceQuotes } from '@/components/InsuranceQuotes';
+import { JsonLd } from '@/components/JsonLd';
 import { TradeInFinance } from '@/components/TradeIn';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { breadcrumbLd, pageMetadata } from '@/lib/seo';
+import { carLd } from '@/lib/structured-data';
 
 const DEPOSIT_FILS = RESERVATION_DEPOSIT_FILS;
 
@@ -17,9 +20,14 @@ export function generateStaticParams() {
   return LOCALES.flatMap((locale) => VEHICLES.map((v) => ({ locale, id: v.id })));
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const v = findVehicle((await params).id);
-  return v ? { title: `${v.make} ${v.model} ${v.year}` } : {};
+export async function generateMetadata({ params }: { params: Promise<{ locale: string; id: string }> }): Promise<Metadata> {
+  const { locale: raw, id } = await params;
+  const tr = translator(resolveLocale(raw));
+  const v = findVehicle(id);
+  if (!v) return {};
+  const title = `${v.make} ${v.model} ${v.year}`;
+  const description = tr.t('seoCarDetailDescription', { title: `${v.make} ${v.model} ${v.trim}`, year: v.year, condition: tr.t(v.condition === 'new' ? 'conditionNew' : 'conditionUsed'), price: tr.money(v.priceFils, 0) });
+  return pageMetadata({ locale: tr.locale, path: `/cars/${v.id}`, title, description });
 }
 
 export default async function CarDetail({ params }: { params: Promise<{ locale: string; id: string }> }) {
@@ -29,21 +37,12 @@ export default async function CarDetail({ params }: { params: Promise<{ locale: 
   if (!v) notFound();
   const title = `${v.make} ${v.model}`;
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Car',
-    name: `${title} ${v.trim}`,
-    brand: v.make,
-    modelDate: String(v.year),
-    itemCondition: v.condition === 'new' ? 'https://schema.org/NewCondition' : 'https://schema.org/UsedCondition',
-    mileageFromOdometer: { '@type': 'QuantitativeValue', value: v.mileageKm, unitCode: 'KMT' },
-    offers: { '@type': 'Offer', price: (v.priceFils / 1000).toFixed(3), priceCurrency: 'BHD', seller: { '@type': 'Organization', name: v.seller.name.en } },
-  };
+  const jsonLd = [carLd(v, tr.locale), breadcrumbLd(tr.locale, [{ name: t(tr.locale, 'navCars'), path: '/cars' }, { name: `${title} ${v.year}`, path: `/cars/${v.id}` }])];
 
   return (
     <FinanceSelectionProvider>
       <div className="grid gap-6 lg:grid-cols-[1fr_440px]">
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        <JsonLd data={jsonLd} />
         <div className="space-y-6">
           <div className="card overflow-hidden">
             <AssetArt kind="car" hue={v.accentHue} label={title} />

@@ -52,10 +52,18 @@ flutter run          # talks to the API above (Android emulator uses 10.0.2.2:30
 
 The API keeps everything in memory: restarting the web server forgets sessions, applications, cards, payments, and policies.
 
+Web environment variables (both optional; details in [docs/12-web-platform.md](docs/12-web-platform.md#web-platform-hardening-seo-headers-cors-csrf)):
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `SAHEL_PUBLIC_ORIGIN` | `http://localhost:3000` | Public origin for canonical URLs, hreflang, Open Graph, JSON-LD, `sitemap.xml` and `robots.txt`. Read at **build** time |
+| `SAHEL_ALLOWED_ORIGINS` | `http://localhost:*,http://127.0.0.1:*,http://[::1]:*` | Browser origins allowed to call the API cross-origin (CORS) and to send cookie-authenticated writes. Exact origins or `scheme://host:*`. Read at request time. The Flutter mobile app is not a browser and is unaffected |
+
 ## Test it
 
 ```sh
 npm test -w @sahel/domain                  # Vitest: pricing, rules, stores, session isolation
+npm test -w @sahel/web                     # Vitest: JSON-LD escaping, origin allow-list, cross-site POST guard
 npm run typecheck                          # TypeScript, all workspaces
 npm run build:web && npm run test:e2e -w @sahel/web   # Playwright, desktop + mobile web (Pixel 7), EN + AR
 cd apps/mobile && flutter analyze && flutter test    # widget + API-contract tests
