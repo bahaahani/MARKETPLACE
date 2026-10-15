@@ -1,0 +1,23 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "REPLACE_TEAM_ID.com.cbt.bcfc",
+          "REPLACE_TEAM_ID.bh.bcfc.sahel.staging",
+          "REPLACE_TEAM_ID.bh.bcfc.sahel.dev"
+        ],
+        "components": [
+          { "/": "/en/dealer/*", "exclude": true, "comment": "Web only" },
+          { "/": "/ar/dealer/*", "exclude": true, "comment": "Web only" },
+          { "/": "/en/backoffice/*", "exclude": true, "comment": "Web only" },
+          { "/": "/ar/backoffice/*", "exclude": true, "comment": "Web only" },
+          { "/": "/en", "comment": "Home" },
+          { "/": "/en/*" },
+          { "/": "/ar", "comment": "Home" },
+          { "/": "/ar/*" }
+        ]
+      }
+    ]
+  }
+}

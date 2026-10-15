@@ -1,19 +1,32 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'api/api_client.dart';
+import 'api/session.dart';
+import 'api/session_store.dart';
+import 'config.dart';
 import 'models.dart';
 import 'models/config.dart';
 import 'repository.dart';
 
+/// Secure storage on iOS and Android; memory on web, where the browser app has its own HttpOnly cookie.
+final sessionStoreProvider = Provider<SessionStore>((ref) => kIsWeb ? MemorySessionStore() : SecureSessionStore());
+
 final repositoryProvider = Provider<SahelRepository>(
-  (ref) => ApiSahelRepository(ApiClient(baseUrl: defaultApiBaseUrl())),
+  (ref) => ApiSahelRepository(ApiClient(
+    baseUrl: ref.watch(appConfigProvider).apiBaseUrl,
+    session: SandboxSession(store: ref.watch(sessionStoreProvider)),
+  )),
 );
 
 /// App language. Arabic (RTL) and English are equal citizens.
 class LocaleNotifier extends Notifier<Locale> {
   @override
   Locale build() => const Locale('en');
+
+  /// Sets the language, e.g. from a deep link such as https://HOST/ar/cars/... .
+  void set(Locale locale) => state = locale;
 
   void toggle() => state = state.languageCode == 'en' ? const Locale('ar') : const Locale('en');
 }

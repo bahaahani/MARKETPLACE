@@ -3,6 +3,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'core/config.dart';
+import 'core/deep_links.dart';
+import 'core/environment_banner.dart';
 import 'core/providers.dart';
 import 'core/theme/theme.dart';
 import 'features/account/account_screen.dart';
@@ -38,8 +41,20 @@ import 'features/bids/bid_request_screen.dart';
 
 /// Routes mirror the web URLs (minus the /en|/ar prefix), so the same deep link
 /// (e.g. /cars/v-honda-crv-2026 or /checkout?...) opens the same screen on every channel.
-GoRouter buildRouter({String initialLocation = '/'}) => GoRouter(
+///
+/// Deep links (`https://WEB_HOST/{en|ar}/...`, `sahel://...`) arrive as a full URL or with a locale prefix; the
+/// top-level redirect maps them to a route with [resolveDeepLink] (allow-listed screens only) and reports the
+/// language the link asked for. Anything unknown goes home.
+GoRouter buildRouter({String initialLocation = '/', Uri? webOrigin, void Function(String languageCode)? onDeepLinkLanguage}) => GoRouter(
       initialLocation: initialLocation,
+      redirect: (context, state) {
+        if (!isExternalLink(state.uri)) return null;
+        final link = resolveDeepLink(state.uri.toString(), webOrigin: webOrigin ?? AppConfig.fromEnvironment().webOrigin);
+        final language = link.languageCode;
+        if (language != null && onDeepLinkLanguage != null) Future.microtask(() => onDeepLinkLanguage(language));
+        return link.location;
+      },
+      onException: (context, state, router) => router.go('/'),
       routes: [
         StatefulShellRoute.indexedStack(
           builder: (context, state, shell) => AppShell(shell: shell),
@@ -127,7 +142,11 @@ class SahelApp extends ConsumerStatefulWidget {
 }
 
 class _SahelAppState extends ConsumerState<SahelApp> {
-  late final GoRouter _router = buildRouter(initialLocation: widget.initialLocation);
+  late final GoRouter _router = buildRouter(
+    initialLocation: widget.initialLocation,
+    webOrigin: ref.read(appConfigProvider).webOrigin,
+    onDeepLinkLanguage: (code) => ref.read(localeProvider.notifier).set(Locale(code)),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -143,6 +162,7 @@ class _SahelAppState extends ConsumerState<SahelApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      builder: (context, child) => EnvironmentBanner(child: child ?? const SizedBox.shrink()),
       routerConfig: _router,
     );
   }

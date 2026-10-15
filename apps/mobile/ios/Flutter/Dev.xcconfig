@@ -1,0 +1,9 @@
+// Flavor "dev": scheme `dev`, build configurations Debug-dev / Release-dev / Profile-dev.
+// Build: flutter run --flavor dev --dart-define-from-file=env/dev.json
+SAHEL_BUNDLE_ID = bh.bcfc.sahel.dev
+SAHEL_APP_NAME = Sahel Dev
+SAHEL_APP_ICON = AppIcon-dev
+// ⚠️ PLACEHOLDER host for Associated Domains (applinks). Keep equal to WEB_ORIGIN in env/dev.json.
+SAHEL_WEB_HOST = dev.sahel.bcfc.example
+// ⚠️ PLACEHOLDER: Apple Developer Team ID (10 characters), owner: IT. Empty until BCFC provides the team.
+SAHEL_DEVELOPMENT_TEAM =

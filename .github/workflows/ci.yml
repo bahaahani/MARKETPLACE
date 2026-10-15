@@ -78,6 +78,15 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
+      # Smoke build: compiles the whole app with the new build configuration (env/dev.json) on the web target, which
+      # needs no Android SDK or Xcode. The project has no web/ folder on purpose (the web app is Next.js), so it is
+      # scaffolded here only; nothing is committed. Native builds and signing are not done in CI yet
+      # (docs/15-mobile-release.md).
+      - name: Smoke build (flutter build web, dev config)
+        run: |
+          flutter create . --platforms web --project-name sahel
+          rm -f test/widget_test.dart
+          flutter build web --dart-define-from-file=env/dev.json
 
   # Reports only (continue-on-error): known vulnerabilities in production npm dependencies and outdated Dart packages.
   # Fix or accept findings in a pull request; they do not block merges yet.

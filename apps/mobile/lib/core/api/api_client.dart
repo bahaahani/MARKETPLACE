@@ -1,18 +1,13 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
 
 import 'package:http/http.dart' as http;
 
+import '../config.dart';
 import 'session.dart';
 
-/// Base URL of the shared API (served by the Next.js app today: apps/web/app/api/v1).
-/// Override with: flutter run --dart-define=API_BASE_URL=https://api.sahel.bcfc.bh
-String defaultApiBaseUrl() {
-  const fromEnv = String.fromEnvironment('API_BASE_URL');
-  if (fromEnv.isNotEmpty) return fromEnv;
-  // Android emulator reaches the host machine on 10.0.2.2.
-  return Platform.isAndroid ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
-}
+/// Base URL of the shared API (served by the Next.js app today: apps/web/app/api/v1), from [AppConfig].
+/// Override with: flutter run --dart-define=API_BASE_URL=https://api.sahel.bcfc.bh (or env/NAME.json).
+String defaultApiBaseUrl() => AppConfig.fromEnvironment().apiBaseUrl;
 
 class ApiException implements Exception {
   ApiException(this.statusCode, this.code, this.message, {this.suggestions = const []});
@@ -35,7 +30,7 @@ class ApiClient {
   final String baseUrl;
   final http.Client _http;
 
-  /// ⚠️ Sandbox customer session (X-Sahel-Session header), kept in memory.
+  /// ⚠️ Sandbox customer session (X-Sahel-Session header), kept in secure storage.
   final SandboxSession session;
 
   Uri _uri(String path, [Map<String, String?>? query]) {
@@ -71,7 +66,11 @@ class ApiClient {
     final h = await session.headers();
     try {
       final r = await request(h);
-      session.capture(r.headers);
+      if (r.statusCode == 401) {
+        await session.clear(); // the session is no longer valid: the next request starts a new one
+      } else {
+        session.capture(r.headers);
+      }
       return r;
     } catch (_) {
       session.failed();

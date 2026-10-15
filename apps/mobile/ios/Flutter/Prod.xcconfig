@@ -1,0 +1,12 @@
+// Flavor "prod": scheme `prod`, build configurations Debug-prod / Release-prod / Profile-prod.
+// Build: flutter build ipa --flavor prod --dart-define-from-file=env/prod.json
+// ⚠️ VERIFY (open questions N5 / P10): this must be the bundle ID of the live Sahel app, App Store id 6443493467
+// (App Store Connect > App Information > Bundle ID), or the build cannot ship as an update to that listing.
+// `com.cbt.bcfc` is the live Android application ID and is only a best guess for iOS. Owner: IT.
+SAHEL_BUNDLE_ID = com.cbt.bcfc
+SAHEL_APP_NAME = Sahel
+SAHEL_APP_ICON = AppIcon
+// ⚠️ PLACEHOLDER host for Associated Domains (applinks). Keep equal to WEB_ORIGIN in env/prod.json.
+SAHEL_WEB_HOST = sahel.bcfc.example
+// ⚠️ PLACEHOLDER: Apple Developer Team ID (10 characters) of the account that owns app id 6443493467. Owner: IT.
+SAHEL_DEVELOPMENT_TEAM =

@@ -1,0 +1,5 @@
+{
+  "APP_ENV": "staging",
+  "API_BASE_URL": "https://staging.sahel.bcfc.example",
+  "WEB_ORIGIN": "https://staging.sahel.bcfc.example"
+}

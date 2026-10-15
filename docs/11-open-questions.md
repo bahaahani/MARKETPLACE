@@ -63,7 +63,7 @@ Because Sahel 2.0 is decided and Sahel was built in-house, these are now the mos
 | N4 | How many active Sahel users are there, and what are the top features by usage? (These must not break during migration) | Product | Open |
 | N6 | Does Sahel have a web channel today? If so, what does it do and what is it built with? | IT | Open |
 | N7 | Does iGA support eKey 2.0 login on the web for private companies (redirect or QR code)? | IT | Open |
-| N5 | Can the Sahel 2.0 release keep the same store listings and bundle IDs (`com.cbt.bcfc`, iOS `id6443493467`) so users just get an update? | IT | Open. See P10 below: the prototype still uses `bh.bcfc.sahel` |
+| N5 | Can the Sahel 2.0 release keep the same store listings and bundle IDs (`com.cbt.bcfc`, iOS `id6443493467`) so users just get an update? | IT | Open. See P10 below. The prototype's `prod` flavor is set to `com.cbt.bcfc` (Android) and a best-guess `com.cbt.bcfc` on iOS (⚠️ VERIFY); dev and staging use `bh.bcfc.sahel.dev` / `.staging` |
 
 ## Questions raised by the prototype
 
@@ -80,7 +80,7 @@ Building the sandbox prototype ([13-prototype-status.md](13-prototype-status.md)
 | P7 | **Ibra' rule:** what rebate on unearned profit does BCFC grant on Murabaha early settlement, and how is unearned profit computed? (Ibra' is discretionary and cannot be a contract condition) | Shari'a board | 100% of unearned profit on a straight-line basis, as of the last paid installment |
 | P8 | **Early-settlement fee:** what fee (if any) applies to conventional early settlement under current CBB rules? | Risk / Compliance | 1% of the remaining principal |
 | P9 | **Refunds for captured but unbound policy payments:** if a premium is captured but the policy cannot be issued (quote expired, amount mismatch, insurer refusal), who refunds it, how fast, and how is it reconciled? | Payments / Insurance / Finance | No refund flow. The payment stays captured and the API returns an error (e.g., 410 quote expired, 422 mismatch) |
-| P10 | **Bundle IDs for the update:** the Flutter app must ship as `com.cbt.bcfc` on Android and as App Store id `6443493467` on iOS so Sahel users get Sahel 2.0 as an update. Who holds the signing keys and store accounts? | IT | Bundle ID is `bh.bcfc.sahel` (Android and iOS) |
+| P10 | **Bundle IDs for the update:** the Flutter app must ship as `com.cbt.bcfc` on Android and as App Store id `6443493467` on iOS so Sahel users get Sahel 2.0 as an update. Who holds the signing keys and store accounts? | IT | Prototype flavors: dev `bh.bcfc.sahel.dev`, staging `bh.bcfc.sahel.staging`, prod `com.cbt.bcfc` (see [15-mobile-release.md](15-mobile-release.md#3-bundle-ids-and-signing-n5-p10)). Needs the signing keys and the iOS bundle ID |
 | P11 | Other placeholders needing sign-off: DBR cap (50%), rate cards, the HIGH_DBR_UTILISATION referral rule (80% of headroom), insurance pricing, valuation fee (BHD 150), reservation deposit (BHD 100) | Risk / Treasury / Product / Insurance | Full list with code locations: [13-prototype-status.md § 3](13-prototype-status.md#3-placeholders-that-need-business-sign-off) |
 
 ## Next steps (this week)
