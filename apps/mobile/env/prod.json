@@ -1,0 +1,5 @@
+{
+  "APP_ENV": "prod",
+  "API_BASE_URL": "https://sahel.bcfc.example",
+  "WEB_ORIGIN": "https://sahel.bcfc.example"
+}

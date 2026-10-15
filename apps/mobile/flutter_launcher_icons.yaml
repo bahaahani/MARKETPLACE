@@ -1,0 +1,10 @@
+# Launcher icons from the brand mark (assets/brand, rendered by tool/render_brand_assets.mjs).
+# This file is the prod icon; flutter_launcher_icons-dev.yaml and -staging.yaml tint dev and staging builds.
+# Regenerate: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  image_path: assets/brand/icon.png
+  android: ic_launcher
+  ios: true
+  remove_alpha_ios: true
+  adaptive_icon_background: "#0B4F8A"
+  adaptive_icon_foreground: assets/brand/icon_foreground.png

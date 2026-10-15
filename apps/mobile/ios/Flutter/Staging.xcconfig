@@ -1,0 +1,9 @@
+// Flavor "staging": scheme `staging`, build configurations Debug-staging / Release-staging / Profile-staging.
+// Build: flutter build ipa --flavor staging --dart-define-from-file=env/staging.json
+SAHEL_BUNDLE_ID = bh.bcfc.sahel.staging
+SAHEL_APP_NAME = Sahel Staging
+SAHEL_APP_ICON = AppIcon-staging
+// ⚠️ PLACEHOLDER host for Associated Domains (applinks). Keep equal to WEB_ORIGIN in env/staging.json.
+SAHEL_WEB_HOST = staging.sahel.bcfc.example
+// ⚠️ PLACEHOLDER: Apple Developer Team ID (10 characters), owner: IT. Empty until BCFC provides the team.
+SAHEL_DEVELOPMENT_TEAM =

@@ -1,6 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The debug and profile manifests have it for tooling; a release build needs it to reach the API.
+         No other permission is declared: the claim form's photos go through the system camera / photo picker
+         (image_picker), and location is used by the web app only. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="sahel"
+        android:label="@string/app_name"
+        android:allowBackup="false"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -23,6 +28,24 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- Verified App Links: the same URLs as the web (https://WEB_HOST/{en|ar}/cars/..., /checkout?..., ...) open
+                 the app. webHost is a manifest placeholder per flavor (app/build.gradle.kts). The host must serve
+                 /.well-known/assetlinks.json (template: apps/web/public/.well-known/assetlinks.json). -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="${webHost}"/>
+                <data android:pathPrefix="/en"/>
+                <data android:pathPrefix="/ar"/>
+            </intent-filter>
+            <!-- Custom scheme, works without a verified domain: sahel://cars/ID, sahel://rewards, sahel:///ar/claims/ID -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="sahel"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

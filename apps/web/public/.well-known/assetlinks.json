@@ -1,0 +1,26 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.cbt.bcfc",
+      "sha256_cert_fingerprints": ["REPLACE_WITH_PLAY_APP_SIGNING_SHA256_FINGERPRINT_AA:BB:CC:..."]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "bh.bcfc.sahel.staging",
+      "sha256_cert_fingerprints": ["REPLACE_WITH_STAGING_SIGNING_SHA256_FINGERPRINT_AA:BB:CC:..."]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "bh.bcfc.sahel.dev",
+      "sha256_cert_fingerprints": ["REPLACE_WITH_DEBUG_SIGNING_SHA256_FINGERPRINT_AA:BB:CC:..."]
+    }
+  }
+]

@@ -46,8 +46,8 @@ npm run dev:web      # Next.js web + API v1 on http://localhost:3000  (→ /en o
 
 cd apps/mobile
 flutter pub get
-flutter run          # talks to the API above (Android emulator uses 10.0.2.2:3000 automatically)
-# flutter run --dart-define=API_BASE_URL=https://<host>   to point at another API
+flutter run --flavor dev --dart-define-from-file=env/dev.json   # talks to the API above (Android emulator uses 10.0.2.2:3000 automatically)
+# add --dart-define=API_BASE_URL=https://<host> to point at another API; flavors and env files: apps/mobile/README.md
 ```
 
 The API keeps everything in memory: restarting the web server forgets sessions, applications, cards, payments, and policies.
@@ -89,7 +89,7 @@ cd apps/mobile && flutter analyze && flutter test    # widget + API-contract tes
 | `apps/web/lib/api.ts` | Response helpers and the in-memory sandbox stores (payments, applications, cards, leads, share tokens, contract settings) |
 | `apps/web/lib/policy-store.ts` | In-memory insurance quotes and policies per session customer |
 | `apps/web/components` | Client components (calculator, onboarding wizard, checkout, dealer showroom, ...) |
-| `apps/mobile` | **Flutter** app (Riverpod, go_router). `lib/features/<feature>` per screen group; `lib/core` has the API client, session header, models and repository. No business logic in Dart |
+| `apps/mobile` | **Flutter** app (Riverpod, go_router). `lib/features/<feature>` per screen group; `lib/core` has the API client, session header and secure storage, build config (`config.dart`), deep links (`deep_links.dart`), models and repository. No business logic in Dart. Flavors and release: [docs/15-mobile-release.md](docs/15-mobile-release.md) |
 | `packages/i18n` | Arabic + English strings for **both** apps (generated into Flutter ARB files) |
 | `packages/design-tokens` | Colors, radius, and spacing for **both** apps (generated into CSS and Dart) |
 | `tools/gen.mjs` | The generator that keeps the two apps in sync |
@@ -129,7 +129,7 @@ Do not put this in front of real customers. In particular:
 - **Illustrative numbers.** Rates, the DBR cap, credit rules, card limits, settlement fee and Ibra', insurance pricing, fees, and deposits are **placeholders** pending BCFC Risk, Treasury, Product, the Shari'a board, and CBB rules. See the list in [13-prototype-status.md](docs/13-prototype-status.md#3-placeholders-that-need-business-sign-off).
 - **Fictional data.** Insurers, customers, dealers, listings, and contracts are demo data.
 - **No production hardening.** No audit logging, rate limiting, WAF, or monitoring.
-- **App identity.** The Flutter app's bundle ID is `bh.bcfc.sahel`; it must become `com.cbt.bcfc` (Android) and App Store id `6443493467` to ship as a Sahel update.
+- **App identity.** The Flutter app has dev / staging / prod flavors. `prod` uses `com.cbt.bcfc` (Android); the iOS bundle ID must be verified against App Store id `6443493467`, and both need the existing signing keys, to ship as a Sahel update ([docs/15-mobile-release.md](docs/15-mobile-release.md)).
 
 ## Planning documents (read in order)
 
@@ -149,6 +149,7 @@ Do not put this in front of real customers. In particular:
 | 11 | [Open Questions & Decisions](docs/11-open-questions.md) | What is still undecided, including questions raised by the prototype |
 | 12 | [Web Platform](docs/12-web-platform.md) | Web parity in practice |
 | 13 | [Prototype Status](docs/13-prototype-status.md) | What is built, what is a placeholder, and the gap to production |
+| 15 | [Mobile Release](docs/15-mobile-release.md) | Flavors, bundle IDs, signing, deep links, secure storage, icons, Huawei, CI and release checklist |
 
 **Decided so far** ([ADRs](docs/adr/README.md)): Sahel 2.0, GitHub for now, AWS hosting, web parity (Next.js web + Flutter mobile + shared API).
 

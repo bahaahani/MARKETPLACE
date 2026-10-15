@@ -51,7 +51,7 @@ Monorepo vs. multiple repos: start as a **monorepo** for speed, and split if tea
 
 ## 5. Mobile release pipeline
 
-- Flavors: `dev`, `staging`, `prod` (separate bundle IDs / app names)
+- Flavors: `dev`, `staging`, `prod` (separate bundle IDs / app names). Set up in `apps/mobile`; details, signing and the release checklist in [15-mobile-release.md](15-mobile-release.md)
 - CI builds: **GitHub Actions** (macOS runners) or Codemagic → TestFlight, Play Internal Testing, AppGallery testing
 - Signing keys stored in the CI vault, never in the repo
 - Staged rollouts (1% → 10% → 50% → 100%) with a crash-free sessions gate ≥ 99.5%
