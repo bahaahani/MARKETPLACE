@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { buildLifeEventBundle, customerFinancials, findLifeEvent, isBundleStructure } from '@sahel/domain';
 import { BundleItemRow, BundleStructureToggle, BundleSummary } from '@/components/BundlesLifeEvent';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { privateMetadata } from '@/lib/seo';
 import { pageCustomer } from '@/lib/session';
 
 // Priced against the customer's DBR headroom, so render per request.
@@ -14,7 +15,8 @@ type Params = Promise<{ locale: string; id: string }>;
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { locale, id } = await params;
   const event = findLifeEvent(id);
-  return { title: event ? event.title[resolveLocale(locale)] : undefined };
+  // Priced for the session customer, so not indexed (and not in the sitemap).
+  return { title: event ? event.title[resolveLocale(locale)] : undefined, ...privateMetadata };
 }
 
 export default async function LifeEventPage({ params, searchParams }: { params: Params; searchParams: Promise<{ structure?: string }> }) {

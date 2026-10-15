@@ -4,12 +4,14 @@ import { bahrainToday, dateOfBirthForAge, LIFE_DEFAULT_AGE } from '@sahel/domain
 import { t } from '@sahel/i18n';
 import { LifeQuotes } from '@/components/LifeQuotes';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { pageMetadata } from '@/lib/seo';
 
 // The default date of birth depends on today's date in Bahrain, so render per request.
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  return { title: t(resolveLocale((await params).locale), 'insLifeTitle') };
+  const locale = resolveLocale((await params).locale);
+  return pageMetadata({ locale, path: '/insurance/life', title: t(locale, 'insLifeTitle'), description: t(locale, 'seoLifeDescription') });
 }
 
 export default async function LifeInsurancePage({ params }: { params: Promise<{ locale: string }> }) {

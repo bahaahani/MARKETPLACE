@@ -2,21 +2,28 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { findProperty, PROPERTIES, serverPaymentPrice } from '@sahel/domain';
-import { LOCALES } from '@sahel/i18n';
+import { LOCALES, t } from '@sahel/i18n';
 import { FinanceSelectionProvider } from '@/components/ApplyFinance';
 import { AssetArt } from '@/components/AssetArt';
 import { FinanceCalculator } from '@/components/FinanceCalculator';
 import { HomeApplyButton } from '@/components/HomeFinance';
+import { JsonLd } from '@/components/JsonLd';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { breadcrumbLd, pageMetadata } from '@/lib/seo';
+import { propertyLd } from '@/lib/structured-data';
 
 export function generateStaticParams() {
   return LOCALES.flatMap((locale) => PROPERTIES.map((p) => ({ locale, id: p.id })));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; id: string }> }): Promise<Metadata> {
-  const { locale, id } = await params;
+  const { locale: raw, id } = await params;
+  const tr = translator(resolveLocale(raw));
   const p = findProperty(id);
-  return p ? { title: p.title[locale === 'ar' ? 'ar' : 'en'] } : {};
+  if (!p) return {};
+  const price = p.purpose === 'sale' ? tr.money(p.priceFils, 0) : tr.t('perMonth', { amount: tr.money(p.priceFils, 0) });
+  const description = tr.t('seoPropertyDetailDescription', { title: p.title[tr.locale], area: p.area[tr.locale], purpose: tr.t(p.purpose === 'sale' ? 'propertyForSale' : 'propertyForRent'), price });
+  return pageMetadata({ locale: tr.locale, path: `/property/${p.id}`, title: p.title[tr.locale], description });
 }
 
 export default async function PropertyDetail({ params }: { params: Promise<{ locale: string; id: string }> }) {
@@ -29,8 +36,11 @@ export default async function PropertyDetail({ params }: { params: Promise<{ loc
   // ⚠️ Placeholder TRESCO fee, priced by the server (the checkout and POST /payments use the same amount).
   const valuationFeeFils = forSale ? serverPaymentPrice('valuation_fee', p.id).amountFils : 0;
 
+  const jsonLd = [propertyLd(p, tr.locale), breadcrumbLd(tr.locale, [{ name: t(tr.locale, 'navProperty'), path: '/property' }, { name: title, path: `/property/${p.id}` }])];
+
   return (
     <FinanceSelectionProvider>
+      <JsonLd data={jsonLd} />
       <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
         <div className="card overflow-hidden lg:self-start">
           <AssetArt kind="home" hue={p.accentHue} label={title} />

@@ -4,12 +4,13 @@ import { searchVehicles, VEHICLES, type BodyType, type VehicleCondition } from '
 import { t } from '@sahel/i18n';
 import { VehicleCard } from '@/components/Listings';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { pageMetadata } from '@/lib/seo';
 
 type SP = Promise<{ q?: string; condition?: string; bodyType?: string; maxMonthlyFils?: string }>;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const locale = resolveLocale((await params).locale);
-  return { title: t(locale, 'navCars') };
+  return pageMetadata({ locale, path: '/cars', title: t(locale, 'seoCarsTitle'), description: t(locale, 'seoCarsDescription') });
 }
 
 const MONTHLY_OPTIONS = [100, 150, 200, 300, 500];

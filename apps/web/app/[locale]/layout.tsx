@@ -1,22 +1,32 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
 import { LOCALES, t, type AppLocale } from '@sahel/i18n';
 import { AssistantLauncher } from '@/components/AssistantLauncher';
 import { Header } from '@/components/Header';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { BRAND_COLOR, OG_LOCALE } from '@/lib/seo';
+import { publicOrigin } from '@/lib/origins';
 import '../globals.css';
 
 export function generateStaticParams() {
   return LOCALES.map((locale) => ({ locale }));
 }
 
+export const viewport: Viewport = { themeColor: BRAND_COLOR };
+
+// Defaults for every page. Public pages complete canonical, hreflang and Open Graph with pageMetadata() (lib/seo.ts);
+// private ones add noindex (privateMetadata). metadataBase makes the relative URLs absolute (SAHEL_PUBLIC_ORIGIN).
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const l = (LOCALES as string[]).includes(locale) ? (locale as AppLocale) : 'en';
   return {
+    metadataBase: new URL(publicOrigin()),
+    applicationName: t(l, 'appName'),
     title: { default: `${t(l, 'appName')} · BCFC`, template: `%s · ${t(l, 'appName')}` },
     description: t(l, 'tagline'),
-    alternates: { languages: { en: '/en', ar: '/ar' } },
+    manifest: '/manifest.webmanifest',
+    icons: { icon: [{ url: '/icon.svg', type: 'image/svg+xml' }, { url: '/icons/192', sizes: '192x192', type: 'image/png' }], apple: '/icons/180' },
+    openGraph: { type: 'website', siteName: t(l, 'appName'), locale: OG_LOCALE[l] },
   };
 }
 

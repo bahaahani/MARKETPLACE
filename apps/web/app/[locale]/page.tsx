@@ -1,9 +1,13 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PROPERTIES, searchProperties, searchVehicles, VEHICLES, type ProductLine } from '@sahel/domain';
-import type { MessageKey } from '@sahel/i18n';
+import { t, type MessageKey } from '@sahel/i18n';
+import { JsonLd } from '@/components/JsonLd';
 import { PropertyCard, VehicleCard } from '@/components/Listings';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { pageMetadata } from '@/lib/seo';
 import { pageCustomerView } from '@/lib/session';
+import { homeLd } from '@/lib/structured-data';
 import { RewardsEntry } from '@/components/RewardsEntry';
 
 // Personalized (customer data and due dates), so render per request.
@@ -14,6 +18,11 @@ const LIMIT_LABEL: Record<ProductLine, MessageKey> = {
   personal: 'preApprovalPersonal',
   home: 'preApprovalHome',
 };
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const locale = resolveLocale((await params).locale);
+  return pageMetadata({ locale, path: '', title: t(locale, 'seoHomeTitle'), description: t(locale, 'seoHomeDescription'), absoluteTitle: true });
+}
 
 export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
   const tr = translator(resolveLocale((await params).locale));
@@ -26,6 +35,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
 
   return (
     <div className="space-y-10">
+      <JsonLd data={homeLd(tr.locale)} />
       <section className="overflow-hidden rounded-[var(--radius-lg)] bg-gradient-to-br from-brand-dark to-brand p-6 text-white md:p-8" data-testid="preapproval">
         <p className="text-sm opacity-80">{tr.t('greeting', { name: me.name[tr.locale] })}</p>
         <h1 className="mt-1 text-2xl font-bold md:text-3xl">{tr.t('preApprovedTitle')}</h1>
