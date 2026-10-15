@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   return withCustomer(
     req,
     async (s) => {
-      const body = await jsonBody<PolicyQuoteRequest>(req);
+      const body = await jsonBody<PolicyQuoteRequest>(req, { maxBytes: 16 * 1024 });
       return ok(policyStore.createQuote(s.customerId, body), { status: 201 });
     },
     handleInsuranceError,

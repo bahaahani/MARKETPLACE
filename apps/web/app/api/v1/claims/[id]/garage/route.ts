@@ -11,7 +11,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   return withCustomer(
     req,
     async (s) => {
-      const { garageId } = await jsonBody<{ garageId?: unknown }>(req);
+      const { garageId } = await jsonBody<{ garageId?: unknown }>(req, { maxBytes: 2 * 1024 });
       return ok(claimView(claimStore.bookGarage((await ctx.params).id, s.customerId, garageId)));
     },
     handleClaimError,

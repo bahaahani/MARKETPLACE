@@ -582,6 +582,12 @@ export class SandboxOriginationService {
     return [...this.byId.values()].reverse();
   }
 
+  /** The customer's application created with this idempotency key, if any (keys are per customer). */
+  findByKey(customerId: string, idempotencyKey: string): FinanceApplication | undefined {
+    const id = this.byKey.get(scopedKey(customerId, idempotencyKey));
+    return id ? this.byId.get(id) : undefined;
+  }
+
   /** With `customerId`, only that customer's application: another customer's id reads as undefined. */
   get(id: string, customerId?: string): FinanceApplication | undefined {
     const app = this.byId.get(id);

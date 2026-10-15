@@ -120,7 +120,8 @@ export function withMedicalDefaults(input: Partial<MedicalQuoteInput>): MedicalQ
     childrenDatesOfBirth: input.childrenDatesOfBirth ?? [],
     tier: input.tier ?? 'basic',
     nationality: input.nationality as MedicalNationality,
-    preExistingConditions: input.preExistingConditions === true,
+    // Never coerced: a declaration sent as "true" or 1 must be refused, not silently read as "nothing to declare".
+    preExistingConditions: (input.preExistingConditions ?? false) as boolean,
     takafulOnly: input.takafulOnly === true,
   };
 }

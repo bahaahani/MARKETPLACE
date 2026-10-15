@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   return withCustomer(
     req,
     async (s) => {
-      const body = await jsonBody<{ paymentId?: unknown; quoteId?: unknown }>(req);
+      const body = await jsonBody<{ paymentId?: unknown; quoteId?: unknown }>(req, { maxBytes: 4 * 1024 });
       if (typeof body.paymentId !== 'string' || !body.paymentId) return problem(400, 'BAD_REQUEST', 'paymentId is required');
       if (body.quoteId !== undefined && typeof body.quoteId !== 'string') return problem(400, 'BAD_REQUEST', 'quoteId must be a string');
       // Sandbox: read our own gateway, scoped to the session. Production: retrieve the Tap charge and check the verified webhook state.

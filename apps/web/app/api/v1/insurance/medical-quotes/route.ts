@@ -8,7 +8,7 @@ import { handleInsuranceError } from '@/lib/policy-store';
  */
 export async function POST(req: Request) {
   try {
-    const body = await jsonBody<Partial<MedicalQuoteInput>>(req);
+    const body = await jsonBody<Partial<MedicalQuoteInput>>(req, { maxBytes: 16 * 1024 });
     return ok({ quotes: medicalQuotes(withMedicalDefaults(body)) });
   } catch (e) {
     return handleInsuranceError(e);
