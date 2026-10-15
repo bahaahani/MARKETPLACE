@@ -10,7 +10,7 @@ import { auditLog, withStaff } from '@/lib/backoffice-api';
 export function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   return withStaff(req, 'applications.decide', async (staff) => {
     const { id } = await ctx.params;
-    const body = await jsonBody<{ outcome?: unknown; note?: unknown }>(req);
+    const body = await jsonBody<{ outcome?: unknown; note?: unknown }>(req, { maxBytes: 4 * 1024 });
     const r = decideReferred(staff, originations, auditLog, id, body);
     return ok({ application: applicationView(r.application), audit: r.audit, replayed: r.replayed });
   });

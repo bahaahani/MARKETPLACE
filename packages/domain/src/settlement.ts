@@ -1,3 +1,4 @@
+import { evictOldest, STORE_CAPS } from './capacity';
 import type { Fils } from './money';
 import type { Contract, ContractSettlement, CustomerOverview } from './account';
 import type { Payment } from './payments';
@@ -208,11 +209,28 @@ export class SandboxContractSettings {
   private readonly autopay = new Map<string, boolean>();
   private readonly settled = new Map<string, ContractSettlement>();
 
+  /** @param maxEntries autopay settings and settlements kept (each) before the oldest go (default STORE_CAPS.contractSettingsTotal) */
+  constructor(private readonly maxEntries: number = STORE_CAPS.contractSettingsTotal) {}
+
+  /** Forgets a customer's autopay settings and settlements (their session expired). */
+  purgeCustomer(customerId: string): void {
+    const prefix = `${customerId}:`;
+    for (const k of this.autopay.keys()) if (k.startsWith(prefix)) this.autopay.delete(k);
+    for (const k of this.settled.keys()) if (k.startsWith(prefix)) this.settled.delete(k);
+  }
+
+  get size(): number {
+    return this.autopay.size + this.settled.size;
+  }
+
   setAutopay(customer: CustomerOverview, contractId: string, autopay: unknown): Contract {
     if (typeof autopay !== 'boolean') throw new SettlementError('INVALID_REQUEST', 'autopay must be a boolean');
     const c = findContract(this.apply(customer), contractId);
     if (c.settlement) throw new SettlementError('ALREADY_SETTLED', `contract ${contractId} is already settled`);
-    this.autopay.set(`${customer.customerId}:${contractId}`, autopay);
+    const key = `${customer.customerId}:${contractId}`;
+    this.autopay.delete(key);
+    this.autopay.set(key, autopay);
+    evictOldest(this.autopay, this.maxEntries);
     return findContract(this.apply(customer), contractId);
   }
 
@@ -255,6 +273,7 @@ export class SandboxContractSettings {
       settledAt: now.toISOString(),
       settledOn: bahrainToday(now),
     });
+    evictOldest(this.settled, this.maxEntries);
     return findContract(this.apply(customer), contract.id);
   }
 

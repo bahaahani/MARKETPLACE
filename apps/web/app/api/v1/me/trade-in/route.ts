@@ -1,4 +1,4 @@
-import { ok, problem } from '@/lib/api';
+import { noBody, ok, problem } from '@/lib/api';
 import { handleTradeInError, tradeInStore, tradeInView } from '@/lib/tradein-store';
 import { withCustomer } from '@/lib/session';
 
@@ -23,5 +23,12 @@ export function GET(req: Request) {
 
 /** DELETE /api/v1/me/trade-in: withdraw the active offer (idempotent; `withdrawn` says whether there was one). */
 export function DELETE(req: Request) {
-  return withCustomer(req, (s) => ok({ withdrawn: tradeInStore.withdraw(s.customerId) }), handleTradeInError);
+  return withCustomer(
+    req,
+    (s) => {
+      noBody(req);
+      return ok({ withdrawn: tradeInStore.withdraw(s.customerId) });
+    },
+    handleTradeInError,
+  );
 }

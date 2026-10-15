@@ -1,4 +1,5 @@
 import { detectIntent, type DetectedIntent } from './intents';
+import { randomReference } from '../privacy';
 import { detectLanguage } from './normalize';
 import { presentConfirm, presentSmallTalk, presentToolResult, type Presentation } from './present';
 import { runAssistantTool, type AssistantToolArgs, type AssistantToolName, type AssistantToolResult } from './tools';
@@ -79,7 +80,6 @@ function contractIdsOf(r: AssistantToolResult): string[] | undefined {
   }
 }
 
-let replySeq = 0;
 
 /** Deterministic, rules-based brain (sandbox). */
 export class RulesBrain implements AssistantBrain {
@@ -104,7 +104,7 @@ export class RulesBrain implements AssistantBrain {
       }
     }
     return {
-      id: `msg_${Date.now().toString(36)}_${(++replySeq).toString(36)}`,
+      id: `msg_${randomReference(12).toLowerCase()}`,
       persona: req.persona,
       personaName: PERSONA_NAME[req.persona][locale],
       locale,

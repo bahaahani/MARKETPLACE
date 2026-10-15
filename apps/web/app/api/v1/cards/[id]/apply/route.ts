@@ -18,7 +18,7 @@ interface Body {
 export function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   return withCustomer(req, async (s) => {
     const { id } = await ctx.params;
-    const body = await jsonBody<Body>(req, { optional: true });
+    const body = await jsonBody<Body>(req, { optional: true, maxBytes: 2 * 1024 });
     if (body.monthlySalaryFils !== undefined || body.existingObligationsFils !== undefined) {
       return problem(400, 'BAD_REQUEST', 'salary and obligations come from the customer profile; complete onboarding to change them');
     }

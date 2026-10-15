@@ -32,7 +32,7 @@ How parity is guaranteed: see [ADR-0004](adr/0004-web-parity.md).
 | Customer session | **Web:** opaque random id in the `sahel_session` cookie (HttpOnly, SameSite=Lax, Secure on HTTPS); page scripts never see it. **Mobile:** `X-Sahel-Session` header; the app sends `new` until the API returns an id, then sends that id. Code: `apps/web/lib/session.ts` | Stand-in for eKey / OIDC login; sessions are in memory |
 | Product rules for Flutter | **`GET /api/v1/config`** returns calculator ranges, steps and defaults, the customer's personal finance range, consent scopes and validity, insurance form limits, and the reservation deposit. The web imports the same values from `packages/domain` | The property valuation fee is still hard-coded in both apps |
 | Dealer portal | `/[locale]/dealer/*` pages and `/api/v1/dealer/*` | No staff login: the URL picks the dealership |
-| Security headers | Enforced CSP, HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, COOP, `Permissions-Policy` on pages; locked-down CSP and `private, no-store` on personal API responses (`next.config.ts`). CORS allow-list and the cross-site POST guard in `apps/web/proxy.ts` | CSP still allows inline scripts (no nonces); no CSRF tokens, rate limiting, or bot defense yet (see section 4) |
+| Security headers | Enforced CSP, HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, COOP, `Permissions-Policy` on pages; locked-down CSP and `private, no-store` on personal API responses (`next.config.ts`). CORS allow-list and the cross-site POST guard in `apps/web/proxy.ts` | CSP still allows inline scripts (no nonces); no CSRF tokens or bot defense; API rate limits and body caps are in-memory (see [API hardening](#api-hardening-body-caps-rate-limits-store-caps-privacy)) |
 | SEO | English and Arabic metadata on every public page (title, description, canonical, hreflang en / ar / x-default, Open Graph, Twitter), schema.org JSON-LD (`Car`, `RealEstateListing` + `Offer`, `CreditCard` / `FinancialProduct`, `Organization` + `WebSite`, `BreadcrumbList`), `sitemap.xml`, `robots.txt`, web app manifest and icons, `noindex` on private pages | Demo catalog and a `localhost` origin until a real domain is set (`SAHEL_PUBLIC_ORIGIN`); the share image is the brand mark, not per listing |
 | Tests | Playwright in `apps/web/e2e`, desktop Chrome and Pixel 7 viewports, EN and AR (`seo-security.spec.ts` covers metadata, JSON-LD, sitemap, robots, headers, CSP, CORS and the cross-site guard); Vitest for the pure helpers in `apps/web/lib/*.test.ts` (`npm test -w @sahel/web`) | – |
 
@@ -83,6 +83,8 @@ What `apps/web` ships today, and the settings to change per environment. ⚠️ 
 |---|---|---|
 | `SAHEL_PUBLIC_ORIGIN` | `http://localhost:3000` | The origin the site is served from. Used for canonical URLs, hreflang, Open Graph and Twitter URLs, JSON-LD, `sitemap.xml` and `robots.txt`. **Read at build time** (public pages are statically generated), so set it for `next build`, not only for `next start`. A value that is not an `http(s)` origin falls back to the default |
 | `SAHEL_ALLOWED_ORIGINS` | `http://localhost:*,http://127.0.0.1:*,http://[::1]:*` | Comma-separated browser origins that may call the API cross-origin (CORS) and that the cross-site POST guard accepts. Exact origins (`https://app.example`) or `scheme://host:*` for any port. The public origin is always included. Setting the variable replaces the localhost default, so an empty value allows no extra origin. A lone `*` is ignored on purpose. **Read at request time** (`apps/web/proxy.ts`). Set it explicitly in every shared environment |
+| `SAHEL_RATE_LIMITS` | (unset: the defaults below) | Optional JSON that overrides the API rate limits, e.g. `{"scale":10,"session-create:ip":{"limit":5,"windowSec":60},"poll:ip":1000}`. `scale` multiplies every default limit, then each named limit is replaced (a number is the limit; an object may also set `windowSec`). Unknown names and invalid values are ignored, so a typo never switches a limit off. **Read at request time** (`apps/web/lib/rate-limit.ts`) |
+| `SAHEL_TRUST_PROXY` | (unset) | `1` makes the rate limiter believe the first hop of `X-Forwarded-For` as the client address. Set it only when the API runs behind a proxy or CDN that overwrites that header; otherwise a client could pick its own address. Without it the header is ignored and, because Next.js route handlers do not expose the socket address, all clients share one bucket (the per-address limits then act as global ones) |
 
 The Flutter mobile app is not a browser: it sends no `Origin`, so CORS does not apply to it. Flutter **web** dev builds run on `localhost:<random port>` and are covered by the default.
 
@@ -124,6 +126,37 @@ Static headers are in `apps/web/next.config.ts`; the ones that depend on the req
 
 The customer cookie is `HttpOnly; SameSite=Lax` and the staff cookie `SameSite=Strict`. On top of that, `proxy.ts` applies `crossSiteDecision()` (`apps/web/lib/csrf.ts`) to every `/api/v1` request: a POST, PUT, PATCH or DELETE that carries a cookie is refused with `403 CROSS_SITE_REQUEST` unless its `Origin` is this host or on the allow-list (with no `Origin`, `Sec-Fetch-Site` must not be `same-site` or `cross-site`; the opaque `null` origin is refused). Exempt: safe methods, requests with no cookie, and requests with `X-Sahel-Session` (mobile; the header wins over any cookie) or `X-Sahel-Staff-Role`, which a browser cannot add cross-site without a CORS preflight. Production should add a CSRF token or double-submit cookie once real login exists, because the guard trusts the browser to send `Origin`.
 
+### API hardening: body caps, rate limits, store caps, privacy
+
+⚠️ Sandbox: everything below is in this server's memory (lost on restart, not shared between instances). Production enforces the same limits at the WAF / API gateway (see [07](07-security-compliance.md)); these are the application-level backstop.
+
+**Request body caps.** Every route that reads JSON passes `maxBytes` to `jsonBody()` (`apps/web/lib/api.ts`); a bigger body is refused with `413 PAYLOAD_TOO_LARGE` before it is parsed (by `Content-Length`, and while streaming for a chunked upload). Routes that read no body call `noBody()` (a declared body over 1 KiB is refused). Caps: 1 KiB for status changes and sign-in (lead status, back-office role, share-code redemption), 2 KiB for eKey login, cards, autopay and claim garage / advance, 4 KiB for most quotes, payments, onboarding, back-office decisions and refunds, showroom offers, trade-in and redemptions, 8 KiB for applications, "Bid For Me" requests and bids and assistant messages, 16 KiB for medical and life quotes, policy quotes and notification preferences. The claim form (photos) keeps its own cap, `CLAIM_MAX_BODY_BYTES`, answered `413 BODY_TOO_LARGE`. `lib/body-limits.test.ts` derives the route list from the filesystem, posts an oversized body to every mutating route and checks the OpenAPI document lists the 413, so a new route cannot be forgotten.
+
+**Rate limits** (`apps/web/lib/rate-limit.ts`, sliding window; over a limit: `429 RATE_LIMITED` with `Retry-After`; counted before the body is read). Defaults per minute:
+
+| Limit name | Applies to | Default |
+|---|---|---|
+| `session-create:ip` | Any request that would start a customer session (no or unknown cookie / `X-Sahel-Session`), so `X-Sahel-Session: new` in a loop cannot mint sessions | 30 per address |
+| (assistant, per session) | `POST /assistant/messages`, the existing `ASSISTANT_RATE_LIMIT` in `packages/domain` | 20 per session |
+| `assistant:ip` | `POST /assistant/messages`, so a new session is not a new allowance | 60 per address |
+| `payments:session`, `payments:ip` | `POST /payments` | 30 per session, 120 per address |
+| `ekey:session`, `ekey:ip` | `POST /onboarding/ekey` | 10 per session, 30 per address |
+| `staff-role:ip` | `POST /backoffice/session` (role selection) | 20 per address |
+| `dealer:ip` | every `/dealer/{sellerId}/*` endpoint (the dealership is picked by URL in the sandbox) | 300 per address |
+| `share-redeem:ip` | `POST /dealer/preapproval/redeem`, `POST /dealer/offers` (share code guessing) | 30 per address |
+| `poll:session`, `poll:ip` | `GET /me`, `GET /requests/{id}` (`poll:ip` alone for `GET /me/notifications/unread-count`, which never starts a session) | 120 per session, 600 per address |
+| `redeem:session`, `redeem:ip` | `POST /me/rewards/redemptions` | 10 per session, 30 per address |
+
+The defaults are placeholders (⚠️ VERIFY with Security), generous for a person and tight for a script. The Playwright config starts the main test server with `SAHEL_RATE_LIMITS={"scale":1000}` (the suites make hundreds of requests from one address) and a second server on `PORT + 1` with tiny limits and `SAHEL_TRUST_PROXY=1` for `e2e/hardening.spec.ts`; there is no request header or parameter that changes or skips a limit.
+
+**Memory caps and retention** (`packages/domain/src/capacity.ts`, `STORE_CAPS`). Every sandbox store has a global cap that drops the oldest entries first (payments and their idempotency keys 20,000 and 500 per customer; applications 10,000 and 200 per customer; "Bid For Me" requests 5,000; claims 10,000; customers with a trade-in offer, notification state or rewards state 10,000 each; policy quotes 100 per customer and 20,000; policies 20,000; cards 10,000; autopay settings 20,000; leads added from accepted bids 5,000, the demo pipeline is never evicted; share tokens 5,000; assistant conversations and rate-limit windows 10,000), the existing per-customer caps stay (20 requests, claims, 100 redemptions). When a customer session expires, `purgeCustomerData()` (`apps/web/lib/customer-data.ts`, called by the session store) deletes that customer's data from every store. A dealer request / page also sweeps expired sessions, so an open "Bid For Me" request whose customer is gone disappears from the dealers' list at once instead of waiting for its own validity (72 hours), whichever comes first.
+
+**Privacy.**
+- Claim `description`, `location` and `policeReportNumber` are redacted on the way in (`packages/domain/src/privacy.ts`, shared with the assistant): CPR-like digit runs (9 digits with space, dash, dot, slash or underscore separators, Arabic-Indic digits too), e-mail addresses, IBANs and, for description and location, 8-digit Bahrain phone numbers (`+973` prefix optional) become `[•••]`. The validation applies to what the customer typed; only the masked text is stored and returned. Dates, amounts, plates and police report numbers like `TR/2026-0042` are left alone.
+- Plates are masked by one function, `maskPlate()`: at most the last 2 characters and at most 40% of them (rounded down): `123456` → `****56`, `12345` → `***45`, `1234` → `***4`, `123` → `**3`, `12` → `**`. Trade-in valuations and the My Garage pre-fill use it; the assistant and notifications never carry a plate. The customer's own My Garage card and claim page still show their plate in full (it is also the key that links a claim to the policy).
+- The assistant's hand-off references and reply ids are random (crypto), not counters of a process-wide sequence, so they reveal nothing about how many other customers used the service.
+- Logging: the only server log line is `[api] unexpected <ErrorName>: <scrubbed message>` plus stack frames (`logUnexpected()` in `apps/web/lib/api.ts`). It never prints a request body, header, session id, voucher code or CPR (the message goes through `scrubForLog()`), and no `console.*` call exists elsewhere in `apps/web` or `packages/domain`.
+
 ### Performance hygiene and budget
 
 - Fonts: Google Fonts with `display=swap` and `preconnect` for both hosts (`app/[locale]/layout.tsx`). There are no raster images yet (listing art is generated), so `next/image` is not used.
@@ -143,7 +176,8 @@ The customer cookie is `HttpOnly; SameSite=Lax` and the staff cookie `SameSite=S
 ### Remaining gaps
 
 - CSP: inline scripts allowed (no nonces); no `report-to` endpoint to collect violations; Tap's hosted fields not yet allowed.
-- CSRF: Origin / Fetch Metadata guard only, no tokens; no rate limiting or bot defense on the API.
+- CSRF: Origin / Fetch Metadata guard only, no tokens. No bot defense or CAPTCHA (onboarding, share-code redemption).
+- Rate limits and body caps are an in-memory application backstop: not shared between instances, lost on restart, and per-address limits need `SAHEL_TRUST_PROXY=1` behind a trusted proxy. Production needs the WAF / gateway limits, an IP reputation feed and a shared store (for example Redis).
 - SEO: one share image for all pages; no `lastmod` in the sitemap (the demo catalog has no dates); the organization's logo and `sameAs` need the real brand assets; life-event bundle pages are `noindex` because they are priced for the session customer.
 - Edge headers (CloudFront response headers policy, WAF) are described, not configured: no deployment code exists yet.
 - CI reports `npm audit` and `flutter pub outdated` without failing the build; promote them to gates when the baseline is clean.

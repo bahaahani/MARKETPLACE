@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       downPaymentFils?: number;
       tenureMonths?: number;
       structure?: FinanceStructure;
-    }>(req);
+    }>(req, { maxBytes: 4 * 1024 });
     if (!body.productLine || !LINES.includes(body.productLine)) return problem(400, 'BAD_REQUEST', 'productLine is required');
     if (typeof body.assetPriceFils !== 'number') return problem(400, 'BAD_REQUEST', 'assetPriceFils is required');
     for (const k of ['downPaymentFils', 'tenureMonths'] as const) {

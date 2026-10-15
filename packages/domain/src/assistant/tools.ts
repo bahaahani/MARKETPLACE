@@ -8,6 +8,7 @@ import type { InsuranceLine } from '../insurance-common';
 import { searchVehicles, type VehicleFilters, type VehicleListing } from '../search';
 import { settlementQuote, SettlementError, type SettlementQuote } from '../settlement';
 import type { BodyType, FinanceStructure, FuelType, Localized, VehicleCondition } from '../types';
+import { randomReference } from '../privacy';
 import type { AssistantContext } from './types';
 
 /**
@@ -196,7 +197,6 @@ function contractsFor(ctx: AssistantContext, contractId?: string): Contract[] {
   return all.filter((c) => c.id === contractId);
 }
 
-let handoffSeq = 0;
 
 /**
  * Runs one tool for the session customer. Unknown tools and bad arguments throw (an LLM brain must catch that and
@@ -289,8 +289,8 @@ export function runAssistantTool(ctx: AssistantContext, name: AssistantToolName,
     }
     case 'request_human_handoff':
       // ⚠️ Sandbox: no contact-centre integration. Production opens a case with the redacted transcript.
-      // Letters and short digit groups, so the reference never looks like a CPR to redactPii().
-      return { tool: name, reference: `HO-SBX-${(++handoffSeq).toString(36).toUpperCase().padStart(5, '0')}` };
+      // Five random characters (never a counter, so it reveals no volume), too short to look like a CPR to redactPii().
+      return { tool: name, reference: `HO-SBX-${randomReference(5)}` };
     default:
       throw new Error(`unknown assistant tool ${String(name)}`);
   }

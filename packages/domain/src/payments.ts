@@ -1,3 +1,4 @@
+import { evictOldest, STORE_CAPS } from './capacity';
 import type { Fils } from './money';
 
 /**
@@ -111,11 +112,41 @@ export class SandboxPaymentGateway implements PaymentGateway {
   private readonly byId = new Map<string, Payment>();
   private readonly byKey = new Map<string, string>();
   private readonly owners = new Map<string, string>();
+  /** payment id → its (scoped) idempotency key, to forget the key with the payment */
+  private readonly keyOf = new Map<string, string>();
+  /** owner → their payment ids, oldest first */
+  private readonly byOwner = new Map<string, Set<string>>();
   private seq = 0;
+
+  /** Memory caps (STORE_CAPS): the oldest payments, with their idempotency keys, go first. */
+  constructor(private readonly caps: { perOwner?: number; total?: number } = {}) {}
 
   /** This owner's payments, oldest first (e.g. to find a captured valuation fee for a home finance application). */
   list(ownerId: string): Payment[] {
-    return [...this.byId.values()].filter((p) => this.owners.get(p.id) === ownerId);
+    return [...(this.byOwner.get(ownerId) ?? [])].map((id) => this.byId.get(id)!).filter(Boolean);
+  }
+
+  /** Forgets everything of an owner (their session expired). */
+  purgeOwner(ownerId: string): void {
+    for (const id of [...(this.byOwner.get(ownerId) ?? [])]) this.drop(id);
+  }
+
+  get size(): number {
+    return this.byId.size;
+  }
+
+  private drop(id: string): void {
+    this.byId.delete(id);
+    const key = this.keyOf.get(id);
+    if (key !== undefined) this.byKey.delete(key);
+    this.keyOf.delete(id);
+    const owner = this.owners.get(id);
+    this.owners.delete(id);
+    if (owner !== undefined) {
+      const ids = this.byOwner.get(owner);
+      ids?.delete(id);
+      if (ids?.size === 0) this.byOwner.delete(owner);
+    }
   }
 
   /**
@@ -138,7 +169,16 @@ export class SandboxPaymentGateway implements PaymentGateway {
     };
     this.byId.set(id, payment);
     this.byKey.set(key, id);
-    if (ownerId !== undefined) this.owners.set(id, ownerId);
+    this.keyOf.set(id, key);
+    if (ownerId !== undefined) {
+      this.owners.set(id, ownerId);
+      let ids = this.byOwner.get(ownerId);
+      if (!ids) this.byOwner.set(ownerId, (ids = new Set()));
+      ids.add(id);
+      const extra = ids.size - (this.caps.perOwner ?? STORE_CAPS.paymentsPerCustomer);
+      if (extra > 0) for (const old of [...ids].slice(0, extra)) this.drop(old);
+    }
+    evictOldest(this.byId, this.caps.total ?? STORE_CAPS.paymentsTotal, (oldId) => this.drop(oldId));
     return payment;
   }
 

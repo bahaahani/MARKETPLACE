@@ -1,3 +1,4 @@
+import { evictOldest, STORE_CAPS } from './capacity';
 import type { Fils } from './money';
 import type { Localized, PropertyType } from './types';
 import type { Payment } from './payments';
@@ -277,7 +278,33 @@ export class SandboxPolicyStore {
   constructor(
     private readonly clock: () => Date = () => new Date(),
     private readonly history?: (customerId: string) => Omit<Policy, 'status'>[],
+    private readonly caps: { quotesPerCustomer?: number; quotesTotal?: number; policiesTotal?: number } = {},
   ) {}
+
+  /** Forgets a customer's quotes and policies (their session expired). */
+  purgeCustomer(customerId: string): void {
+    for (const [id, q] of this.quotes) if (q.customerId === customerId) this.quotes.delete(id);
+    for (const [key, p] of this.policies) if (p.customerId === customerId) this.dropPolicy(key);
+    this.seeded.delete(customerId);
+  }
+
+  get size(): number {
+    return this.quotes.size + this.policies.size;
+  }
+
+  private dropPolicy(key: string): void {
+    const p = this.policies.get(key);
+    this.policies.delete(key);
+    if (p) this.byPayment.delete(p.paymentId);
+  }
+
+  /** Oldest quotes go first; a quote already bound to a policy is kept (the policy refers to it) unless over the total. */
+  private enforceQuoteCaps(customerId: string): void {
+    const max = this.caps.quotesPerCustomer ?? STORE_CAPS.policyQuotesPerCustomer;
+    const mine = [...this.quotes.values()].filter((q) => q.customerId === customerId && !q.policyId);
+    for (const q of mine.slice(0, Math.max(0, mine.length - max))) this.quotes.delete(q.id);
+    evictOldest(this.quotes, this.caps.quotesTotal ?? STORE_CAPS.policyQuotesTotal);
+  }
 
   /** Price and hold a quote for the customer. Throws InsuranceQuoteError / PolicyError for invalid requests. */
   createQuote(customerId: string, req: PolicyQuoteRequest): PolicyQuote {
@@ -292,6 +319,7 @@ export class SandboxPolicyStore {
       expiresAt: new Date(now.getTime() + POLICY_QUOTE_TTL_MS).toISOString(),
     };
     this.quotes.set(id, quote);
+    this.enforceQuoteCaps(customerId);
     return quote;
   }
 
@@ -353,6 +381,7 @@ export class SandboxPolicyStore {
     this.policies.set(policyKey(policy), policy);
     this.byPayment.set(payment.id, policyKey(policy));
     this.quotes.set(quote.id, { ...quote, policyId: policy.id });
+    evictOldest(this.policies, this.caps.policiesTotal ?? STORE_CAPS.policiesTotal, (key, p) => this.byPayment.delete(p.paymentId));
     return this.view(policy);
   }
 

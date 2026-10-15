@@ -1,5 +1,6 @@
 import { dealerSession, jsonBody, ok } from '@/lib/api';
 import { bidStore, handleBidError } from '@/lib/bids-store';
+import { sessions } from '@/lib/session';
 
 /**
  * POST /api/v1/dealer/{sellerId}/requests/{id}/bids { vehicleId, discountFils?, extras? }: bid a car from this dealer's
@@ -12,6 +13,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sellerId: stri
     const { sellerId, id } = await ctx.params;
     dealerSession(req, sellerId);
     const body = await jsonBody<Record<string, unknown>>(req, { maxBytes: 8 * 1024 });
+    sessions.sweep();
     bidStore.bid(sellerId, id, body);
     // The request is open (the bid would have failed otherwise), so it is in the dealer's list.
     const view = bidStore.openForDealer(sellerId).find((r) => r.id === id);

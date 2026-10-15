@@ -68,6 +68,10 @@ export const BID_ERROR_LABEL: Partial<Record<string, MessageKey>> = {
   OVER_MAX_MONTHLY: 'bidDealerErrorOverMonthly',
   DOWN_PAYMENT_TOO_LOW: 'bidDealerErrorDownPayment',
   DISCOUNT_TOO_HIGH: 'bidDealerErrorDiscount',
+  REQUEST_EXPIRED: 'hardBidErrorExpired',
+  REQUEST_CLOSED: 'hardBidErrorClosed',
+  BID_NOT_FOUND: 'hardBidErrorNotFound',
+  BID_ALREADY_USED: 'hardBidErrorAlreadyUsed',
 };
 
 /** Date and time in Bahrain (Asia/Bahrain, UTC+3), e.g. for a request's expiry. */

@@ -11,6 +11,7 @@ import {
   PaymentValidationError,
   PreApprovalTokenStore,
   QuoteError,
+  redactFreeText,
   SandboxCardIssuer,
   SandboxDealerAuth,
   SandboxOriginationService,
@@ -20,6 +21,7 @@ import {
 } from '@sahel/domain';
 import { LifeEventError, SandboxContractSettings, SETTLEMENT_ERROR_STATUS, SettlementError } from '@sahel/domain';
 import { NextResponse } from 'next/server';
+import { clientIp, processRateLimits, type RateLimitName } from './rate-limit';
 
 /**
  * API v1 helpers. These route handlers are the single API used by BOTH the Next.js web app
@@ -32,6 +34,35 @@ export function ok<T>(data: T, init?: ResponseInit) {
 
 export function problem(status: number, code: string, message: string) {
   return NextResponse.json({ error: { code, message } }, { status });
+}
+
+/** A request is over one of the rate limits (429 RATE_LIMITED with Retry-After). See lib/rate-limit.ts. */
+export class RateLimitedError extends Error {
+  constructor(public readonly retryAfterSec: number) {
+    super(`too many requests; try again in ${retryAfterSec}s`);
+    this.name = 'RateLimitedError';
+  }
+}
+
+/** The client address a request is limited by (SAHEL_TRUST_PROXY=1 trusts the first X-Forwarded-For hop). */
+export function requestIp(req: Request): string {
+  return clientIp(req.headers, { trustProxy: process.env.SAHEL_TRUST_PROXY === '1', socketIp: (req as { ip?: string }).ip });
+}
+
+/**
+ * Counts one request against the rate limit `name` (`<what>:ip` by client address, `<what>:session` by `key`, the
+ * session customer id) and throws RateLimitedError when it is over; handleError answers 429 with Retry-After.
+ * Call it BEFORE reading the body, so a flood costs as little as possible.
+ */
+export function rateLimit(req: Request, name: RateLimitName, key?: string): void {
+  const hit = processRateLimits().hit(name, key ?? requestIp(req));
+  if (!hit.allowed) throw new RateLimitedError(hit.retryAfterSec);
+}
+
+/** rateLimit() by client address AND by session: `<what>:ip` first (cheapest to refuse), then `<what>:session`. */
+export function rateLimitCustomer(req: Request, what: 'payments' | 'ekey' | 'poll' | 'redeem', customerId: string): void {
+  rateLimit(req, `${what}:ip`);
+  rateLimit(req, `${what}:session`, customerId);
 }
 
 const DEALER_STATUS: Record<DealerError['code'], number> = {
@@ -63,9 +94,32 @@ export function handleError(e: unknown) {
   }
   if (isError(e, ApplicationTransitionError, 'ApplicationTransitionError')) return problem(409, 'INVALID_TRANSITION', e.message);
   if (isError(e, PayloadTooLargeError, 'PayloadTooLargeError')) return problem(413, 'PAYLOAD_TOO_LARGE', e.message);
+  if (isError<RateLimitedError>(e, RateLimitedError, 'RateLimitedError')) {
+    const res = problem(429, 'RATE_LIMITED', e.message);
+    res.headers.set('Retry-After', String(e.retryAfterSec));
+    return res;
+  }
   if (e instanceof SyntaxError) return problem(400, 'BAD_JSON', 'request body must be valid JSON');
-  console.error(e);
+  logUnexpected(e);
   return problem(500, 'INTERNAL', 'unexpected error');
+}
+
+/**
+ * The one log line for an unexpected error: its name, a scrubbed message and the stack frames. Never the error object
+ * itself (it can carry what was in the request: CPR, phone, voucher code, token, session id), never a request body.
+ */
+export function logUnexpected(e: unknown): void {
+  const err = e instanceof Error ? e : undefined;
+  const message = scrubForLog(err?.message ?? '').slice(0, 200);
+  const frames = (err?.stack ?? '').split('\n').filter((l) => /^\s+at /.test(l)).slice(0, 8).join('\n');
+  console.error(`[api] unexpected ${err?.name ?? typeof e}: ${message}${frames ? `\n${frames}` : ''}`);
+}
+
+/** Free-text redaction (CPR, phone, e-mail, IBAN), plus voucher codes and long opaque tokens (session ids, bearer tokens). */
+export function scrubForLog(text: string): string {
+  return redactFreeText(text)
+    .replace(/\bIMZ(?:-[A-Z0-9]{4}){3}\b/g, '[•••]')
+    .replace(/[A-Za-z0-9_-]{24,}/g, '[•••]');
 }
 
 /** The request body is bigger than the route accepts (413). */
@@ -95,6 +149,15 @@ async function readLimitedText(req: Request, maxBytes: number): Promise<string> 
     chunks.push(value);
   }
   return Buffer.concat(chunks).toString('utf8');
+}
+
+/**
+ * For endpoints that read no body: a declared body over 1 KiB is refused (413 PAYLOAD_TOO_LARGE) before anything else
+ * happens. It checks Content-Length only (the body is never read), which is enough to turn away a lazy flood.
+ */
+export function noBody(req: Request, maxBytes = 1024): void {
+  const declared = Number(req.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > maxBytes) throw new PayloadTooLargeError(maxBytes);
 }
 
 /**
@@ -146,6 +209,7 @@ const dealerAuth: DealerAuthProvider = new SandboxDealerAuth();
  * Every /dealer endpoint calls this, so real auth plugs in here.
  */
 export function dealerSession(req: Request, sellerId: string): DealerSession {
+  rateLimit(req, 'dealer:ip');
   const bearer = req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') ?? null;
   // Sandbox: the session is whichever dealer the URL names. Production: the seller comes from the token claims.
   const session = dealerAuth.authenticate({ sellerId, bearer });

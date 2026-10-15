@@ -8,7 +8,7 @@ import { handleInsuranceError } from '@/lib/policy-store';
  */
 export async function POST(req: Request) {
   try {
-    const body = await jsonBody<Partial<HomeQuoteInput>>(req);
+    const body = await jsonBody<Partial<HomeQuoteInput>>(req, { maxBytes: 4 * 1024 });
     return ok(
       homeQuotes({
         propertyType: body.propertyType,

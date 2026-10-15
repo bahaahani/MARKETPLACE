@@ -33,3 +33,5 @@ export * from './notifications';
 export * from './bids';
 export * from './lead-append';
 export * from './application-carry';
+export { redactFreeText, randomReference, PLATE_MAX_VISIBLE, PLATE_MAX_VISIBLE_SHARE } from './privacy';
+export * from './capacity';

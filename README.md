@@ -128,7 +128,7 @@ Do not put this in front of real customers. In particular:
 - **No money moves.** The payment gateway is simulated; "confirm" stands in for Tap's verified webhook. There are no refunds or reconciliation.
 - **Illustrative numbers.** Rates, the DBR cap, credit rules, card limits, settlement fee and Ibra', insurance pricing, fees, and deposits are **placeholders** pending BCFC Risk, Treasury, Product, the Shari'a board, and CBB rules. See the list in [13-prototype-status.md](docs/13-prototype-status.md#3-placeholders-that-need-business-sign-off).
 - **Fictional data.** Insurers, customers, dealers, listings, and contracts are demo data.
-- **No production hardening.** No audit logging, rate limiting, WAF, or monitoring.
+- **No production hardening.** The sandbox has in-memory rate limits, request body caps and store caps (see [12](docs/12-web-platform.md#api-hardening-body-caps-rate-limits-store-caps-privacy)), but no durable audit logging, WAF, bot control, or monitoring.
 - **App identity.** The Flutter app's bundle ID is `bh.bcfc.sahel`; it must become `com.cbt.bcfc` (Android) and App Store id `6443493467` to ship as a Sahel update.
 
 ## Planning documents (read in order)

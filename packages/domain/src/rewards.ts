@@ -1,3 +1,4 @@
+import { evictOldest, STORE_CAPS } from './capacity';
 import type { Fils } from './money';
 import { bhd } from './money';
 import { buildSchedule, type Contract } from './account';
@@ -590,10 +591,36 @@ export class SandboxRewardsStore {
   private readonly observed = new Map<string, Record<string, string>>();
   private seq = 0;
 
+  /** @param maxCustomers customers with rewards state kept in total before the oldest go (default STORE_CAPS.rewardsCustomers) */
   constructor(
     private readonly clock: () => Date = () => new Date(),
     private readonly generate: () => string = randomVoucherCode,
+    private readonly maxCustomers: number = STORE_CAPS.rewardsCustomers,
   ) {}
+
+  /** Forgets a customer's redemptions, voucher codes, idempotency keys and observed bonuses (their session expired). */
+  purgeCustomer(customerId: string): void {
+    for (const r of this.redemptions.get(customerId) ?? []) {
+      this.byKey.delete(`${customerId}\u0000${r.idempotencyKey}`);
+      this.codes.delete(r.code);
+    }
+    this.redemptions.delete(customerId);
+    this.observed.delete(customerId);
+  }
+
+  get size(): number {
+    return new Set([...this.redemptions.keys(), ...this.observed.keys()]).size;
+  }
+
+  private evict(): void {
+    evictOldest(this.observed, this.maxCustomers, (id) => this.purgeCustomer(id));
+    evictOldest(this.redemptions, this.maxCustomers, (id, list) => {
+      for (const r of list) {
+        this.byKey.delete(`${id}\u0000${r.idempotencyKey}`);
+        this.codes.delete(r.code);
+      }
+    });
+  }
 
   private input(customerId: string, state: RewardsState): RewardsInput {
     return {
@@ -608,7 +635,9 @@ export class SandboxRewardsStore {
     const s = rewardsSummary(this.input(customerId, state), this.clock());
     const seen = this.observed.get(customerId) ?? {};
     for (const e of s.entries) if (e.source === 'autopay' && !seen[e.id]) seen[e.id] = e.at;
+    this.observed.delete(customerId); // most recently active last
     this.observed.set(customerId, seen);
+    this.evict();
     return s;
   }
 
@@ -668,8 +697,10 @@ export class SandboxRewardsStore {
       idempotencyKey,
     };
     list.push(r);
+    this.redemptions.delete(customerId); // most recently active last
     this.redemptions.set(customerId, list);
     this.byKey.set(scoped, r);
+    this.evict();
     return { redemption: publicRedemption(r, true), balance: this.summary(customerId, state).balance, replayed: false };
   }
 

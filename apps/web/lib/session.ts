@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { customerOverview, newCustomerProfile, withSettledContracts, type CustomerProfile, type CustomerView } from '@sahel/domain';
-import { contractSettings, handleError } from './api';
+import { contractSettings, handleError, rateLimit } from './api';
+import { purgeCustomerData } from './customer-data';
 import { SessionStore } from './session-store';
 
 /**
@@ -19,7 +20,8 @@ export const SESSION_COOKIE = 'sahel_session';
 export const SESSION_HEADER = 'X-Sahel-Session';
 
 const g = globalThis as unknown as { __sahelSessions?: SessionStore };
-export const sessions = (g.__sahelSessions ??= new SessionStore());
+// An expired session takes the customer's data in every sandbox store with it (lib/customer-data.ts).
+export const sessions = (g.__sahelSessions ??= new SessionStore({ onEvict: (s) => purgeCustomerData(s.profile.customerId) }));
 
 /**
  * THE current customer, as every API route and page sees them: the profile's overview (demo customer until
@@ -63,11 +65,17 @@ function isHttps(req: Request): boolean {
   return new URL(req.url).protocol === 'https:' || req.headers.get('x-forwarded-proto') === 'https';
 }
 
-/** Resolves the customer session of an API request, creating one when there is none. */
+/**
+ * Resolves the customer session of an API request, creating one when there is none. Starting a session counts against
+ * the per-address limit `session-create:ip` (throws RateLimitedError, 429), so `X-Sahel-Session: new` in a loop cannot
+ * mint sessions without bound, and with them a fresh per-session allowance for every other limit.
+ */
 export function customerSession(req: Request): RequestSession {
   const header = req.headers.get(SESSION_HEADER);
   const viaHeader = header !== null;
-  const { session, created } = sessions.resolve(viaHeader ? header : cookieValue(req.headers.get('cookie'), SESSION_COOKIE));
+  const id = viaHeader ? header : cookieValue(req.headers.get('cookie'), SESSION_COOKIE);
+  if (!sessions.get(id)) rateLimit(req, 'session-create:ip');
+  const { session, created } = sessions.resolve(id);
   return {
     get customerId() {
       return session.profile.customerId;
@@ -101,7 +109,12 @@ export async function withCustomer(
   handler: (s: RequestSession) => Response | Promise<Response>,
   onError: (e: unknown) => Response = handleError,
 ): Promise<Response> {
-  const s = customerSession(req);
+  let s: RequestSession;
+  try {
+    s = customerSession(req);
+  } catch (e) {
+    return onError(e); // over the session-creation limit: no session was started
+  }
   let res: Response;
   try {
     res = await handler(s);

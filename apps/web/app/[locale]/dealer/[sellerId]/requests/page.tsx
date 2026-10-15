@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { DealerRequestCard } from '@/components/DealerBids';
 import { bidStore } from '@/lib/bids-store';
 import { resolveLocale, translator } from '@/lib/i18n';
+import { sessions } from '@/lib/session';
 
 // Requests open and close at runtime, so render per request.
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,7 @@ export default async function DealerRequestsPage({ params }: { params: Promise<{
   const { locale, sellerId } = await params;
   const tr = translator(resolveLocale(locale));
   if (!findDealer(sellerId)) notFound();
+  sessions.sweep(); // requests of expired customer sessions are gone
   const requests = bidStore.openForDealer(sellerId);
   return (
     <div className="space-y-4">

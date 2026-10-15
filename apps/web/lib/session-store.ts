@@ -19,6 +19,11 @@ export interface SessionStoreOptions {
   maxSessions?: number;
   clock?: () => number;
   random?: (bytes: number) => string;
+  /**
+   * Called once for every session that is forgotten (idle past the TTL, or dropped for the cap), so the stores that
+   * hold the customer's data can forget it too (lib/customer-data.ts).
+   */
+  onEvict?: (session: CustomerSession) => void;
 }
 
 /** 24 random bytes, base64url: 32 characters. */
@@ -40,12 +45,14 @@ export class SessionStore {
   private readonly maxSessions: number;
   private readonly clock: () => number;
   private readonly random: (bytes: number) => string;
+  private readonly onEvict?: (session: CustomerSession) => void;
 
   constructor(opts: SessionStoreOptions = {}) {
     this.idleTtlMs = opts.idleTtlMs ?? 24 * 3600 * 1000;
     this.maxSessions = opts.maxSessions ?? 10_000;
     this.clock = opts.clock ?? Date.now;
     this.random = opts.random ?? randomBase64Url;
+    this.onEvict = opts.onEvict;
   }
 
   /** The live session for this id, or undefined (unknown, expired or malformed). Refreshes its idle timer. */
@@ -55,7 +62,7 @@ export class SessionStore {
     if (!s) return undefined;
     const now = this.clock();
     if (now - s.lastSeenAt > this.idleTtlMs) {
-      this.sessions.delete(id);
+      this.evict(id, s);
       return undefined;
     }
     s.lastSeenAt = now;
@@ -67,7 +74,7 @@ export class SessionStore {
    * client, so a client cannot choose (fix) another person's session id.
    */
   create(): CustomerSession {
-    this.purge();
+    this.sweep();
     let id = this.random(24);
     while (this.sessions.has(id)) id = this.random(24);
     const now = this.clock();
@@ -103,13 +110,19 @@ export class SessionStore {
     return this.sessions.size;
   }
 
-  private purge(): void {
+  /** Forgets the sessions idle past the TTL and, beyond the cap, the oldest ones (each reported to onEvict). */
+  sweep(): void {
     const now = this.clock();
-    for (const [k, s] of this.sessions) if (now - s.lastSeenAt > this.idleTtlMs) this.sessions.delete(k);
+    for (const [k, s] of this.sessions) if (now - s.lastSeenAt > this.idleTtlMs) this.evict(k, s);
     // Map keeps insertion order, so the first entries are the oldest sessions.
-    for (const k of this.sessions.keys()) {
+    for (const [k, s] of this.sessions) {
       if (this.sessions.size < this.maxSessions) break;
-      this.sessions.delete(k);
+      this.evict(k, s);
     }
+  }
+
+  private evict(id: string, session: CustomerSession): void {
+    this.sessions.delete(id);
+    this.onEvict?.(session);
   }
 }

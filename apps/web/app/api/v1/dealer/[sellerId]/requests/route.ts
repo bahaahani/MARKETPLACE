@@ -1,5 +1,6 @@
 import { dealerSession, ok } from '@/lib/api';
 import { bidStore, handleBidError } from '@/lib/bids-store';
+import { sessions } from '@/lib/session';
 
 // Requests open and close at any time, so never cache.
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ sellerId: strin
   try {
     const { sellerId } = await ctx.params;
     dealerSession(req, sellerId);
+    // A request whose customer session expired is gone, not just old (the session store purges its data).
+    sessions.sweep();
     const items = bidStore.openForDealer(sellerId);
     return ok({ items, total: items.length });
   } catch (e) {

@@ -1,4 +1,4 @@
-import { ok } from '@/lib/api';
+import { ok, rateLimitCustomer } from '@/lib/api';
 import { withCustomer } from '@/lib/session';
 
 // Per customer session (profile and contract settings such as autopay), so never cache.
@@ -10,5 +10,8 @@ export const dynamic = 'force-dynamic';
  * ⚠️ Sandbox session until eKey login and core lending exist.
  */
 export function GET(req: Request) {
-  return withCustomer(req, (s) => ok(s.customer));
+  return withCustomer(req, (s) => {
+    rateLimitCustomer(req, 'poll', s.customerId);
+    return ok(s.customer);
+  });
 }

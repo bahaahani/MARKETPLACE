@@ -1,4 +1,4 @@
-import { ok, originations } from '@/lib/api';
+import { noBody, ok, originations } from '@/lib/api';
 import { customerApplicationView, homeFulfilmentEvidence } from '@/lib/home-finance';
 import { withCustomer } from '@/lib/session';
 
@@ -12,6 +12,7 @@ import { withCustomer } from '@/lib/session';
  */
 export function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   return withCustomer(req, async (s) => {
+    noBody(req);
     const { id } = await ctx.params;
     const app = originations.get(id, s.customerId);
     const evidence = app?.productLine === 'home' ? homeFulfilmentEvidence(s.customerId, app.reference) : {};

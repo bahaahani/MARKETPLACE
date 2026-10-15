@@ -1,9 +1,11 @@
 import type { Fils } from './money';
+import { evictOldest, STORE_CAPS } from './capacity';
 import { bhd } from './money';
 import type { Localized } from './types';
 import type { Policy } from './policies';
 import type { MotorCover } from './insurance';
 import { bahrainToday, daysBetweenIso, isIsoDate } from './insurance-common';
+import { redactFreeText, redactPii } from './privacy';
 
 /**
  * Motor claims: First Notice of Loss (J6), ⚠️ SANDBOX.
@@ -578,12 +580,12 @@ export function validateClaim(
     vehicleValueFils: cover.vehicleValueFils,
     incidentAt: incident.toISOString(),
     incidentDate,
-    location,
+    location: redactFreeText(location),
     ...(hasLat ? { latitude: round5(i.latitude as number), longitude: round5(i.longitude as number) } : {}),
     type,
     severity,
-    description,
-    ...(policeReportNumber ? { policeReportNumber } : {}),
+    description: redactFreeText(description),
+    ...(policeReportNumber ? { policeReportNumber: redactPii(policeReportNumber) } : {}),
     thirdPartyInvolved: i.thirdPartyInvolved,
     photos,
     estimate: estimateDamage(type, severity, cover.vehicleValueFils),
@@ -602,16 +604,36 @@ function round5(n: number): number {
 export class SandboxClaimStore {
   private readonly claims = new Map<string, Claim>();
   private readonly idempotency = new Map<string, string>();
+  /** claim id → its (scoped) idempotency key, to forget the key with the claim */
+  private readonly keyOf = new Map<string, string>();
   private seq = 0;
   private filed = 0;
 
   /**
    * @param policiesOf the customer's current policies (with status), e.g. policyStore.list
+   * @param maxClaims claims kept in total before the oldest go (default STORE_CAPS.claimsTotal)
    */
   constructor(
     private readonly policiesOf: (customerId: string) => Policy[],
     private readonly clock: () => Date = () => new Date(),
+    private readonly maxClaims: number = STORE_CAPS.claimsTotal,
   ) {}
+
+  /** Forgets a customer's claims and idempotency keys (their session expired). */
+  purgeCustomer(customerId: string): void {
+    for (const [id, c] of this.claims) if (c.customerId === customerId) this.drop(id);
+  }
+
+  get size(): number {
+    return this.claims.size;
+  }
+
+  private drop(id: string): void {
+    this.claims.delete(id);
+    const key = this.keyOf.get(id);
+    if (key !== undefined) this.idempotency.delete(key);
+    this.keyOf.delete(id);
+  }
 
   /** File a claim (status SUBMITTED). A repeated idempotency key returns the original claim. */
   file(customerId: string, input: unknown, idempotencyKey?: string): Claim {
@@ -635,7 +657,11 @@ export class SandboxClaimStore {
       updatedAt: at,
     };
     this.claims.set(claim.id, claim);
-    if (key) this.idempotency.set(key, claim.id);
+    if (key) {
+      this.idempotency.set(key, claim.id);
+      this.keyOf.set(claim.id, key);
+    }
+    evictOldest(this.claims, this.maxClaims, (id) => this.drop(id));
     return claim;
   }
 

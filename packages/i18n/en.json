@@ -969,5 +969,9 @@
   "seoLifeDescription": "Compare term life insurance with an optional critical illness rider, conventional or family takaful. Indicative quotes only.",
   "seoLifeEventsTitle": "Life events: get married, new baby, new job, first home",
   "seoLifeEventsDescription": "Tell us what is happening in your life and get a bundle of finance, cards and insurance priced for you and checked against your budget.",
-  "seoOgImageAlt": "Sahel by BCFC"
+  "seoOgImageAlt": "Sahel by BCFC",
+  "hardBidErrorExpired": "This request has expired. Post a new one to get fresh bids.",
+  "hardBidErrorClosed": "This request is already closed.",
+  "hardBidErrorNotFound": "That bid is no longer available. Refresh to see the current bids.",
+  "hardBidErrorAlreadyUsed": "That bid was already used."
 }
