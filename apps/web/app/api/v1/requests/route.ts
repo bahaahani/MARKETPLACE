@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   return withCustomer(
     req,
     async (s) => {
-      const body = await jsonBody<Record<string, unknown>>(req);
+      const body = await jsonBody<Record<string, unknown>>(req, { maxBytes: 8 * 1024 });
       const request = bidStore.post(bidCustomerFrom(s.customer), body, activeTradeIn(s.customerId));
       return ok(bidRequestView(request), { status: 201 });
     },

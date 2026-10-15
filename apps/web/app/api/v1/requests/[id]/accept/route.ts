@@ -12,7 +12,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   return withCustomer(
     req,
     async (s) => {
-      const { bidId } = await jsonBody<{ bidId?: unknown }>(req);
+      const { bidId } = await jsonBody<{ bidId?: unknown }>(req, { maxBytes: 4 * 1024 });
       const { request } = bidStore.accept((await ctx.params).id, s.customerId, bidId);
       return ok(bidRequestView(request));
     },

@@ -11,7 +11,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sellerId: stri
   try {
     const { sellerId, id } = await ctx.params;
     dealerSession(req, sellerId);
-    const body = await jsonBody<Record<string, unknown>>(req);
+    const body = await jsonBody<Record<string, unknown>>(req, { maxBytes: 8 * 1024 });
     bidStore.bid(sellerId, id, body);
     // The request is open (the bid would have failed otherwise), so it is in the dealer's list.
     const view = bidStore.openForDealer(sellerId).find((r) => r.id === id);

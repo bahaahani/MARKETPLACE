@@ -808,8 +808,14 @@ export class SandboxBidStore {
   /** Accepts a live bid: the request closes, the bid is ACCEPTED, every other bid LOST, and the dealer gets a lead. */
   accept(id: string, customerId: string, bidId: unknown): { request: BidRequest; bid: Bid; lead: Lead } {
     const r = this.require(id, customerId);
-    this.assertOpen(r);
     if (typeof bidId !== 'string' || !bidId) throw new BidError('INVALID_REQUEST', 'bidId is required');
+    // Idempotent: repeating the accept of the bid that WAS accepted (a retry after a lost response) returns the same
+    // result, without a second lead. Any other bid on a closed request is still REQUEST_CLOSED.
+    if (r.status === 'CLOSED' && r.acceptedBidId === bidId) {
+      const done = r.bids.find((b) => b.id === bidId)!;
+      return { request: r, bid: done, lead: leadFromAcceptedBid(r, done, new Date(r.closedAt ?? r.createdAt)) };
+    }
+    this.assertOpen(r);
     const chosen = r.bids.find((b) => b.id === bidId && b.status === 'ACTIVE');
     if (!chosen) throw new BidError('BID_NOT_FOUND', `bid ${bidId} is not a live bid on this request`);
     const now = this.clock();

@@ -23,6 +23,7 @@ export type CarryErrorCode =
   | 'BID_NOT_ACCEPTED'
   | 'BID_VEHICLE_MISMATCH'
   | 'BID_EXPIRED'
+  | 'BID_ALREADY_USED'
   | 'NO_TRADE_IN'
   | 'TRADE_IN_EXPIRED'
   | 'TRADE_IN_MISMATCH';
@@ -33,6 +34,7 @@ export const CARRY_ERROR_STATUS: Record<CarryErrorCode, number> = {
   BID_NOT_ACCEPTED: 409,
   BID_VEHICLE_MISMATCH: 422,
   BID_EXPIRED: 410,
+  BID_ALREADY_USED: 409,
   NO_TRADE_IN: 422,
   TRADE_IN_EXPIRED: 410,
   TRADE_IN_MISMATCH: 422,
@@ -65,6 +67,8 @@ export interface CarryContext {
   customerId: string;
   /** The bid store: another customer's request reads as undefined */
   bids: { get(id: string, customerId: string): BidRequest | undefined };
+  /** True when a live (not declined) application of this customer is already priced from this bid: one bid, one application */
+  bidInUse?: (bidId: string) => boolean;
   /** The trade-in store: the customer's latest offer, active or not */
   tradeIns: { latest(customerId: string): { offer: TradeInOffer; active: boolean } | undefined };
   now?: Date;
@@ -117,6 +121,7 @@ export function resolveVehicleCarry(input: CarryInput, ctx: CarryContext): Vehic
       throw new CarryError('BID_VEHICLE_MISMATCH', 'the car price changed since this bid: ask the dealer for a new bid');
     }
     if (now.getTime() > Date.parse(bidAcceptedUntil(request))) throw new CarryError('BID_EXPIRED', 'the accepted bid has expired: its price is no longer held');
+    if (ctx.bidInUse?.(bid.id)) throw new CarryError('BID_ALREADY_USED', 'this bid already has a finance application: one accepted bid prices one application');
     assetPriceFils = v.priceFils - discountFils;
     source = { type: 'bid', requestId: request.id, bidId: bid.id };
     listPriceFils = v.priceFils;

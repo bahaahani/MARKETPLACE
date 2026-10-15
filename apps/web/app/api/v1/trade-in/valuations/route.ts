@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   return withCustomer(
     req,
     async (s) => {
-      const body = await jsonBody<TradeInRequest>(req);
+      const body = await jsonBody<TradeInRequest>(req, { maxBytes: 4 * 1024 });
       return ok(tradeInStore.value(s.customerId, body, s.customer.garage), { status: 201 });
     },
     handleTradeInError,

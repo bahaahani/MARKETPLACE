@@ -494,7 +494,7 @@ paths:
         '201': {description: Created and decided, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/FinanceApplication'}}}}}}
         '400': {$ref: '#/components/responses/Error'}
         '404': {description: 'Unknown vehicleId or propertyId, or BID_NOT_FOUND (no such request or bid for this customer)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
-        '409': {description: 'BID_NOT_ACCEPTED: the request is not CLOSED with this bid accepted', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '409': {description: 'BID_NOT_ACCEPTED: the request is not CLOSED with this bid accepted; BID_ALREADY_USED: the bid already prices another (not declined) application of this customer', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '410': {description: 'BID_EXPIRED (the accepted bid is no longer held) or TRADE_IN_EXPIRED (the trade-in offer has expired)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '422':
           description: 'Invalid terms (INVALID_REQUEST: e.g. a structure the line does not offer, a property for rent, or a bid or trade-in on a non-vehicle application; BID_VEHICLE_MISMATCH: the bid is for another car or the price changed; NO_TRADE_IN or TRADE_IN_MISMATCH: no such active offer; or a quote rule such as TENURE_OUT_OF_RANGE, DOWN_PAYMENT_TOO_LOW)'
@@ -1465,7 +1465,7 @@ paths:
         '200': {description: Accepted, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/BidRequest'}}}}}}
         '400': {description: BAD_JSON, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '404': {description: 'REQUEST_NOT_FOUND, or BID_NOT_FOUND (unknown, replaced by a newer bid from the same dealer, or not live)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
-        '409': {description: REQUEST_CLOSED (accepted or cancelled), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '409': {description: 'REQUEST_CLOSED (cancelled, or closed with another bid). Repeating the accept of the bid that was accepted returns the same 200 result', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '410': {description: REQUEST_EXPIRED, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '422': {description: INVALID_REQUEST (missing bidId), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /requests/{id}/cancel:

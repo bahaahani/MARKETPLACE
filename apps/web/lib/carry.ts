@@ -1,5 +1,5 @@
 import { CARRY_ERROR_STATUS, CarryError, type CarryContext } from '@sahel/domain';
-import { handleError, problem } from '@/lib/api';
+import { handleError, originations, problem } from '@/lib/api';
 import { bidStore } from '@/lib/bids-store';
 import { tradeInStore } from '@/lib/tradein-store';
 
@@ -8,7 +8,13 @@ import { tradeInStore } from '@/lib/tradein-store';
  * offer carried into a vehicle finance application). Both stores are scoped to the session customer.
  */
 export function carryContext(customerId: string): CarryContext {
-  return { customerId, bids: bidStore, tradeIns: tradeInStore };
+  return {
+    customerId,
+    bids: bidStore,
+    tradeIns: tradeInStore,
+    // One accepted bid prices one application (a declined one frees it).
+    bidInUse: (bidId) => originations.list(customerId).some((a) => a.source?.bidId === bidId && a.status !== 'DECLINED'),
+  };
 }
 
 /** handleError plus CarryError (BID_NOT_ACCEPTED, BID_VEHICLE_MISMATCH, TRADE_IN_EXPIRED, ...), matched by name too. */

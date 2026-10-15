@@ -53,9 +53,12 @@ export function POST(req: Request) {
         useTradeIn?: unknown;
         tenureMonths?: number;
         idempotencyKey?: string;
-      }>(req);
+      }>(req, { maxBytes: 8 * 1024 });
       const idempotencyKey = req.headers.get('Idempotency-Key') ?? body.idempotencyKey;
       if (!idempotencyKey || typeof idempotencyKey !== 'string') return problem(400, 'BAD_REQUEST', 'Idempotency-Key is required');
+      // A repeated key returns the ORIGINAL application, even if the bid or trade-in offer it used has expired since.
+      const replay = originations.findByKey(s.customerId, idempotencyKey);
+      if (replay) return ok(customerApplicationView(replay), { status: 201 });
       if (!body.productLine || !ORIGINATION_PRODUCT_LINES.includes(body.productLine)) {
         return problem(400, 'BAD_REQUEST', 'productLine must be vehicle, personal or home');
       }

@@ -12,7 +12,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   return withCustomer(
     req,
     async (s) => {
-      const { to } = await jsonBody<{ to?: unknown }>(req, { optional: true });
+      const { to } = await jsonBody<{ to?: unknown }>(req, { optional: true, maxBytes: 2 * 1024 });
       return ok(claimView(claimStore.advance((await ctx.params).id, s.customerId, to)));
     },
     handleClaimError,

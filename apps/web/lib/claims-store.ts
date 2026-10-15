@@ -1,5 +1,5 @@
 import { CLAIM_ERROR_STATUS, CLAIM_MAX_BODY_BYTES, ClaimError, SandboxClaimStore } from '@sahel/domain';
-import { handleError, problem } from '@/lib/api';
+import { handleError, jsonBody, PayloadTooLargeError, problem } from '@/lib/api';
 import { policyStore } from '@/lib/policy-store';
 
 const g = globalThis as unknown as { __sahelClaims?: SandboxClaimStore };
@@ -20,17 +20,16 @@ export class BodyTooLargeError extends Error {
 }
 
 /**
- * Reads a claim JSON body with a size cap (photos make it large): Content-Length is checked before reading, and the
- * text length after, so a lying or missing header cannot get past it.
+ * Reads a claim JSON body with a size cap (photos make it large). The cap is enforced while streaming (jsonBody), so
+ * a lying or missing Content-Length (chunked upload) cannot make the server buffer more than CLAIM_MAX_BODY_BYTES.
  */
 export async function claimBody<T extends object>(req: Request): Promise<T> {
-  const declared = Number(req.headers.get('content-length') ?? '0');
-  if (declared > CLAIM_MAX_BODY_BYTES) throw new BodyTooLargeError();
-  const text = await req.text();
-  if (text.length > CLAIM_MAX_BODY_BYTES) throw new BodyTooLargeError();
-  const body: unknown = JSON.parse(text);
-  if (typeof body !== 'object' || body === null || Array.isArray(body)) throw new SyntaxError('request body must be a JSON object');
-  return body as T;
+  try {
+    return await jsonBody<T>(req, { maxBytes: CLAIM_MAX_BODY_BYTES });
+  } catch (e) {
+    if (e instanceof PayloadTooLargeError || (e instanceof Error && e.name === 'PayloadTooLargeError')) throw new BodyTooLargeError();
+    throw e;
+  }
 }
 
 /** handleError plus the claim errors (matched by name too: the store may come from another route's bundle). */
