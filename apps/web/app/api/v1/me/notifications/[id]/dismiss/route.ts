@@ -1,5 +1,5 @@
 import { assertDismissible } from '@sahel/domain';
-import { ok } from '@/lib/api';
+import { noBody, ok } from '@/lib/api';
 import { customerInbox, requireNotification } from '@/lib/notifications';
 import { handleNotificationError, notificationStore } from '@/lib/notifications-store';
 import { withCustomer } from '@/lib/session';
@@ -15,6 +15,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   return withCustomer(
     req,
     async (s) => {
+      noBody(req);
       const n = requireNotification(s.profile, (await ctx.params).id);
       assertDismissible(n);
       notificationStore.dismiss(s.customerId, n.id);

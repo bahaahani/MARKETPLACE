@@ -1,5 +1,5 @@
 import { PaymentNotFoundError } from '@sahel/domain';
-import { contractSettings, handleBundlesError, ok, payments } from '@/lib/api';
+import { contractSettings, handleBundlesError, noBody, ok, payments } from '@/lib/api';
 import { withCustomer } from '@/lib/session';
 
 /**
@@ -12,6 +12,7 @@ export function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   return withCustomer(
     req,
     async (s) => {
+      noBody(req);
       const { id } = await ctx.params;
       const payment = payments.get(id, s.customerId);
       if (!payment) throw new PaymentNotFoundError(id);

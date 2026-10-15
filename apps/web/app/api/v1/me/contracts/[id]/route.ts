@@ -9,7 +9,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     req,
     async (s) => {
       const { id } = await ctx.params;
-      const body = await jsonBody<{ autopay?: unknown }>(req);
+      const body = await jsonBody<{ autopay?: unknown }>(req, { maxBytes: 2 * 1024 });
       return ok(contractSettings.setAutopay(s.customer, id, body.autopay));
     },
     handleBundlesError,

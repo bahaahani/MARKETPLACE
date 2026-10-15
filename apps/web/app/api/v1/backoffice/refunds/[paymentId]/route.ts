@@ -9,7 +9,7 @@ import { auditLog, isPolicyBound, withStaff } from '@/lib/backoffice-api';
 export function POST(req: Request, ctx: { params: Promise<{ paymentId: string }> }) {
   return withStaff(req, 'refunds.execute', async (staff) => {
     const { paymentId } = await ctx.params;
-    const body = await jsonBody<{ note?: unknown }>(req, { optional: true });
+    const body = await jsonBody<{ note?: unknown }>(req, { optional: true, maxBytes: 4 * 1024 });
     const r = await refundOrphanPremium(staff, payments, auditLog, paymentId, isPolicyBound, { note: body.note });
     return ok(r);
   });

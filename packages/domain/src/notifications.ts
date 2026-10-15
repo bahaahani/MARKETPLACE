@@ -1,3 +1,4 @@
+import { evictOldest, STORE_CAPS } from './capacity';
 import type { Contract, GarageVehicle } from './account';
 import type { VirtualCard } from './cards';
 import type { Claim, ClaimStatus } from './claims';
@@ -740,6 +741,20 @@ export class SandboxNotificationStore {
   private readonly dismissedIds = new Map<string, Set<string>>();
   private readonly prefs = new Map<string, NotificationPreferences>();
 
+  /** @param maxCustomers customers with state kept in total before the oldest go (default STORE_CAPS.notificationCustomers) */
+  constructor(private readonly maxCustomers: number = STORE_CAPS.notificationCustomers) {}
+
+  /** Forgets a customer's read / dismissed ids and preferences (their session expired). */
+  purgeCustomer(customerId: string): void {
+    this.readIds.delete(customerId);
+    this.dismissedIds.delete(customerId);
+    this.prefs.delete(customerId);
+  }
+
+  get size(): number {
+    return new Set([...this.readIds.keys(), ...this.dismissedIds.keys(), ...this.prefs.keys()]).size;
+  }
+
   /** This customer's read / dismissed view (for notificationInbox). */
   state(customerId: string): { isRead(id: string): boolean; isDismissed(id: string): boolean } {
     const read = this.readIds.get(customerId);
@@ -764,13 +779,19 @@ export class SandboxNotificationStore {
   /** Validates and stores a PUT body (see updateNotificationPreferences). */
   updatePreferences(customerId: string, input: unknown): NotificationPreferences {
     const next = updateNotificationPreferences(this.preferences(customerId), input);
+    this.prefs.delete(customerId);
     this.prefs.set(customerId, next);
+    this.evict();
     return next;
   }
 
   private add(map: Map<string, Set<string>>, customerId: string, ids: readonly string[]): void {
     let set = map.get(customerId);
     if (!set) map.set(customerId, (set = new Set()));
+    else {
+      map.delete(customerId); // most recently active last
+      map.set(customerId, set);
+    }
     for (const id of ids) {
       set.delete(id);
       set.add(id);
@@ -780,5 +801,10 @@ export class SandboxNotificationStore {
       if (set.size <= NOTIFICATION_RULES.maxStoredIdsPerCustomer) break;
       set.delete(id);
     }
+    this.evict();
+  }
+
+  private evict(): void {
+    for (const m of [this.readIds, this.dismissedIds, this.prefs] as Map<string, unknown>[]) evictOldest(m, this.maxCustomers);
   }
 }

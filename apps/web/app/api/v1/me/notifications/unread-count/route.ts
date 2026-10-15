@@ -1,4 +1,4 @@
-import { ok } from '@/lib/api';
+import { ok, rateLimit } from '@/lib/api';
 import { customerInbox, peekProfile } from '@/lib/notifications';
 import { handleNotificationError } from '@/lib/notifications-store';
 
@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
  */
 export function GET(req: Request) {
   try {
+    rateLimit(req, 'poll:ip');
     const inbox = customerInbox(peekProfile(req));
     return ok({ unreadCount: inbox.unreadCount, total: inbox.total });
   } catch (e) {

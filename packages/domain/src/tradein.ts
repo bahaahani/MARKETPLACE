@@ -1,9 +1,11 @@
+import { evictOldest, STORE_CAPS } from './capacity';
 import type { Fils } from './money';
 import { bhd } from './money';
 import { VEHICLES, findVehicle } from './catalog';
 import { addDaysIso, bahrainToday } from './insurance-common';
 import { financeLimits } from './pricing';
 import type { GarageVehicle } from './account';
+import { maskPlate } from './privacy';
 import type { ProductLine } from './types';
 
 /**
@@ -284,10 +286,7 @@ export function normalizePlate(raw: string): string | undefined {
   return /^\d{1,6}$/.test(p) ? p : undefined;
 }
 
-/** Shows only the last 2 characters ("123456" → "****56"); plates of 1 or 2 digits are fully masked. */
-export function maskPlate(plate: string): string {
-  return plate.length <= 2 ? '*'.repeat(plate.length) : '*'.repeat(plate.length - 2) + plate.slice(-2);
-}
+export { maskPlate };
 
 const applyBps = (value: Fils, bps: number): Fils => Math.floor((value * (BPS + bps)) / BPS);
 
@@ -462,14 +461,29 @@ export class SandboxTradeInStore {
   private readonly offers = new Map<string, TradeInOffer>();
   private seq = 0;
 
-  constructor(private readonly clock: () => Date = () => new Date()) {}
+  /** @param maxCustomers customers with an offer kept in total before the oldest go (default STORE_CAPS.tradeInCustomers) */
+  constructor(
+    private readonly clock: () => Date = () => new Date(),
+    private readonly maxCustomers: number = STORE_CAPS.tradeInCustomers,
+  ) {}
+
+  /** Forgets a customer's offer (their session expired). */
+  purgeCustomer(customerId: string): void {
+    this.offers.delete(customerId);
+  }
+
+  get size(): number {
+    return this.offers.size;
+  }
 
   /** Values the car and makes it the customer's active offer. Throws TradeInError for invalid requests. */
   value(customerId: string, req: TradeInRequest, garage: GarageVehicle[] = []): TradeInOffer {
     const now = this.clock();
     const valuation = valueTradeIn(req, garage, now);
     const offer = tradeInOffer(`ti_sbx_${now.getTime().toString(36)}_${(++this.seq).toString(36)}`, valuation, now);
+    this.offers.delete(customerId); // a new valuation is the newest entry
     this.offers.set(customerId, offer);
+    evictOldest(this.offers, this.maxCustomers);
     return offer;
   }
 

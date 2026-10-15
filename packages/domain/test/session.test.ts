@@ -53,4 +53,25 @@ describe('SessionStore (sandbox customer sessions)', () => {
     expect(store.size).toBeLessThanOrEqual(3);
     expect(newCustomerProfile('x').onboarding).toBeUndefined();
   });
+
+  it('reports every forgotten session once (idle on read, idle on sweep, over the cap), so its data can be purged', () => {
+    let now = 0;
+    const gone: string[] = [];
+    const store = new SessionStore({ idleTtlMs: 1000, maxSessions: 3, clock: () => now, onEvict: (s) => gone.push(s.profile.customerId) });
+    const a = store.create();
+    const b = store.create();
+    now = 2000;
+    expect(store.get(a.id)).toBeUndefined(); // idle, found on read
+    expect(gone).toEqual([a.profile.customerId]);
+    expect(store.get(a.id)).toBeUndefined(); // already gone: not reported twice
+    expect(gone).toHaveLength(1);
+    store.sweep(); // idle, found by the sweep a dealer request runs
+    expect(gone).toEqual([a.profile.customerId, b.profile.customerId]);
+    expect(store.size).toBe(0);
+    const kept = [store.create(), store.create(), store.create()];
+    const over = store.create(); // the cap drops the oldest
+    expect(gone).toContain(kept[0]!.profile.customerId);
+    expect(gone).toHaveLength(3);
+    expect(store.get(over.id)).toBeDefined();
+  });
 });

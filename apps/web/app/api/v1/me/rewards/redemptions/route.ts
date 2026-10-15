@@ -1,4 +1,4 @@
-import { jsonBody, ok } from '@/lib/api';
+import { jsonBody, ok, rateLimitCustomer } from '@/lib/api';
 import { handleRewardsError, rewardsState, rewardsStore } from '@/lib/rewards-store';
 import { withCustomer } from '@/lib/session';
 
@@ -21,6 +21,7 @@ export function POST(req: Request) {
   return withCustomer(
     req,
     async (s) => {
+      rateLimitCustomer(req, 'redeem', s.customerId);
       const body = await jsonBody<{ itemId?: unknown; idempotencyKey?: unknown }>(req, { maxBytes: 4 * 1024 });
       const idempotencyKey = req.headers.get('Idempotency-Key') ?? body.idempotencyKey;
       const result = rewardsStore.redeem(s.customerId, rewardsState(s.customer), { itemId: body.itemId, idempotencyKey });

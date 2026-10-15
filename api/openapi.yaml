@@ -18,6 +18,19 @@ info:
       (POST /onboarding/pre-approval) switches it to that customer's own financials and pre-approval.
       Applications, issued cards, pre-approval share tokens, payments and idempotency keys belong to the session's
       customer: another session gets 404 for them.
+
+    Limits (⚠️ sandbox values, in memory, per server instance; production enforces them at the WAF / API gateway):
+    - **Request bodies** are capped per endpoint, 1 to 16 KiB (the claim form with photos has its own cap): over it the
+      API answers `413 PAYLOAD_TOO_LARGE` before parsing (`BODY_TOO_LARGE` on `POST /claims`). Each operation lists its limit.
+    - **Rate limits** are sliding windows per client address and, where noted, per session. Over a limit the API answers
+      `429 RATE_LIMITED` with a `Retry-After` header (seconds). A request that would START a customer session counts
+      against `session-create:ip` (30 a minute per address by default), so any customer endpoint can answer 429.
+      Defaults (per minute): assistant 20 per session and 60 per address, payments 30 per session and 120 per address,
+      eKey login 10 and 30, back-office role selection 20 per address, dealer endpoints 300 per address, share-code
+      redemption 30 per address, polling (`GET /me`, `GET /requests/{id}`, `GET /me/notifications/unread-count`) 120 per
+      session and 600 per address, rewards redemptions 10 and 30. Operators override them with the `SAHEL_RATE_LIMITS`
+      environment variable (JSON), documented in docs/12-web-platform.md. The client address is the first
+      `X-Forwarded-For` hop only when the server is started with `SAHEL_TRUST_PROXY=1`.
 servers:
   - url: http://localhost:3000/api/v1
 paths:
@@ -106,6 +119,7 @@ paths:
                 tenureMonths: {type: integer, description: Defaults to limits.defaultTenureMonths}
                 structure: {$ref: '#/components/schemas/FinanceStructure'}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 4 KiB
         '200':
           description: OK
           content:
@@ -138,6 +152,7 @@ paths:
                 takafulOnly: {type: boolean}
                 agencyRepair: {type: boolean}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 4 KiB
         '200': {description: OK}
         '400': {$ref: '#/components/responses/Error'}
   /me:
@@ -146,6 +161,7 @@ paths:
         The session customer (pre-approval, contracts, garage). The demo customer until onboarding completes, then
         their own name, salary, obligations and pre-approval (⚠️ contracts, garage and rewards stay demo data).
       responses:
+        '429': {$ref: '#/components/responses/RateLimited'}
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/CustomerView'}}}}}}
   /payments:
     post:
@@ -165,6 +181,8 @@ paths:
                 purpose: {enum: [reservation_deposit, installment, insurance_premium, early_settlement, valuation_fee]}
                 reference: {type: string}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 4 KiB
+        '429': {$ref: '#/components/responses/RateLimited'}
         '201': {description: 'Created (status INITIATED, with nextAction)'}
         '400': {description: 'Missing Idempotency-Key, or a body that is not a JSON object', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '422': {description: 'PAYMENT_INVALID; AMOUNT_MISMATCH (server-priced purpose with another amount; nothing is created)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}},
@@ -184,6 +202,7 @@ paths:
         (GET /me shows `settlement`, outstandingFils 0 and no next installment). Confirming again returns the same payment.
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # this endpoint reads no body: a declared Content-Length over 1 KiB
         '200': {description: OK (status CAPTURED)}
         '404': {description: "PAYMENT_NOT_FOUND (unknown id, or another session's payment); CONTRACT_NOT_FOUND (early settlement for an unknown contract)", content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '409': {description: 'INVALID_TRANSITION (the payment can no longer be captured, e.g. FAILED or VOIDED); ALREADY_SETTLED (the contract was settled by another payment)', content: {
@@ -196,6 +215,7 @@ paths:
         The dealer redeems the token for first name, vehicle limit, max monthly and validity only
         (never salary, CPR or obligations). Demo customer until eKey login exists.
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # this endpoint reads no body: a declared Content-Length over 1 KiB
         '201':
           description: Created
           content:
@@ -217,6 +237,8 @@ paths:
                 sellerId: {type: string, description: 'nmc, tac or demo-dealer'}
                 token: {type: string, description: Case-insensitive; spaces and dashes are ignored}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 1 KiB
+        '429': {$ref: '#/components/responses/RateLimited'}
         '200':
           description: OK
           content:
@@ -230,6 +252,7 @@ paths:
       summary: "Dealer portal: the dealer's vehicles with monthly prices (conventional and Murabaha) and stock stats"
       parameters: [$ref: '#/components/parameters/SellerId']
       responses:
+        '429': {$ref: '#/components/responses/RateLimited'}
         '200':
           description: OK
           content:
@@ -261,6 +284,7 @@ paths:
       summary: "Dealer portal: leads (customers who reserved, applied for, or viewed a car), newest first, with pipeline counts"
       parameters: [$ref: '#/components/parameters/SellerId']
       responses:
+        '429': {$ref: '#/components/responses/RateLimited'}
         '200':
           description: OK
           content:
@@ -289,6 +313,7 @@ paths:
     get:
       summary: "Dealer portal: one lead"
       responses:
+        '429': {$ref: '#/components/responses/RateLimited'}
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/Lead'}}}}}}
         '404': {$ref: '#/components/responses/Error'}
     patch:
@@ -304,6 +329,8 @@ paths:
               properties:
                 status: {$ref: '#/components/schemas/LeadStatus'}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 1 KiB
+        '429': {$ref: '#/components/responses/RateLimited'}
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/Lead'}}}}}}
         '400': {$ref: '#/components/responses/Error'}
         '404': {description: LEAD_NOT_FOUND (also for another dealer's lead), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
@@ -330,6 +357,8 @@ paths:
                 tenureMonths: {type: integer}
                 structures: {type: array, items: {$ref: '#/components/schemas/FinanceStructure'}, description: Defaults to every structure offered for vehicles}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 4 KiB
+        '429': {$ref: '#/components/responses/RateLimited'}
         '200':
           description: OK
           content:
@@ -372,6 +401,8 @@ paths:
               properties:
                 cpr: {type: string, pattern: '^\d{9}$'}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 2 KiB
+        '429': {$ref: '#/components/responses/RateLimited'}
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/EKeyIdentity'}}}}}}
         '400': {$ref: '#/components/responses/Error'}
         '422':
@@ -397,6 +428,7 @@ paths:
                   description: Both scopes are required
                   items: {$ref: '#/components/schemas/ConsentScope'}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 4 KiB
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/OnboardingPreApproval'}}}}}}
         '400': {$ref: '#/components/responses/Error'}
         '422':
@@ -416,6 +448,7 @@ paths:
               properties:
                 requestedLimitFils: {type: integer, minimum: 1, description: Capped at the pre-approved card limit}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 2 KiB
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/CardApplication'}}}}}}
         '400': {description: 'BAD_REQUEST (salary or obligations sent, or a bad requestedLimitFils), BAD_JSON', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '404':
@@ -491,6 +524,7 @@ paths:
                 bidId: {type: string, description: 'Vehicle only, with requestId: the accepted bid'}
                 useTradeIn: {type: boolean, description: 'Vehicle only: count the customer''s active trade-in offer in the down payment (credited at delivery)'}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 8 KiB
         '201': {description: Created and decided, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/FinanceApplication'}}}}}}
         '400': {$ref: '#/components/responses/Error'}
         '404': {description: 'Unknown vehicleId or propertyId, or BID_NOT_FOUND (no such request or bid for this customer)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
@@ -521,6 +555,7 @@ paths:
         Only the customer who applied can accept (others get 404).
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # this endpoint reads no body: a declared Content-Length over 1 KiB
         '200': {description: 'OK (COMPLETED, or the last step it could reach: LEASE_STARTED for Ijara, CONTRACT_SIGNED for conventional home finance without a valuation)', content: {application/json: {
               schema: {type: object, properties: {data: {$ref: '#/components/schemas/FinanceApplication'}}}}}}
         '404': {$ref: '#/components/responses/Error'}
@@ -570,6 +605,7 @@ paths:
               properties:
                 autopay: {type: boolean}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 2 KiB
         '200': {description: The updated contract, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/Contract'}}}}}}
         '400': {description: 'BAD_JSON (body is not a JSON object)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '404': {description: CONTRACT_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
@@ -609,6 +645,7 @@ paths:
                 children: {type: integer, minimum: 0, maximum: 8, default: 0}
                 takafulOnly: {type: boolean}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 4 KiB
         '200':
           description: OK
           content:
@@ -643,6 +680,7 @@ paths:
                 propertyId: {type: string, description: Optional link to a property listing}
                 takafulOnly: {type: boolean}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 4 KiB
         '200':
           description: OK
           content:
@@ -684,6 +722,7 @@ paths:
                 preExistingConditions: {type: boolean, default: false}
                 takafulOnly: {type: boolean}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 16 KiB
         '200':
           description: OK
           content:
@@ -721,6 +760,7 @@ paths:
                 criticalIllnessRider: {type: boolean, default: false}
                 takafulOnly: {type: boolean}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 16 KiB
         '200':
           description: OK
           content:
@@ -759,6 +799,7 @@ paths:
                     vehicleValueFils, cover (comprehensive or third-party), agencyRepair and reference (plate or vehicle id).
                   type: object
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 16 KiB
         '201': {description: Created, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/PolicyQuote'}}}}}}
         '400': {$ref: '#/components/responses/Error'}
         '422':
@@ -781,6 +822,7 @@ paths:
                 paymentId: {type: string}
                 quoteId: {type: string, description: Optional; must equal the payment's reference}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 4 KiB
         '200': {description: Policy issued, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/Policy'}}}}}}
         '400': {$ref: '#/components/responses/Error'}
         '404':
@@ -844,11 +886,14 @@ paths:
               properties:
                 role: {$ref: '#/components/schemas/StaffRole'}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 1 KiB
+        '429': {$ref: '#/components/responses/RateLimited'}
         '200': {description: Signed in, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/StaffSession'}}}}}}
         '400': {$ref: '#/components/responses/Error'}
     delete:
       summary: Sign out of the back office (clears the cookie)
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # this endpoint reads no body: a declared Content-Length over 1 KiB
         '200': {description: Signed out}
   /backoffice/dashboard:
     get:
@@ -900,6 +945,7 @@ paths:
                 outcome: {enum: [APPROVED, DECLINED]}
                 note: {type: string, minLength: 5, maxLength: 1000}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 4 KiB
         '200':
           description: Decided
           content:
@@ -959,6 +1005,7 @@ paths:
               properties:
                 note: {type: string, maxLength: 1000}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 4 KiB
         '200':
           description: Refunded
           content:
@@ -1024,7 +1071,7 @@ paths:
         '413': {description: 'PAYLOAD_TOO_LARGE (body over 8 KiB, refused before it is parsed)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '422': {description: 'TEXT_REQUIRED, TEXT_TOO_LONG (over 500 characters), INVALID_REQUEST (locale or persona)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '429':
-          description: RATE_LIMITED (more than 20 messages a minute in this session)
+          description: RATE_LIMITED (more than 20 messages a minute in this session, or more than 60 a minute from this client address)
           headers:
             Retry-After: {schema: {type: integer}, description: Seconds to wait}
           content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
@@ -1080,6 +1127,7 @@ paths:
                 plate: {type: string, description: 'Optional Bahrain private plate, 1 to 6 digits (spaces ignored)'}
                 garageVehicleId: {type: string, description: "A car in the customer's My Garage (GET /config tradeIn.garage)"}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 4 KiB
         '201': {description: Created, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/TradeInOffer'}}}}}}
         '400': {description: BAD_JSON, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '404': {description: GARAGE_VEHICLE_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
@@ -1121,6 +1169,7 @@ paths:
     delete:
       summary: Withdraw the active trade-in offer (idempotent; `withdrawn` is false when there was none)
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # this endpoint reads no body: a declared Content-Length over 1 KiB
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {type: object, properties: {withdrawn: {type: boolean}}}}}}}}
   /me/rewards:
     get:
@@ -1200,7 +1249,11 @@ paths:
         '413': {description: 'PAYLOAD_TOO_LARGE (body over 4 KiB)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '409': {description: 'IDEMPOTENCY_KEY_REUSED (the key was used for another item)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '422': {description: INSUFFICIENT_POINTS, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
-        '429': {description: TOO_MANY_REDEMPTIONS (sandbox cap per customer), content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '429':
+          description: TOO_MANY_REDEMPTIONS (sandbox cap per customer), or RATE_LIMITED (10 a minute per session, 30 per client address)
+          headers:
+            Retry-After: {schema: {type: integer}, description: 'RATE_LIMITED: seconds to wait'}
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
   /claims:
     post:
       summary: |
@@ -1285,6 +1338,7 @@ paths:
         required: true
         content: {application/json: {schema: {type: object, required: [garageId], properties: {garageId: {type: string}}}}}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 2 KiB
         '200': {description: Booked, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/Claim'}}}}}}
         '400': {description: BAD_JSON, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '404': {description: CLAIM_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
@@ -1302,6 +1356,7 @@ paths:
         required: false
         content: {application/json: {schema: {type: object, properties: {to: {$ref: '#/components/schemas/ClaimStatus'}}}}}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 2 KiB
         '200': {description: Moved, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/Claim'}}}}}}
         '400': {description: BAD_JSON, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '404': {description: CLAIM_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
@@ -1326,18 +1381,21 @@ paths:
         answers for a fresh demo customer (like server-rendered pages), so polling it on page load cannot race a
         request that is starting the browser's session. Apps with a session use GET /me/notifications.
       responses:
+        '429': {$ref: '#/components/responses/RateLimited'}
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {type: object, properties: {unreadCount: {type: integer}, total: {type: integer}}}}}}}}
   /me/notifications/{id}/read:
     post:
       summary: "Mark one of the session customer's current notifications read (idempotent). Returns the inbox"
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # this endpoint reads no body: a declared Content-Length over 1 KiB
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/NotificationInbox'}}}}}}
         '404': {description: 'NOTIFICATION_NOT_FOUND (unknown, malformed, or another customer''s id)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /me/notifications/read-all:
     post:
       summary: Mark every current notification of the session customer read. Returns the inbox (unreadCount 0)
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # this endpoint reads no body: a declared Content-Length over 1 KiB
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/NotificationInbox'}}}}}}
   /me/notifications/{id}/dismiss:
     post:
@@ -1347,6 +1405,7 @@ paths:
         (422 MANDATORY_CATEGORY). Returns the inbox
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # this endpoint reads no body: a declared Content-Length over 1 KiB
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/NotificationInbox'}}}}}}
         '404': {description: NOTIFICATION_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '422': {description: 'MANDATORY_CATEGORY (an overdue-payment notice is required and stays in the inbox)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
@@ -1416,6 +1475,7 @@ paths:
                 useTradeIn: {type: boolean, default: false, description: "Add the session's active trade-in offer to the down payment"}
                 insurance: {enum: [takaful, any, none], default: takaful, description: 'Motor insurance estimate on each offer: Takaful only, any insurer, or none'}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 8 KiB
         '201': {description: Posted (OPEN), content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/BidRequest'}}}}}}
         '400': {description: BAD_JSON, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '409': {description: REQUEST_ALREADY_OPEN, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
@@ -1448,6 +1508,7 @@ paths:
         - {name: id, in: path, required: true, schema: {type: string}}
         - {name: sort, in: query, required: false, schema: {enum: [monthly, total, extras], default: monthly}}
       responses:
+        '429': {$ref: '#/components/responses/RateLimited'}
         '200': {description: OK, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/BidRequest'}}}}}}
         '404': {description: REQUEST_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /requests/{id}/accept:
@@ -1462,6 +1523,7 @@ paths:
         required: true
         content: {application/json: {schema: {type: object, required: [bidId], properties: {bidId: {type: string}}}}}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 4 KiB
         '200': {description: Accepted, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/BidRequest'}}}}}}
         '400': {description: BAD_JSON, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '404': {description: 'REQUEST_NOT_FOUND, or BID_NOT_FOUND (unknown, replaced by a newer bid from the same dealer, or not live)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
@@ -1473,6 +1535,7 @@ paths:
       summary: "Cancel an open request (CANCELLED; its live bids are LOST). Another customer's request is 404"
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # this endpoint reads no body: a declared Content-Length over 1 KiB
         '200': {description: Cancelled, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/BidRequest'}}}}}}
         '404': {description: REQUEST_NOT_FOUND, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '409': {description: REQUEST_CLOSED, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
@@ -1486,6 +1549,7 @@ paths:
         CPR, obligations, exact headroom, trade-in or other dealers' bids (only `bidCount`).
       parameters: [{name: sellerId, in: path, required: true, schema: {type: string}}]
       responses:
+        '429': {$ref: '#/components/responses/RateLimited'}
         '200':
           description: OK
           content:
@@ -1522,6 +1586,8 @@ paths:
                 discountFils: {type: integer, minimum: 0, default: 0}
                 extras: {type: array, items: {$ref: '#/components/schemas/BidExtra'}}
       responses:
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}  # body over 8 KiB
+        '429': {$ref: '#/components/responses/RateLimited'}
         '201': {description: Bid placed, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/DealerBidRequest'}}}}}}
         '400': {description: BAD_JSON, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
         '404': {description: 'UNKNOWN_DEALER, REQUEST_NOT_FOUND, or VEHICLE_NOT_FOUND', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
@@ -1550,6 +1616,18 @@ components:
   responses:
     Error:
       description: Error
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    PayloadTooLarge:
+      description: |
+        PAYLOAD_TOO_LARGE: the request body is over this endpoint's limit (see "Limits" in the API description). It is
+        refused by Content-Length first and, for a chunked upload, while streaming, before it is parsed.
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    RateLimited:
+      description: |
+        RATE_LIMITED: too many requests from this client address or session (see "Limits" in the API description).
+        Wait `Retry-After` seconds.
+      headers:
+        Retry-After: {schema: {type: integer}, description: Seconds to wait before trying again}
       content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
   schemas:
     Error:

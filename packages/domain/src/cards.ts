@@ -1,3 +1,4 @@
+import { STORE_CAPS } from './capacity';
 import type { Fils } from './money';
 import { preApprove, type CustomerFinancials } from './affordability';
 import { CARDS, findCard } from './catalog';
@@ -151,11 +152,26 @@ export function applyForCard(cardId: string, f: CustomerFinancials, opts: ApplyO
 export class SandboxCardIssuer {
   private readonly cards: { customerId: string; card: VirtualCard }[] = [];
 
+  /** @param maxCards cards kept in total before the oldest go (default STORE_CAPS.cardsTotal) */
+  constructor(private readonly maxCards: number = STORE_CAPS.cardsTotal) {}
+
+  /** Forgets a customer's cards (their session expired). */
+  purgeCustomer(customerId: string): void {
+    for (let i = this.cards.length - 1; i >= 0; i--) if (this.cards[i]!.customerId === customerId) this.cards.splice(i, 1);
+  }
+
+  get size(): number {
+    return this.cards.length;
+  }
+
   apply(customerId: string, cardId: string, f: CustomerFinancials, opts: ApplyOptions = {}): CardApplication {
     const existing = this.list(customerId).find((c) => c.cardId === cardId && c.status === 'ACTIVE');
     if (existing) return { decision: 'APPROVED', cardId, limitFils: existing.limitFils, virtualCard: existing };
     const result = applyForCard(cardId, f, opts);
-    if (result.decision === 'APPROVED') this.cards.push({ customerId, card: result.virtualCard });
+    if (result.decision === 'APPROVED') {
+      this.cards.push({ customerId, card: result.virtualCard });
+      if (this.cards.length > this.maxCards) this.cards.splice(0, this.cards.length - this.maxCards);
+    }
     return result;
   }
 

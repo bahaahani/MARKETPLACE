@@ -1,3 +1,4 @@
+import { evictOldest, STORE_CAPS } from './capacity';
 import type { Fils } from './money';
 import { bhd } from './money';
 import { maxMonthlyInstallment, preApprove, type CustomerFinancials } from './affordability';
@@ -456,7 +457,33 @@ export class SandboxOriginationService {
   private readonly byKey = new Map<string, string>();
   private seq = 0;
 
-  constructor(private readonly clock: () => Date = () => new Date()) {}
+  /** Memory caps (STORE_CAPS): the oldest applications, with their idempotency keys, go first. */
+  constructor(
+    private readonly clock: () => Date = () => new Date(),
+    private readonly caps: { perCustomer?: number; total?: number } = {},
+  ) {}
+
+  /** Forgets a customer's applications and idempotency keys (their session expired). */
+  purgeCustomer(customerId: string): void {
+    for (const a of [...this.byId.values()]) if (a.customerId === customerId) this.drop(a.id);
+  }
+
+  get size(): number {
+    return this.byId.size;
+  }
+
+  private drop(id: string): void {
+    const app = this.byId.get(id);
+    this.byId.delete(id);
+    if (app) this.byKey.delete(scopedKey(app.customerId, app.idempotencyKey));
+  }
+
+  private enforceCaps(customerId: string): void {
+    const max = this.caps.perCustomer ?? STORE_CAPS.applicationsPerCustomer;
+    const mine = [...this.byId.values()].filter((a) => a.customerId === customerId);
+    for (const a of mine.slice(0, Math.max(0, mine.length - max))) this.drop(a.id);
+    evictOldest(this.byId, this.caps.total ?? STORE_CAPS.applicationsTotal, (id, a) => this.byKey.delete(scopedKey(a.customerId, a.idempotencyKey)));
+  }
 
   /**
    * Create a DRAFT application. Idempotent on `idempotencyKey` per customer: two customers using the same key
@@ -495,6 +522,7 @@ export class SandboxOriginationService {
     };
     this.byId.set(id, app);
     this.byKey.set(scopedKey(customerId, req.idempotencyKey), id);
+    this.enforceCaps(customerId);
     return app;
   }
 

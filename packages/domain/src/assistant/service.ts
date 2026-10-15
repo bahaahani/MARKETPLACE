@@ -90,6 +90,15 @@ export class RateLimiter {
     if (this.hits.size > this.maxKeys) this.hits.delete(this.hits.keys().next().value!);
     return 0;
   }
+
+  /** Forgets a key (e.g. a session that expired). */
+  forget(key: string): void {
+    this.hits.delete(key);
+  }
+
+  get size(): number {
+    return this.hits.size;
+  }
 }
 
 /** The last turns of each conversation, in memory. Customer text is stored PII-redacted. */
@@ -114,6 +123,10 @@ export class ConversationStore {
   clear(key: string): void {
     this.conversations.delete(key);
   }
+
+  get size(): number {
+    return this.conversations.size;
+  }
 }
 
 export interface AssistantServiceOptions {
@@ -134,6 +147,12 @@ export class AssistantService {
     this.limiter = opts.limiter ?? new RateLimiter();
     this.conversations = opts.conversations ?? new ConversationStore();
     this.clock = opts.clock ?? (() => new Date());
+  }
+
+  /** Forgets a customer's conversation and rate-limit window (their session expired). */
+  purgeCustomer(key: string): void {
+    this.conversations.clear(key);
+    this.limiter.forget(key);
   }
 
   /**

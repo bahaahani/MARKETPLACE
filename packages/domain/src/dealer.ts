@@ -1,4 +1,5 @@
 import type { BidExtra } from './bids';
+import { evictOldest, STORE_CAPS } from './capacity';
 import type { Fils } from './money';
 import { SELLERS, VEHICLES, findVehicle } from './catalog';
 import type { CustomerOverview } from './account';
@@ -235,9 +236,29 @@ export function demoLeads(now: Date = new Date()): Lead[] {
 /** In-memory lead store (sandbox). Production: the CRM / lead service. */
 export class LeadStore {
   private readonly byId = new Map<string, Lead>();
+  /** Leads added after construction (e.g. from accepted bids), oldest first: the only ones ever evicted */
+  private readonly appended = new Map<string, true>();
 
-  constructor(seed: Lead[] = demoLeads()) {
+  /** @param maxAppended added leads kept before the oldest go (default STORE_CAPS.appendedLeads); the seed is kept */
+  constructor(
+    seed: Lead[] = demoLeads(),
+    private readonly maxAppended: number = STORE_CAPS.appendedLeads,
+  ) {
     for (const l of seed) this.byId.set(l.id, { ...l });
+  }
+
+  /** Adds a lead. Idempotent: a lead id already in the store is kept as it is (a dealer may have moved it on). */
+  add(lead: Lead): Lead {
+    const existing = this.byId.get(lead.id);
+    if (existing) return existing;
+    this.byId.set(lead.id, { ...lead, customerName: { ...lead.customerName } });
+    this.appended.set(lead.id, true);
+    evictOldest(this.appended, this.maxAppended, (id) => this.byId.delete(id));
+    return lead;
+  }
+
+  get size(): number {
+    return this.byId.size;
   }
 
   list(sellerId: string): Lead[] {
@@ -331,7 +352,12 @@ export class PreApprovalTokenStore {
   constructor(
     private readonly ttlMs: number = PREAPPROVAL_TOKEN_TTL_MS,
     private readonly generate: () => string = randomToken,
+    private readonly maxTokens: number = STORE_CAPS.shareTokens,
   ) {}
+
+  get size(): number {
+    return this.tokens.size;
+  }
 
   issue(customer: CustomerOverview, now: Date = new Date()): PreApprovalShare {
     this.purge(now);
@@ -340,6 +366,7 @@ export class PreApprovalTokenStore {
     let token = this.generate();
     while (this.tokens.has(normalizeToken(token))) token = this.generate();
     this.tokens.set(normalizeToken(token), summary);
+    evictOldest(this.tokens, this.maxTokens);
     return { token, expiresAt: summary.tokenExpiresAt, ttlSeconds: Math.round(this.ttlMs / 1000) };
   }
 

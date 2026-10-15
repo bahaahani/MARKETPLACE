@@ -83,6 +83,10 @@ String bidErrorText(AppLocalizations l, Object error) => switch (error) {
       ApiException(code: 'OVER_BUDGET') => l.bidErrorOverBudget,
       ApiException(code: 'REQUEST_ALREADY_OPEN') => l.bidErrorAlreadyOpen,
       ApiException(code: 'NO_TRADE_IN') => l.bidErrorNoTradeIn,
+      ApiException(code: 'REQUEST_EXPIRED') => l.hardBidErrorExpired,
+      ApiException(code: 'REQUEST_CLOSED') => l.hardBidErrorClosed,
+      ApiException(code: 'BID_NOT_FOUND') => l.hardBidErrorNotFound,
+      ApiException(code: 'BID_ALREADY_USED') => l.hardBidErrorAlreadyUsed,
       _ => l.errorGeneric,
     };
 

@@ -1,4 +1,4 @@
-import { jsonBody, ok } from '@/lib/api';
+import { jsonBody, ok, rateLimit } from '@/lib/api';
 import { assistant, assistantContext, handleAssistantError } from '@/lib/assistant-store';
 import { withCustomer } from '@/lib/session';
 
@@ -21,6 +21,8 @@ export function POST(req: Request) {
   return withCustomer(
     req,
     async (s) => {
+      // Per client address too: a fresh `X-Sahel-Session: new` is a fresh per-session allowance, never a fresh address.
+      rateLimit(req, 'assistant:ip');
       // 500 characters are at most ~2 KB of JSON: bigger bodies are refused (413) before they are read in full.
       const body = await jsonBody<Body>(req, { maxBytes: 8 * 1024 });
       return ok(await assistant.handle(s.customerId, body, assistantContext(s)));

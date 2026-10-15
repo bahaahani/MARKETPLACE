@@ -1,5 +1,5 @@
 import { isStaffRole, SANDBOX_STAFF } from '@sahel/domain';
-import { jsonBody, ok, problem } from '@/lib/api';
+import { jsonBody, noBody, ok, problem, rateLimit } from '@/lib/api';
 import { auditLog, STAFF_COOKIE, staffSession } from '@/lib/backoffice-api';
 import { handleBackOfficeError } from '@/lib/backoffice-errors';
 
@@ -26,7 +26,8 @@ export function GET(req: Request) {
  */
 export async function POST(req: Request) {
   try {
-    const body = await jsonBody<{ role?: unknown }>(req);
+    rateLimit(req, 'staff-role:ip');
+    const body = await jsonBody<{ role?: unknown }>(req, { maxBytes: 1024 });
     if (!isStaffRole(body.role)) return problem(400, 'BAD_REQUEST', 'role must be credit_officer, operations or compliance');
     const staff = SANDBOX_STAFF[body.role];
     auditLog.append(staff, { type: 'STAFF_SIGNED_IN' });
@@ -40,6 +41,11 @@ export async function POST(req: Request) {
 
 /** DELETE /api/v1/backoffice/session: sign out (clears the cookie). */
 export function DELETE(req: Request) {
+  try {
+    noBody(req);
+  } catch (e) {
+    return handleBackOfficeError(e);
+  }
   const res = ok({ signedOut: true });
   res.headers.append('Set-Cookie', cookie(req, '', 0));
   return res;

@@ -19,7 +19,7 @@ interface Body {
  */
 export function POST(req: Request) {
   return withCustomer(req, async (s) => {
-    const body = await jsonBody<Body>(req);
+    const body = await jsonBody<Body>(req, { maxBytes: 4 * 1024 });
     const scopes = Array.isArray(body.consentScopes) ? body.consentScopes.filter((x): x is string => typeof x === 'string') : [];
     const consent = scopes.length ? grantConsent(scopes) : undefined;
     const employment = {

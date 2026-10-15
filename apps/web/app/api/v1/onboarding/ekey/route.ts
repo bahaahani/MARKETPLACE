@@ -1,5 +1,5 @@
 import { simulateEKeyLogin, withIdentity } from '@sahel/domain';
-import { jsonBody, ok } from '@/lib/api';
+import { jsonBody, ok, rateLimitCustomer } from '@/lib/api';
 import { withCustomer } from '@/lib/session';
 
 /**
@@ -10,7 +10,8 @@ import { withCustomer } from '@/lib/session';
  */
 export function POST(req: Request) {
   return withCustomer(req, async (s) => {
-    const body = await jsonBody<{ cpr?: unknown }>(req);
+    rateLimitCustomer(req, 'ekey', s.customerId);
+    const body = await jsonBody<{ cpr?: unknown }>(req, { maxBytes: 2 * 1024 });
     const identity = simulateEKeyLogin(typeof body.cpr === 'string' ? body.cpr : '');
     s.update((p) => withIdentity(p, identity));
     return ok(identity);

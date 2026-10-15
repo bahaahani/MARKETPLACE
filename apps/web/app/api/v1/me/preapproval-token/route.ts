@@ -1,4 +1,4 @@
-import { ok, preApprovalTokens } from '@/lib/api';
+import { noBody, ok, preApprovalTokens } from '@/lib/api';
 import { withCustomer } from '@/lib/session';
 
 /**
@@ -7,5 +7,8 @@ import { withCustomer } from '@/lib/session';
  * customer (their own pre-approval after onboarding). ⚠️ Sandbox session until eKey login exists.
  */
 export function POST(req: Request) {
-  return withCustomer(req, (s) => ok(preApprovalTokens.issue(s.customer), { status: 201 }));
+  return withCustomer(req, (s) => {
+    noBody(req);
+    return ok(preApprovalTokens.issue(s.customer), { status: 201 });
+  });
 }

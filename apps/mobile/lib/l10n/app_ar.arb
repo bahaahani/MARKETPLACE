@@ -973,5 +973,9 @@
   "seoLifeEventsDescription": "أخبرنا بما يحدث في حياتك واحصل على باقة تمويل وبطاقات وتأمين مسعّرة لك ومفحوصة مقابل ميزانيتك.",
   "seoOgImageAlt": "ساهل من BCFC",
   "mobEnvBannerDev": "نسخة تجريبية",
-  "mobEnvBannerStaging": "نسخة اختبار"
+  "mobEnvBannerStaging": "نسخة اختبار",
+  "hardBidErrorExpired": "انتهت صلاحية هذا الطلب. انشر طلباً جديداً لتحصل على عروض حديثة.",
+  "hardBidErrorClosed": "هذا الطلب مغلق بالفعل.",
+  "hardBidErrorNotFound": "هذا العرض لم يعد متاحاً. حدّث الصفحة لرؤية العروض الحالية.",
+  "hardBidErrorAlreadyUsed": "تم استخدام هذا العرض بالفعل."
 }

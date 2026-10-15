@@ -1,3 +1,4 @@
+import { evictOldest, STORE_CAPS } from './capacity';
 import type { Fils } from './money';
 import { bhd } from './money';
 import { VEHICLES, findVehicle } from './catalog';
@@ -651,6 +652,8 @@ export interface BidStoreOptions {
   clock?: () => Date;
   /** Called with the dealer lead when a customer accepts a bid (e.g. appended to the dealer leads store) */
   onAccepted?: (lead: Lead) => void;
+  /** Requests kept in total before the oldest go (default STORE_CAPS.bidRequestsTotal) */
+  maxRequests?: number;
 }
 
 /**
@@ -662,10 +665,24 @@ export class SandboxBidStore {
   private seq = 0;
   private readonly clock: () => Date;
   private readonly onAccepted?: (lead: Lead) => void;
+  private readonly maxRequests: number;
 
   constructor(opts: BidStoreOptions = {}) {
     this.clock = opts.clock ?? (() => new Date());
     this.onAccepted = opts.onAccepted;
+    this.maxRequests = opts.maxRequests ?? STORE_CAPS.bidRequestsTotal;
+  }
+
+  /**
+   * Forgets a customer's requests and bids (their session expired), so a dealer never sees an open request whose
+   * customer is gone. A request also expires by itself at its own validity, whichever comes first.
+   */
+  purgeCustomer(customerId: string): void {
+    for (const [id, r] of this.requests) if (r.customerId === customerId) this.requests.delete(id);
+  }
+
+  get size(): number {
+    return this.requests.size;
   }
 
   /**
@@ -697,6 +714,7 @@ export class SandboxBidStore {
       expiresAt: new Date(now.getTime() + BID_REQUEST_VALIDITY_HOURS * 3600 * 1000).toISOString(),
     };
     this.requests.set(request.id, request);
+    evictOldest(this.requests, this.maxRequests);
     return request;
   }
 
